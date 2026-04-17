@@ -1,33 +1,91 @@
+// app/(tabs)/_layout.tsx (Updated)
 import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { colors } = useTheme();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textLight,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.primaryLight,
+          height: 70,
+          paddingBottom: 10,
+          paddingTop: 10,
+        },
+        headerStyle: {
+          backgroundColor: colors.background,
+        },
+        headerTintColor: colors.text,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          href: null,
+          headerShown: false,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="dashboard"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Dashboard',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="dashboard" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="learning"
+        options={{
+          title: 'Learning',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="school" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="games"
+        options={{
+          title: 'Games',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="games" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="routine"
+        options={{
+          title: 'Routine',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="schedule" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="behavioral"
+        options={{
+          title: 'Social Skills',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="face" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="settings" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
