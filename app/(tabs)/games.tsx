@@ -1,18 +1,20 @@
-// app/(tabs)/games.tsx (Fixed with Language Support)
+// app/(tabs)/games.tsx (Fixed with Language Support & Navigation)
+import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
+  Alert,
   FlatList,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Card from '../../components/Card';
-import { Typography, Spacing } from '../../constants/theme';
-import { useTheme } from '../../context/ThemeContext';
+import { Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
-import { MaterialIcons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
 
 // Games with translation keys
 const games = [
@@ -24,6 +26,7 @@ const games = [
     color: '#9C27B0',
     difficulty: 'easy',
     stars: 3,
+    route: '/(games)/MemoryMatchGame',
   },
   {
     id: '2',
@@ -33,6 +36,7 @@ const games = [
     color: '#E91E63',
     difficulty: 'easy',
     stars: 2,
+    route: '/(games)/ColorSortingGame',
   },
   {
     id: '3',
@@ -42,6 +46,7 @@ const games = [
     color: '#4CAF50',
     difficulty: 'medium',
     stars: 4,
+    route: '/(games)/ShapePuzzleGame',
   },
   {
     id: '4',
@@ -51,6 +56,7 @@ const games = [
     color: '#FF9800',
     difficulty: 'medium',
     stars: 3,
+    route: '/(games)/EmotionMatchGame',
   },
   {
     id: '5',
@@ -60,6 +66,7 @@ const games = [
     color: '#2196F3',
     difficulty: 'hard',
     stars: 5,
+    route: '/(games)/PatternMakerGame',
   },
   {
     id: '6',
@@ -69,6 +76,7 @@ const games = [
     color: '#4CAF50',
     difficulty: 'easy',
     stars: 2,
+    route: '/(games)/NumberHuntGame',
   },
 ];
 
@@ -76,6 +84,22 @@ export default function GamesScreen() {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const [selectedGame, setSelectedGame] = useState('1');
+
+  const handleGamePress = (game: any) => {
+    setSelectedGame(game.id);
+    
+    // Navigate to the specific game screen
+    try {
+      router.push(game.route as any);
+    } catch (error) {
+      // If route doesn't exist yet, show coming soon message
+      Alert.alert(
+        t('comingSoon') || 'Coming Soon!',
+        t('gameUnderDevelopment') || 'This game is under development. Stay tuned!',
+        [{ text: 'OK' }]
+      );
+    }
+  };
 
   const renderStars = (count: number) => {
     return (
@@ -93,15 +117,16 @@ export default function GamesScreen() {
   };
 
   const renderGame = ({ item }: any) => (
-    <TouchableOpacity
+      <TouchableOpacity
       style={[
         styles.gameCard,
-        { 
+        {
           backgroundColor: colors.surface,
-          borderColor: selectedGame === item.id ? item.color : colors.surface,
+          borderColor: selectedGame === item.id ? item.color : '#E0E0E0',
         },
       ]}
-      onPress={() => setSelectedGame(item.id)}
+      onPress={() => handleGamePress(item)}
+      activeOpacity={0.8}
     >
       <View style={[styles.gameIcon, { backgroundColor: item.color + '20' }]}>
         <MaterialIcons name={item.icon as any} size={40} color={item.color} />
@@ -133,7 +158,10 @@ export default function GamesScreen() {
   ];
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: colors.background }]} 
+      showsVerticalScrollIndicator={false}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>
@@ -171,7 +199,10 @@ export default function GamesScreen() {
               </View>
             </View>
           </View>
-          <TouchableOpacity style={[styles.playButton, { backgroundColor: colors.accentOrange }]}>
+          <TouchableOpacity 
+            style={[styles.playButton, { backgroundColor: colors.accentOrange }]}
+            onPress={() => handleGamePress(games[0])}
+          >
             <Text style={styles.playButtonText}>{t('playNow')}</Text>
           </TouchableOpacity>
         </View>
@@ -197,7 +228,11 @@ export default function GamesScreen() {
         iconColor={colors.textLight}
       >
         {games.slice(0, 3).map((game) => (
-          <TouchableOpacity key={game.id} style={styles.recentGame}>
+          <TouchableOpacity 
+            key={game.id} 
+            style={styles.recentGame}
+            onPress={() => handleGamePress(game)}
+          >
             <View style={[styles.recentIcon, { backgroundColor: game.color + '20' }]}>
               <MaterialIcons name={game.icon as any} size={24} color={game.color} />
             </View>
@@ -209,7 +244,10 @@ export default function GamesScreen() {
                 {t('playedAgo')}
               </Text>
             </View>
-            <TouchableOpacity style={styles.recentPlayButton}>
+            <TouchableOpacity 
+              style={styles.recentPlayButton}
+              onPress={() => handleGamePress(game)}
+            >
               <MaterialIcons name="play-arrow" size={24} color={colors.primary} />
             </TouchableOpacity>
           </TouchableOpacity>
