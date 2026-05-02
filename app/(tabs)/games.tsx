@@ -1,4 +1,4 @@
-// app/(tabs)/games.tsx (Fixed with Language Support & Navigation)
+// app/(tabs)/games.tsx (Updated with all games)
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -16,7 +16,7 @@ import { Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 
-// Games with translation keys
+// Games with translation keys and working routes
 const games = [
   {
     id: '1',
@@ -30,20 +30,20 @@ const games = [
   },
   {
     id: '2',
-    titleKey: 'colorSorting',
-    descriptionKey: 'sortObjectsByColor',
-    icon: 'color-lens',
-    color: '#E91E63',
+    titleKey: 'simplePuzzle',
+    descriptionKey: 'completeSimplePuzzles',
+    icon: 'puzzle',
+    color: '#4CAF50',
     difficulty: 'easy',
-    stars: 2,
-    route: '/(games)/ColorSortingGame',
+    stars: 3,
+    route: '/(games)/SimplePuzzleGame',
   },
   {
     id: '3',
     titleKey: 'shapePuzzle',
     descriptionKey: 'completeShapePuzzles',
     icon: 'extension',
-    color: '#4CAF50',
+    color: '#2196F3',
     difficulty: 'medium',
     stars: 4,
     route: '/(games)/ShapePuzzleGame',
@@ -63,7 +63,7 @@ const games = [
     titleKey: 'patternMaker',
     descriptionKey: 'createPatterns',
     icon: 'pattern',
-    color: '#2196F3',
+    color: '#E91E63',
     difficulty: 'hard',
     stars: 5,
     route: '/(games)/PatternMakerGame',
@@ -73,9 +73,9 @@ const games = [
     titleKey: 'numberHunt',
     descriptionKey: 'findHiddenNumbers',
     icon: 'search',
-    color: '#4CAF50',
+    color: '#00BCD4',
     difficulty: 'easy',
-    stars: 2,
+    stars: 3,
     route: '/(games)/NumberHuntGame',
   },
 ];

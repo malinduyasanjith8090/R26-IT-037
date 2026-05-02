@@ -1,4 +1,4 @@
-// app/(tabs)/learning.tsx (Updated - pass 'sinhala' type)
+// app/(tabs)/learning.tsx (Complete Updated Version)
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
@@ -8,6 +8,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AnimalsLearning from '../../components/AnimalsLearning';
+import ColorsLearning from '../../components/ColorsLearning';
+import FruitsLearning from '../../components/FruitsLearning';
+import ShapesLearning from '../../components/ShapesLearning';
 import TracingGame from '../../components/TracingCanvas';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
@@ -17,8 +21,10 @@ export default function LearningScreen() {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const [selectedType, setSelectedType] = useState<'letters' | 'sinhala' | 'numbers' | null>(null);
+  const [selectedPractice, setSelectedPractice] = useState<'colors' | 'shapes' | 'animals' | 'fruits' | null>(null);
   const [learningProgress, setLearningProgress] = useState(0);
 
+  // Handle Tracing Game (Letters/Numbers)
   if (selectedType) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -44,6 +50,25 @@ export default function LearningScreen() {
             }
           }}
           onProgress={(progress: number) => setLearningProgress(progress)}
+        />
+      </View>
+    );
+  }
+
+  // Handle Practice Modules (Colors, Shapes, Animals, Fruits)
+  if (selectedPractice) {
+    const PracticeComponent = {
+      colors: ColorsLearning,
+      shapes: ShapesLearning,
+      animals: AnimalsLearning,
+      fruits: FruitsLearning,
+    }[selectedPractice];
+
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <PracticeComponent
+          onBack={() => setSelectedPractice(null)}
+          onProgress={(progress: number) => console.log('Practice progress:', progress)}
         />
       </View>
     );
@@ -80,8 +105,8 @@ export default function LearningScreen() {
         </View>
       </View>
 
-      {/* Learning Options */}
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose What to Learn</Text>
+      {/* Tracing Learning Section */}
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Trace & Learn</Text>
       
       {/* English Letters Card */}
       <TouchableOpacity
@@ -155,27 +180,70 @@ export default function LearningScreen() {
       {/* Practice Section */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Practice Zone</Text>
       <View style={styles.practiceGrid}>
-        {[
-          { icon: '🎨', name: 'Colors', color: '#FFD166', progress: 30 },
-          { icon: '⬛', name: 'Shapes', color: '#06D6A0', progress: 15 },
-          { icon: '🐘', name: 'Animals', color: '#118AB2', progress: 45 },
-          { icon: '🍎', name: 'Fruits', color: '#EF476F', progress: 20 },
-        ].map((item, index) => (
-          <TouchableOpacity key={index} style={[styles.practiceCard, { backgroundColor: colors.surface }]}>
-            <View style={[styles.practiceIcon, { backgroundColor: item.color + '20' }]}>
-              <Text style={styles.practiceEmoji}>{item.icon}</Text>
-            </View>
-            <Text style={[styles.practiceName, { color: colors.text }]}>{item.name}</Text>
-            <View style={styles.practiceProgress}>
-              <View style={[styles.progressBar, { backgroundColor: colors.primaryLight }]}>
-                <View style={[styles.progressFill, { width: `${item.progress}%`, backgroundColor: item.color }]} />
-              </View>
-            </View>
-            <TouchableOpacity style={[styles.practiceButton, { backgroundColor: item.color }]}>
-              <Text style={styles.practiceButtonText}>Start</Text>
-            </TouchableOpacity>
+        {/* Colors Card */}
+        <TouchableOpacity 
+          style={[styles.practiceCard, { backgroundColor: colors.surface }]}
+          onPress={() => setSelectedPractice('colors')}
+        >
+          <View style={[styles.practiceIcon, { backgroundColor: '#FF6B6B20' }]}>
+            <View style={[styles.colorSwatch, { backgroundColor: '#FF0000' }]} />
+            <View style={[styles.colorSwatch, { backgroundColor: '#00FF00', marginTop: 4 }]} />
+            <View style={[styles.colorSwatch, { backgroundColor: '#0000FF', marginTop: 4 }]} />
+          </View>
+          <Text style={[styles.practiceName, { color: colors.text }]}>Colors</Text>
+          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>Learn basic colors</Text>
+          <TouchableOpacity style={[styles.practiceButton, { backgroundColor: '#FF6B6B' }]}>
+            <Text style={styles.practiceButtonText}>Start</Text>
           </TouchableOpacity>
-        ))}
+        </TouchableOpacity>
+
+        {/* Shapes Card */}
+        <TouchableOpacity 
+          style={[styles.practiceCard, { backgroundColor: colors.surface }]}
+          onPress={() => setSelectedPractice('shapes')}
+        >
+          <View style={[styles.practiceIcon, { backgroundColor: '#4ECDC420' }]}>
+            <View style={[styles.shapeDemo, { backgroundColor: '#4ECDC4', borderRadius: 30 }]} />
+            <View style={[styles.shapeDemo, { backgroundColor: '#4ECDC4', borderRadius: 8, marginTop: 4 }]} />
+          </View>
+          <Text style={[styles.practiceName, { color: colors.text }]}>Shapes</Text>
+          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>Learn basic shapes</Text>
+          <TouchableOpacity style={[styles.practiceButton, { backgroundColor: '#4ECDC4' }]}>
+            <Text style={styles.practiceButtonText}>Start</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* Animals Card */}
+        <TouchableOpacity 
+          style={[styles.practiceCard, { backgroundColor: colors.surface }]}
+          onPress={() => setSelectedPractice('animals')}
+        >
+          <View style={[styles.practiceIcon, { backgroundColor: '#FFD16620' }]}>
+            <Text style={styles.animalIconDemo}>🐶</Text>
+            <Text style={styles.animalIconDemo}>🐱</Text>
+          </View>
+          <Text style={[styles.practiceName, { color: colors.text }]}>Animals</Text>
+          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>Learn about animals</Text>
+          <TouchableOpacity style={[styles.practiceButton, { backgroundColor: '#FFD166' }]}>
+            <Text style={styles.practiceButtonText}>Start</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* Fruits Card */}
+        <TouchableOpacity 
+          style={[styles.practiceCard, { backgroundColor: colors.surface }]}
+          onPress={() => setSelectedPractice('fruits')}
+        >
+          <View style={[styles.practiceIcon, { backgroundColor: '#06D6A020' }]}>
+            <Text style={styles.fruitIconDemo}>🍎</Text>
+            <Text style={styles.fruitIconDemo}>🍌</Text>
+          </View>
+          <Text style={[styles.practiceName, { color: colors.text }]}>Fruits</Text>
+          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>Learn about fruits</Text>
+          <TouchableOpacity style={[styles.practiceButton, { backgroundColor: '#06D6A0' }]}>
+            <Text style={styles.practiceButtonText}>Start</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </View>
 
       {/* Achievements */}
@@ -184,9 +252,10 @@ export default function LearningScreen() {
         {[
           { title: 'First Trace', icon: '🏆', earned: true, date: 'Yesterday' },
           { title: 'English Letter Master', icon: '🔤', earned: true, date: '2 days ago' },
+          { title: 'Color Explorer', icon: '🎨', earned: true, date: '3 days ago' },
           { title: 'Sinhala Letter Master', icon: '🕉️', earned: false, date: null },
-          { title: 'Number Ninja', icon: '🥈', earned: false, date: null },
-          { title: 'Perfect Score', icon: '💯', earned: false, date: null },
+          { title: 'Number Ninja', icon: '🔢', earned: false, date: null },
+          { title: 'Shape Master', icon: '🔷', earned: false, date: null },
         ].map((achievement, index) => (
           <View key={index} style={[styles.achievementCard, { 
             backgroundColor: colors.surface,
@@ -322,30 +391,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   practiceIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.sm,
   },
-  practiceEmoji: {
-    fontSize: 32,
+  colorSwatch: {
+    width: 40,
+    height: 20,
+    borderRadius: 4,
+  },
+  shapeDemo: {
+    width: 40,
+    height: 40,
+  },
+  animalIconDemo: {
+    fontSize: 28,
+  },
+  fruitIconDemo: {
+    fontSize: 28,
   },
   practiceName: {
     fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: Spacing.sm,
+    fontSize: 18,
+    marginTop: Spacing.sm,
   },
-  practiceProgress: {
-    width: '100%',
-    marginVertical: Spacing.sm,
+  practiceDesc: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginVertical: Spacing.xs,
   },
   practiceButton: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
     marginTop: Spacing.sm,
+    width: '80%',
+    alignItems: 'center',
   },
   practiceButtonText: {
     color: '#FFF',
@@ -360,17 +444,17 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   achievementCard: {
-    width: '47%',
+    width: '30%',
     alignItems: 'center',
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     gap: Spacing.xs,
   },
   achievementIcon: {
-    fontSize: 32,
+    fontSize: 28,
   },
   achievementTitle: {
-    fontSize: 12,
+    fontSize: 11,
     textAlign: 'center',
   },
   achievementDate: {
