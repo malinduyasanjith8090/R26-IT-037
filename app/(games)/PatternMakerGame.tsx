@@ -1,6 +1,5 @@
-// app/(games)/PatternMakerGame.tsx
+// app/(games)/PatternMakerGame.tsx (with Sounds & Haptics)
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -14,6 +13,7 @@ import {
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useSound } from '../../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
@@ -112,6 +112,15 @@ const levels: Level[] = [
 
 export default function PatternMakerGame() {
   const { colors } = useTheme();
+  const { 
+    playSound, 
+    playCelebration, 
+    playStarEarned, 
+    playCorrectAnswer,
+    toggleSound,
+    isEnabled: soundEnabled 
+  } = useSound();
+  
   const [currentLevel, setCurrentLevel] = useState(0);
   const [currentPatternIndex, setCurrentPatternIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -120,6 +129,7 @@ export default function PatternMakerGame() {
   const [showReward, setShowReward] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [stars, setStars] = useState(3);
+  const [showHint, setShowHint] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
   const bounceAnim = useState(new Animated.Value(1))[0];
 
@@ -142,7 +152,7 @@ export default function PatternMakerGame() {
     return 1;
   };
 
-  const handleAnswer = (answer: string) => {
+  const handleAnswer = async (answer: string) => {
     if (selectedAnswer !== null) return;
     
     setSelectedAnswer(answer);
@@ -151,21 +161,23 @@ export default function PatternMakerGame() {
     setIsCorrect(correct);
 
     if (correct) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await playCorrectAnswer();
       const newScore = score + 10;
       setScore(newScore);
+      await playStarEarned();
       
       Animated.sequence([
         Animated.timing(scaleAnim, { toValue: 1.2, duration: 200, useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
 
-      setTimeout(() => {
+      setTimeout(async () => {
         if (currentPatternIndex + 1 >= level.patterns.length) {
           const earnedStars = calculateStars();
           setStars(earnedStars);
           
           if (currentLevel === levels.length - 1) {
+            await playCelebration();
             setShowComplete(true);
           } else {
             setShowReward(true);
@@ -174,36 +186,47 @@ export default function PatternMakerGame() {
           setCurrentPatternIndex(currentPatternIndex + 1);
           setSelectedAnswer(null);
           setIsCorrect(false);
+          await playSound('click', false);
         }
       }, 1500);
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      await playSound('error', true);
       Animated.sequence([
         Animated.timing(bounceAnim, { toValue: 0.9, duration: 100, useNativeDriver: true }),
         Animated.timing(bounceAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
       ]).start();
       
+      // Show hint for wrong answer
+      setShowHint(true);
       setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(false);
+        setShowHint(false);
       }, 1000);
     }
   };
 
-  const nextLevel = () => {
+  const nextLevel = async () => {
     setShowReward(false);
     setCurrentLevel(currentLevel + 1);
     setCurrentPatternIndex(0);
     setScore(0);
     setSelectedAnswer(null);
+    await playSound('levelUp', false);
   };
 
-  const resetGame = () => {
+  const resetGame = async () => {
     setCurrentLevel(0);
     setCurrentPatternIndex(0);
     setScore(0);
     setShowComplete(false);
     setSelectedAnswer(null);
+    await playSound('click', false);
+  };
+
+  const handleToggleSound = async () => {
+    await playSound('click', false);
+    toggleSound();
   };
 
   const getStarRating = (starCount: number) => (
@@ -246,7 +269,21 @@ export default function PatternMakerGame() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
+        
+        {/* Sound Toggle Button */}
+        <TouchableOpacity 
+          style={styles.soundButton}
+          onPress={handleToggleSound}
+        >
+          <MaterialIcons 
+            name={soundEnabled ? "volume-up" : "volume-off"} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
+        
         <Text style={[styles.title, { color: colors.text }]}>Pattern Maker</Text>
+        
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
@@ -272,6 +309,19 @@ export default function PatternMakerGame() {
       <Animated.View style={{ transform: [{ scale: bounceAnim }] }}>
         {renderSequence()}
       </Animated.View>
+
+      {/* Hint Button */}
+      <TouchableOpacity 
+        style={[styles.hintButton, { backgroundColor: colors.primaryLight + '30' }]}
+        onPress={async () => {
+          await playSound('click', false);
+          setShowHint(true);
+          setTimeout(() => setShowHint(false), 2000);
+        }}
+      >
+        <MaterialIcons name="lightbulb" size={20} color={colors.primary} />
+        <Text style={[styles.hintButtonText, { color: colors.primary }]}>Need a Hint?</Text>
+      </TouchableOpacity>
 
       {/* Options */}
       <View style={styles.optionsContainer}>
@@ -314,6 +364,16 @@ export default function PatternMakerGame() {
             Look at the pattern! It repeats every two items.
           </Text>
         </View>
+      )}
+
+      {/* Hint Popup */}
+      {showHint && !selectedAnswer && (
+        <Animated.View style={[styles.hintPopup, { backgroundColor: colors.primary + 'E6' }]}>
+          <MaterialIcons name="lightbulb" size={24} color="#FFF" />
+          <Text style={styles.hintPopupText}>
+            Hint: Look for the repeating pattern! 🔄
+          </Text>
+        </Animated.View>
       )}
 
       {/* Progress Bar */}
@@ -402,7 +462,8 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
   },
   backButton: { padding: Spacing.sm },
-  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold' },
+  soundButton: { padding: Spacing.sm },
+  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold', flex: 1, textAlign: 'center' },
   scoreBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -458,11 +519,23 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   questionMark: { fontSize: 40, fontWeight: 'bold', color: '#FFD700' },
+  hintButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.round,
+    gap: Spacing.xs,
+    marginVertical: Spacing.md,
+  },
+  hintButtonText: { fontSize: 14, fontWeight: '600' },
   optionsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: Spacing.md,
     padding: Spacing.md,
+    flexWrap: 'wrap',
   },
   optionButton: {
     flexDirection: 'row',
@@ -484,6 +557,27 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   feedbackText: { fontSize: Typography.fontSize.sm, flex: 1 },
+  hintPopup: {
+    position: 'absolute',
+    top: '40%',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  hintPopupText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   progressContainer: { paddingHorizontal: Spacing.lg, marginVertical: Spacing.md },
   progressBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },

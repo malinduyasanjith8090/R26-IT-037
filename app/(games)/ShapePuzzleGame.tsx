@@ -1,8 +1,7 @@
-// app/(games)/ShapePuzzleGame.tsx
+// app/(games)/ShapePuzzleGame.tsx (with Sounds & Haptics)
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Animated,
     Dimensions,
@@ -15,6 +14,7 @@ import {
 import Svg, { Circle, Ellipse, Path, Polygon, Rect } from 'react-native-svg';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useSound } from '../../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
@@ -67,6 +67,15 @@ const levels: Level[] = [
 
 export default function ShapePuzzleGame() {
   const { colors } = useTheme();
+  const { 
+    playSound, 
+    playCelebration, 
+    playStarEarned, 
+    playCorrectAnswer,
+    toggleSound,
+    isEnabled: soundEnabled 
+  } = useSound();
+  
   const [currentLevel, setCurrentLevel] = useState(0);
   const [pieces, setPieces] = useState<ShapePiece[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<ShapePiece | null>(null);
@@ -75,7 +84,10 @@ export default function ShapePuzzleGame() {
   const [showComplete, setShowComplete] = useState(false);
   const [stars, setStars] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
+  const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
+  const [showCorrectFeedback, setShowCorrectFeedback] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
+  const shakeAnim = useState(new Animated.Value(0))[0];
 
   const level = levels[currentLevel];
 
@@ -88,12 +100,14 @@ export default function ShapePuzzleGame() {
     setPieces(shuffled);
     setQuestionCount(0);
     setScore(0);
+    setSelectedAnswerId(null);
     nextQuestion(shuffled);
   };
 
   const nextQuestion = (currentPieces: ShapePiece[]) => {
     if (questionCount < level.pieces.length) {
       setCurrentQuestion(currentPieces[questionCount]);
+      setSelectedAnswerId(null);
     }
   };
 
@@ -101,49 +115,86 @@ export default function ShapePuzzleGame() {
     initializeGame();
   }, [currentLevel]);
 
-  const handleAnswer = (selectedPiece: ShapePiece) => {
-    if (selectedPiece.id === currentQuestion?.id) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  const shakeAnimation = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const handleAnswer = async (selectedPiece: ShapePiece) => {
+    if (selectedAnswerId !== null) return;
+    
+    setSelectedAnswerId(selectedPiece.id);
+    const isCorrect = selectedPiece.id === currentQuestion?.id;
+
+    if (isCorrect) {
+      // Play correct answer sound
+      await playCorrectAnswer();
+      
       const newScore = score + 10;
       setScore(newScore);
+      setShowCorrectFeedback(true);
       
+      // Play star sounds for extra delight
+      await playStarEarned();
+
       Animated.sequence([
-        Animated.timing(scaleAnim, { toValue: 1.2, duration: 200, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1.3, duration: 200, useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
 
-      if (questionCount + 1 >= level.pieces.length) {
-        const earnedStars = Math.floor(score / 30) + 1;
-        setStars(earnedStars > 3 ? 3 : earnedStars);
+      setTimeout(async () => {
+        setShowCorrectFeedback(false);
         
-        if (currentLevel === levels.length - 1) {
-          setShowComplete(true);
+        if (questionCount + 1 >= level.pieces.length) {
+          const earnedStars = Math.floor((score + 10) / 30) + 1;
+          setStars(earnedStars > 3 ? 3 : earnedStars);
+          
+          if (currentLevel === levels.length - 1) {
+            await playCelebration();
+            setShowComplete(true);
+          } else {
+            await playSound('levelUp', false);
+            setShowReward(true);
+          }
         } else {
-          setShowReward(true);
+          setQuestionCount(questionCount + 1);
+          const remainingPieces = [...pieces];
+          nextQuestion(remainingPieces);
+          await playSound('click', false);
         }
-      } else {
-        setQuestionCount(questionCount + 1);
-        const remainingPieces = [...pieces];
-        nextQuestion(remainingPieces);
-      }
+        setSelectedAnswerId(null);
+      }, 1500);
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      // Shake animation for wrong answer
-      Animated.sequence([
-        Animated.timing(scaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
-        Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
-      ]).start();
+      // Play wrong answer sound
+      await playSound('error', true);
+      shakeAnimation();
+      
+      setTimeout(() => {
+        setSelectedAnswerId(null);
+      }, 800);
     }
   };
 
-  const nextLevel = () => {
+  const nextLevel = async () => {
     setShowReward(false);
     setCurrentLevel(currentLevel + 1);
+    await playSound('click', false);
   };
 
-  const resetGame = () => {
+  const resetGame = async () => {
     setCurrentLevel(0);
     setShowComplete(false);
+    setScore(0);
+    await playSound('click', false);
+  };
+
+  const handleToggleSound = async () => {
+    await playSound('click', false);
+    toggleSound();
   };
 
   const getStarRating = (starCount: number) => (
@@ -172,7 +223,21 @@ export default function ShapePuzzleGame() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
+        
+        {/* Sound Toggle Button */}
+        <TouchableOpacity 
+          style={styles.soundButton}
+          onPress={handleToggleSound}
+        >
+          <MaterialIcons 
+            name={soundEnabled ? "volume-up" : "volume-off"} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
+        
         <Text style={[styles.title, { color: colors.text }]}>Shape Puzzle</Text>
+        
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
@@ -203,14 +268,39 @@ export default function ShapePuzzleGame() {
         {pieces.map((piece, index) => (
           <TouchableOpacity
             key={index}
-            style={[styles.optionCard, { backgroundColor: colors.surface }]}
+            style={[
+              styles.optionCard, 
+              { 
+                backgroundColor: colors.surface,
+                transform: [{ translateX: selectedAnswerId === piece.id && selectedAnswerId !== currentQuestion?.id ? shakeAnim : 0 }]
+              }
+            ]}
             onPress={() => handleAnswer(piece)}
+            disabled={selectedAnswerId !== null}
           >
             {renderShape(piece.shape, 80)}
             <Text style={[styles.optionName, { color: colors.text }]}>{piece.name}</Text>
+            {selectedAnswerId === piece.id && (
+              <MaterialIcons
+                name={piece.id === currentQuestion?.id ? "check-circle" : "cancel"}
+                size={24}
+                color={piece.id === currentQuestion?.id ? colors.success : colors.error}
+                style={styles.answerIcon}
+              />
+            )}
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Correct Answer Feedback */}
+      {showCorrectFeedback && (
+        <Animated.View style={[styles.correctFeedback, { transform: [{ scale: scaleAnim }] }]}>
+          <MaterialIcons name="check-circle" size={32} color={colors.success} />
+          <Text style={[styles.correctFeedbackText, { color: colors.success }]}>
+            Correct! +10 points
+          </Text>
+        </Animated.View>
+      )}
 
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
@@ -225,6 +315,14 @@ export default function ShapePuzzleGame() {
             ]}
           />
         </View>
+      </View>
+
+      {/* Hint Section */}
+      <View style={[styles.hintContainer, { backgroundColor: colors.primaryLight + '20' }]}>
+        <MaterialIcons name="lightbulb" size={20} color={colors.accentYellow} />
+        <Text style={[styles.hintText, { color: colors.textLight }]}>
+          Tip: Look at the shape's outline and color!
+        </Text>
       </View>
 
       {/* Level Reward Modal */}
@@ -259,6 +357,9 @@ export default function ShapePuzzleGame() {
               <Text style={[styles.modalMessage, { color: colors.textLight }]}>
                 You identified all shapes!
               </Text>
+              <Text style={[styles.finalScore, { color: colors.primary }]}>
+                Final Score: {score} points
+              </Text>
               {getStarRating(3)}
               <View style={styles.modalButtons}>
                 <TouchableOpacity
@@ -292,7 +393,8 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
   },
   backButton: { padding: Spacing.sm },
-  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold' },
+  soundButton: { padding: Spacing.sm },
+  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold', flex: 1, textAlign: 'center' },
   scoreBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -327,11 +429,40 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     width: (width - 60) / 2,
+    position: 'relative',
   },
   optionName: { fontSize: Typography.fontSize.sm, marginTop: Spacing.sm },
+  answerIcon: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+  },
+  correctFeedback: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.md,
+    marginHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+  },
+  correctFeedbackText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   progressContainer: { paddingHorizontal: Spacing.lg, marginTop: Spacing.xl },
   progressBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
+  hintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+  },
+  hintText: { fontSize: Typography.fontSize.sm, flex: 1 },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
@@ -347,6 +478,7 @@ const styles = StyleSheet.create({
   modalEmoji: { fontSize: 60, textAlign: 'center' },
   modalTitle: { fontSize: 28, fontWeight: 'bold', marginTop: Spacing.md },
   modalMessage: { fontSize: 16, marginTop: Spacing.sm, textAlign: 'center' },
+  finalScore: { fontSize: 18, fontWeight: 'bold', marginTop: Spacing.md },
   starsContainer: { flexDirection: 'row', marginTop: Spacing.md, gap: Spacing.xs },
   modalButton: {
     marginTop: Spacing.lg,

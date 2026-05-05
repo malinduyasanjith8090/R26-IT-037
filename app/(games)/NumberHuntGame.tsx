@@ -1,6 +1,5 @@
-// app/(games)/NumberHuntGame.tsx
+// app/(games)/NumberHuntGame.tsx (with Sounds & Haptics)
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -14,6 +13,7 @@ import {
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useSound } from '../../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
@@ -96,6 +96,15 @@ const levels: Level[] = [
 
 export default function NumberHuntGame() {
   const { colors } = useTheme();
+  const { 
+    playSound, 
+    playCelebration, 
+    playStarEarned, 
+    playCorrectAnswer,
+    toggleSound,
+    isEnabled: soundEnabled 
+  } = useSound();
+  
   const [currentLevel, setCurrentLevel] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [options, setOptions] = useState<number[]>([]);
@@ -105,6 +114,7 @@ export default function NumberHuntGame() {
   const [showReward, setShowReward] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [stars, setStars] = useState(3);
+  const [showHint, setShowHint] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
   const bounceAnim = useState(new Animated.Value(1))[0];
 
@@ -113,6 +123,8 @@ export default function NumberHuntGame() {
 
   useEffect(() => {
     generateOptions();
+    // Play level start sound
+    playSound('click', false);
   }, [currentQuestionIndex]);
 
   const generateOptions = () => {
@@ -138,10 +150,8 @@ export default function NumberHuntGame() {
     const count = currentQuestion.targetNumber;
     const emoji = currentQuestion.emoji;
     if (level.id === 2) {
-      // For numbers 1-10 level
       return <Text style={styles.numberEmoji}>{emoji}</Text>;
     } else if (level.id === 3) {
-      // For counting objects
       return (
         <View style={styles.objectsContainer}>
           {Array.from({ length: count }).map((_, i) => (
@@ -150,7 +160,6 @@ export default function NumberHuntGame() {
         </View>
       );
     } else if (level.id === 4) {
-      // For number words
       return (
         <View style={styles.wordContainer}>
           <Text style={[styles.wordText, { color: colors.primary }]}>
@@ -159,7 +168,6 @@ export default function NumberHuntGame() {
         </View>
       );
     } else {
-      // For regular numbers
       return (
         <View style={styles.numberDisplay}>
           <Text style={styles.numberEmoji}>{emoji}</Text>
@@ -171,7 +179,13 @@ export default function NumberHuntGame() {
     }
   };
 
-  const handleAnswer = (answer: number) => {
+  const showHintMessage = async () => {
+    setShowHint(true);
+    await playSound('click', false);
+    setTimeout(() => setShowHint(false), 3000);
+  };
+
+  const handleAnswer = async (answer: number) => {
     if (selectedAnswer !== null) return;
     
     setSelectedAnswer(answer);
@@ -179,23 +193,30 @@ export default function NumberHuntGame() {
     setIsCorrect(correct);
 
     if (correct) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Play correct answer sound with star effects
+      await playCorrectAnswer();
+      
       const newScore = score + 10;
       setScore(newScore);
       
+      // Play star earned sound
+      await playStarEarned();
+
       Animated.sequence([
         Animated.timing(scaleAnim, { toValue: 1.2, duration: 200, useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
 
-      setTimeout(() => {
+      setTimeout(async () => {
         if (currentQuestionIndex + 1 >= level.questions.length) {
           const earnedStars = calculateStars();
           setStars(earnedStars);
           
           if (currentLevel === levels.length - 1) {
+            await playCelebration();
             setShowComplete(true);
           } else {
+            await playSound('levelUp', false);
             setShowReward(true);
           }
         } else {
@@ -203,10 +224,13 @@ export default function NumberHuntGame() {
           setSelectedAnswer(null);
           setIsCorrect(false);
           generateOptions();
+          await playSound('click', false);
         }
       }, 1500);
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      // Play wrong answer sound
+      await playSound('wrong', true);
+      
       Animated.sequence([
         Animated.timing(bounceAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
         Animated.timing(bounceAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
@@ -219,22 +243,29 @@ export default function NumberHuntGame() {
     }
   };
 
-  const nextLevel = () => {
+  const nextLevel = async () => {
     setShowReward(false);
     setCurrentLevel(currentLevel + 1);
     setCurrentQuestionIndex(0);
     setScore(0);
     setSelectedAnswer(null);
     generateOptions();
+    await playSound('click', false);
   };
 
-  const resetGame = () => {
+  const resetGame = async () => {
     setCurrentLevel(0);
     setCurrentQuestionIndex(0);
     setScore(0);
     setShowComplete(false);
     setSelectedAnswer(null);
     generateOptions();
+    await playSound('click', false);
+  };
+
+  const handleToggleSound = async () => {
+    await playSound('click', false);
+    toggleSound();
   };
 
   const getStarRating = (starCount: number) => (
@@ -250,6 +281,14 @@ export default function NumberHuntGame() {
     </View>
   );
 
+  // Get encouraging message based on score
+  const getEncouragementMessage = () => {
+    if (score === 0) return "Let's start counting! 🌟";
+    if (score < 30) return "Great start! Keep going! 🎉";
+    if (score < 60) return "You're doing amazing! ⭐";
+    return "Number champion in the making! 🏆";
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -258,6 +297,19 @@ export default function NumberHuntGame() {
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>Number Hunt</Text>
+        
+        {/* Sound Toggle Button */}
+        <TouchableOpacity 
+          style={styles.soundButton}
+          onPress={handleToggleSound}
+        >
+          <MaterialIcons 
+            name={soundEnabled ? "volume-up" : "volume-off"} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
+        
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
@@ -272,6 +324,14 @@ export default function NumberHuntGame() {
         </Text>
       </View>
 
+      {/* Encouragement Message */}
+      <View style={[styles.encouragementContainer, { backgroundColor: colors.primaryLight + '20' }]}>
+        <MaterialIcons name="emoji-emotions" size={20} color={colors.primary} />
+        <Text style={[styles.encouragementText, { color: colors.text }]}>
+          {getEncouragementMessage()}
+        </Text>
+      </View>
+
       {/* Question Display */}
       <Animated.View 
         style={[
@@ -282,6 +342,15 @@ export default function NumberHuntGame() {
       >
         {getObjectsDisplay()}
       </Animated.View>
+
+      {/* Hint Button */}
+      <TouchableOpacity 
+        style={[styles.hintButton, { backgroundColor: colors.primaryLight }]}
+        onPress={showHintMessage}
+      >
+        <MaterialIcons name="lightbulb" size={20} color={colors.primary} />
+        <Text style={[styles.hintButtonText, { color: colors.primary }]}>Need a Hint?</Text>
+      </TouchableOpacity>
 
       {/* Options */}
       <View style={styles.optionsContainer}>
@@ -314,12 +383,22 @@ export default function NumberHuntGame() {
         ))}
       </View>
 
+      {/* Hint Popup */}
+      {showHint && (
+        <Animated.View style={[styles.hintPopup, { backgroundColor: colors.surface }]}>
+          <MaterialIcons name="lightbulb" size={24} color={colors.accentYellow} />
+          <Text style={[styles.hintPopupText, { color: colors.text }]}>
+            Count carefully! The answer is {currentQuestion.targetNumber}
+          </Text>
+        </Animated.View>
+      )}
+
       {/* Feedback */}
       {selectedAnswer && !isCorrect && (
         <View style={[styles.feedbackContainer, { backgroundColor: colors.error + '20' }]}>
           <MaterialIcons name="tips-and-updates" size={20} color={colors.error} />
           <Text style={[styles.feedbackText, { color: colors.error }]}>
-            Try again! Count carefully.
+            Try again! Count carefully. The correct answer is {currentQuestion.targetNumber}
           </Text>
         </View>
       )}
@@ -410,7 +489,8 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
   },
   backButton: { padding: Spacing.sm },
-  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold' },
+  soundButton: { padding: Spacing.sm },
+  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold', flex: 1, textAlign: 'center' },
   scoreBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -429,6 +509,17 @@ const styles = StyleSheet.create({
   },
   levelName: { fontSize: Typography.fontSize.md, fontWeight: 'bold' },
   levelProgress: { fontSize: Typography.fontSize.sm, marginTop: Spacing.xs },
+  encouragementContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  encouragementText: { fontSize: Typography.fontSize.sm, fontWeight: '500' },
   questionContainer: {
     marginHorizontal: Spacing.lg,
     marginVertical: Spacing.xl,
@@ -452,6 +543,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   wordText: { fontSize: 36, fontWeight: 'bold', letterSpacing: 5 },
+  hintButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.round,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  hintButtonText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
   optionsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -469,6 +571,24 @@ const styles = StyleSheet.create({
   },
   numberText: { fontSize: 48, fontWeight: 'bold' },
   answerIcon: { position: 'absolute', bottom: 8, right: 8 },
+  hintPopup: {
+    position: 'absolute',
+    top: '50%',
+    left: '10%',
+    right: '10%',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  hintPopupText: { fontSize: Typography.fontSize.md, fontWeight: '500', flex: 1, textAlign: 'center' },
   feedbackContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -506,6 +626,6 @@ const styles = StyleSheet.create({
     minWidth: 150,
     alignItems: 'center',
   },
-  modalButtons: { flexDirection: 'row', gap: Spacing.md },
+  modalButtons: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
   modalButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 });

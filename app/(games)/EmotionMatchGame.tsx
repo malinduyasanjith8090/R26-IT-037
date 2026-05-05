@@ -1,6 +1,5 @@
-// app/(games)/EmotionMatchGame.tsx
+// app/(games)/EmotionMatchGame.tsx (with Sounds & Haptics)
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -15,6 +14,7 @@ import {
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useSound } from '../../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
@@ -65,8 +65,33 @@ const levels: Level[] = [
   },
 ];
 
+// Emotion coping strategy suggestions
+const copingStrategies: { [key: string]: string } = {
+  happy: 'Share your happiness with someone! 😊',
+  sad: 'It\'s okay to cry. Talk to someone you trust. 🤗',
+  angry: 'Take deep breaths. Count to 10. 🧘',
+  surprised: 'Embrace the surprise! It\'s okay to be amazed. ✨',
+  loved: 'You are loved! Give someone a hug. 💕',
+  scared: 'You are safe. Ask for help if you need it. 🛡️',
+  tired: 'Rest is important. Take a break. 😴',
+  excited: 'Enjoy the excitement! Share it with others. 🎉',
+  calm: 'Peaceful moments are wonderful. 🕊️',
+  silly: 'Being silly is fun and healthy! 🤪',
+  proud: 'Celebrate your achievements! You deserve it. 🏆',
+  lonely: 'You are not alone. Reach out to someone. 💌',
+};
+
 export default function EmotionMatchGame() {
   const { colors } = useTheme();
+  const { 
+    playSound, 
+    playCelebration, 
+    playStarEarned, 
+    playCorrectAnswer,
+    toggleSound,
+    isEnabled: soundEnabled 
+  } = useSound();
+  
   const [currentLevel, setCurrentLevel] = useState(0);
   const [currentEmotion, setCurrentEmotion] = useState<Emotion | null>(null);
   const [options, setOptions] = useState<Emotion[]>([]);
@@ -78,8 +103,11 @@ export default function EmotionMatchGame() {
   const [isCorrect, setIsCorrect] = useState(false);
   const [stars, setStars] = useState(3);
   const [levelEmotions, setLevelEmotions] = useState<Emotion[]>([]);
+  const [showCopingTip, setShowCopingTip] = useState(false);
+  const [copingMessage, setCopingMessage] = useState('');
   const scaleAnim = useState(new Animated.Value(1))[0];
   const shakeAnim = useState(new Animated.Value(0))[0];
+  const bounceAnim = useState(new Animated.Value(1))[0];
 
   const level = levels[currentLevel];
 
@@ -137,7 +165,14 @@ export default function EmotionMatchGame() {
     ]).start();
   };
 
-  const handleAnswer = (selected: Emotion) => {
+  const showCopingStrategy = (emotionId: string) => {
+    const strategy = copingStrategies[emotionId] || 'Take a moment to understand your feelings. 💭';
+    setCopingMessage(strategy);
+    setShowCopingTip(true);
+    setTimeout(() => setShowCopingTip(false), 4000);
+  };
+
+  const handleAnswer = async (selected: Emotion) => {
     if (selectedAnswer !== null) return;
     
     setSelectedAnswer(selected.id);
@@ -145,10 +180,18 @@ export default function EmotionMatchGame() {
     setIsCorrect(correct);
 
     if (correct) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Play correct answer sound
+      await playCorrectAnswer();
+      
       const newScore = score + 10;
       setScore(newScore);
       
+      // Show coping strategy for the emotion
+      showCopingStrategy(selected.id);
+      
+      // Play star sounds for extra delight
+      await playStarEarned();
+
       Animated.sequence([
         Animated.timing(scaleAnim, { toValue: 1.3, duration: 200, useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
@@ -160,6 +203,7 @@ export default function EmotionMatchGame() {
           setStars(earnedStars);
           
           if (currentLevel === levels.length - 1) {
+            playCelebration();
             setShowComplete(true);
           } else {
             setShowReward(true);
@@ -171,8 +215,9 @@ export default function EmotionMatchGame() {
         }
       }, 1500);
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      await playSound('error', true);
       shakeAnimation();
+      
       setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -180,17 +225,24 @@ export default function EmotionMatchGame() {
     }
   };
 
-  const nextLevel = () => {
+  const nextLevel = async () => {
     setShowReward(false);
+    await playSound('click', false);
     setCurrentLevel(currentLevel + 1);
     setSelectedAnswer(null);
   };
 
-  const resetGame = () => {
+  const resetGame = async () => {
+    await playSound('click', false);
     setCurrentLevel(0);
     setScore(0);
     setShowComplete(false);
     setSelectedAnswer(null);
+  };
+
+  const handleToggleSound = async () => {
+    await playSound('click', false);
+    toggleSound();
   };
 
   const getStarRating = (starCount: number) => (
@@ -221,7 +273,21 @@ export default function EmotionMatchGame() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
+        
         <Text style={[styles.title, { color: colors.text }]}>Emotion Match</Text>
+        
+        {/* Sound Toggle Button */}
+        <TouchableOpacity 
+          style={styles.soundButton}
+          onPress={handleToggleSound}
+        >
+          <MaterialIcons 
+            name={soundEnabled ? "volume-up" : "volume-off"} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
+        
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
@@ -318,6 +384,14 @@ export default function EmotionMatchGame() {
         </Text>
       </View>
 
+      {/* Coping Strategy Tip */}
+      {showCopingTip && (
+        <Animated.View style={[styles.copingContainer, { backgroundColor: currentEmotion?.color }]}>
+          <MaterialIcons name="favorite" size={20} color="#FFF" />
+          <Text style={styles.copingText}>{copingMessage}</Text>
+        </Animated.View>
+      )}
+
       {/* Level Reward Modal */}
       <Modal visible={showReward} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -389,7 +463,8 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
   },
   backButton: { padding: Spacing.sm },
-  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold' },
+  soundButton: { padding: Spacing.sm },
+  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold', flex: 1, textAlign: 'center' },
   scoreBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -445,6 +520,28 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   tipText: { fontSize: Typography.fontSize.sm, flex: 1 },
+  copingContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  copingText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',

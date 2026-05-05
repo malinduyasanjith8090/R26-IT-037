@@ -1,5 +1,5 @@
+// components/learning/ShapesLearning.tsx (with Sounds & Haptics)
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import React, { useRef, useState } from 'react';
 import {
     Animated,
@@ -14,6 +14,7 @@ import {
 import Svg, { Circle, Ellipse, Path, Polygon, Rect } from 'react-native-svg';
 import { BorderRadius, Spacing } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { useSound } from '../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
@@ -95,12 +96,22 @@ const shapesData: ShapeLesson[] = [
 
 export default function ShapesLearning({ onBack, onProgress }: any) {
   const { colors } = useTheme();
+  const { 
+    playSound, 
+    playCelebration, 
+    playStarEarned, 
+    playCorrectAnswer,
+    toggleSound,
+    isEnabled: soundEnabled 
+  } = useSound();
+  
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState(false);
   const [rewardMessage, setRewardMessage] = useState('');
+  const [showActivityPrompt, setShowActivityPrompt] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const currentShape = shapesData[currentIndex];
@@ -116,24 +127,29 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
     return messages[Math.floor(Math.random() * messages.length)];
   };
 
-  const handleAnswer = (answer: string) => {
+  const handleAnswer = async (answer: string) => {
     setSelectedAnswer(answer);
     const correct = answer === currentShape.name;
     setIsCorrect(correct);
 
     if (correct) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Play correct answer sound
+      await playCorrectAnswer();
+      
       const newScore = score + 10;
       setScore(newScore);
       setRewardMessage(getRandomRewardMessage());
       setShowRewardModal(true);
+      
+      // Play star sounds for extra delight
+      await playStarEarned();
 
       Animated.sequence([
         Animated.timing(scaleAnim, { toValue: 1.2, duration: 200, useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
 
-      setTimeout(() => {
+      setTimeout(async () => {
         setShowRewardModal(false);
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -141,13 +157,16 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
         if (currentIndex < shapesData.length - 1) {
           setCurrentIndex(currentIndex + 1);
           if (onProgress) onProgress(((currentIndex + 1) / shapesData.length) * 100);
+          await playSound('click', false);
         } else {
+          await playCelebration();
           setShowRewardModal(true);
           setRewardMessage('🎉 Complete! You mastered all shapes! 🎉');
         }
       }, 2000);
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      await playSound('error', true);
+      
       setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -166,23 +185,62 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
     return options;
   };
 
+  const handleToggleSound = async () => {
+    await playSound('click', false);
+    toggleSound();
+  };
+
+  const handleCardPress = async () => {
+    await playSound('click', false);
+  };
+
+  const showFunActivity = async () => {
+    setShowActivityPrompt(true);
+    await playSound('reward', false);
+    setTimeout(() => setShowActivityPrompt(false), 3000);
+  };
+
+  // Calculate shape difficulty based on corners
+  const getDifficultyLevel = () => {
+    if (currentShape.corners === 0) return 'Easy';
+    if (currentShape.corners <= 4) return 'Medium';
+    return 'Challenge';
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
+        
+        {/* Sound Toggle Button */}
+        <TouchableOpacity 
+          style={styles.soundButton}
+          onPress={handleToggleSound}
+        >
+          <MaterialIcons 
+            name={soundEnabled ? "volume-up" : "volume-off"} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
+        
         <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.primary }]}>{score}</Text>
         </View>
       </View>
 
+      {/* Progress */}
       <View style={styles.progressContainer}>
         <View style={[styles.progressBar, { backgroundColor: colors.primaryLight }]}>
           <View style={[styles.progressFill, { width: `${((currentIndex + 1) / shapesData.length) * 100}%`, backgroundColor: colors.primary }]} />
         </View>
-        <Text style={[styles.progressText, { color: colors.textLight }]}>{currentIndex + 1} of {shapesData.length} Shapes</Text>
+        <Text style={[styles.progressText, { color: colors.textLight }]}>
+          {currentIndex + 1} of {shapesData.length} Shapes
+        </Text>
       </View>
 
       <ScrollView 
@@ -191,17 +249,27 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
-          <View style={[styles.shapeCard, { backgroundColor: colors.surface }]}>
-            <View style={[styles.shapeSvgContainer, { backgroundColor: currentShape.color + '20' }]}>
-              <Svg width={200} height={200} viewBox="0 0 200 200">
-                {currentShape.shape}
-              </Svg>
+          {/* Shape Card */}
+          <TouchableOpacity 
+            activeOpacity={0.9}
+            onPress={handleCardPress}
+          >
+            <View style={[styles.shapeCard, { backgroundColor: colors.surface }]}>
+              <View style={[styles.shapeSvgContainer, { backgroundColor: currentShape.color + '20' }]}>
+                <Svg width={200} height={200} viewBox="0 0 200 200">
+                  {currentShape.shape}
+                </Svg>
+              </View>
+              <Text style={[styles.shapeName, { color: currentShape.color }]}>{currentShape.name}</Text>
+              <TouchableOpacity 
+                style={[styles.cornerBadge, { backgroundColor: currentShape.color }]}
+                onPress={showFunActivity}
+              >
+                <MaterialIcons name="stars" size={16} color="#FFF" />
+                <Text style={styles.cornerText}>{currentShape.corners} corners • {getDifficultyLevel()}</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={[styles.shapeName, { color: currentShape.color }]}>{currentShape.name}</Text>
-            <View style={[styles.cornerBadge, { backgroundColor: currentShape.color }]}>
-              <Text style={styles.cornerText}>{currentShape.corners} corners</Text>
-            </View>
-          </View>
+          </TouchableOpacity>
 
           {/* Shape Description */}
           <View style={[styles.descriptionContainer, { backgroundColor: colors.surface }]}>
@@ -221,20 +289,14 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
             </View>
           </View>
 
-          {/* Fun Activity */}
-          <View style={[styles.activityContainer, { backgroundColor: colors.primaryLight + '30' }]}>
-            <Text style={[styles.activityTitle, { color: colors.text }]}>✋ Fun Activity! ✋</Text>
-            <Text style={[styles.activityText, { color: colors.textLight }]}>
-              Try drawing a {currentShape.name} in the air with your finger!
-            </Text>
-          </View>
-
+          {/* Question */}
           <View style={styles.questionContainer}>
             <Text style={[styles.questionText, { color: colors.text }]}>
               🤔 What shape is this? 🤔
             </Text>
           </View>
 
+          {/* Options */}
           <View style={styles.optionsContainer}>
             {getOptions().map((option, idx) => (
               <TouchableOpacity
@@ -243,7 +305,9 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
                   styles.optionButton,
                   {
                     backgroundColor: colors.surface,
-                    borderColor: selectedAnswer === option ? (isCorrect ? colors.success : colors.error) : colors.primaryLight,
+                    borderColor: selectedAnswer === option
+                      ? (isCorrect ? colors.success : colors.error)
+                      : colors.primaryLight,
                     borderWidth: 3,
                   }
                 ]}
@@ -253,22 +317,49 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
                 <View style={[styles.optionColor, { backgroundColor: shapesData.find(s => s.name === option)?.color || colors.primary }]} />
                 <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
                 {selectedAnswer === option && (
-                  <MaterialIcons name={isCorrect ? "check-circle" : "cancel"} size={28} color={isCorrect ? colors.success : colors.error} />
+                  <MaterialIcons
+                    name={isCorrect ? "check-circle" : "cancel"}
+                    size={28}
+                    color={isCorrect ? colors.success : colors.error}
+                  />
                 )}
               </TouchableOpacity>
             ))}
           </View>
 
+          {/* Feedback */}
           {selectedAnswer && !isCorrect && (
             <View style={[styles.feedbackContainer, { backgroundColor: colors.error + '20' }]}>
+              <MaterialIcons name="sentiment-dissatisfied" size={24} color={colors.error} />
               <Text style={[styles.feedbackText, { color: colors.error }]}>
-                ✗ Try again! You can learn this shape! ✗
+                ✗ Try again! The correct shape is {currentShape.name}! ✗
+              </Text>
+            </View>
+          )}
+
+          {/* Encouragement Message */}
+          {score > 0 && score % 50 === 0 && score !== 0 && (
+            <View style={[styles.encouragementContainer, { backgroundColor: colors.success + '20' }]}>
+              <MaterialIcons name="emoji-events" size={24} color={colors.success} />
+              <Text style={[styles.encouragementText, { color: colors.success }]}>
+                🎉 Great progress! You're becoming a shape master! 🎉
               </Text>
             </View>
           )}
         </Animated.View>
       </ScrollView>
 
+      {/* Activity Prompt Notification */}
+      {showActivityPrompt && (
+        <Animated.View style={[styles.activityNotification, { backgroundColor: currentShape.color }]}>
+          <MaterialIcons name="gesture" size={20} color="#FFF" />
+          <Text style={styles.activityNotificationText}>
+            Draw a {currentShape.name} in the air! ✋
+          </Text>
+        </Animated.View>
+      )}
+
+      {/* Reward Modal */}
       <Modal
         visible={showRewardModal}
         transparent={true}
@@ -285,8 +376,9 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
                   <Text style={styles.rewardMessage}>🎉 You're a shape expert! 🎉</Text>
                   <TouchableOpacity 
                     style={[styles.rewardButton, { backgroundColor: colors.primary }]}
-                    onPress={() => {
+                    onPress={async () => {
                       setShowRewardModal(false);
+                      await playSound('goodbye', false);
                       if (onBack) onBack();
                     }}
                   >
@@ -301,6 +393,12 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
                       <Text key={i} style={styles.star}>⭐</Text>
                     ))}
                   </View>
+                  <TouchableOpacity 
+                    style={[styles.continueButton, { backgroundColor: colors.primary }]}
+                    onPress={() => setShowRewardModal(false)}
+                  >
+                    <Text style={styles.continueButtonText}>Continue →</Text>
+                  </TouchableOpacity>
                 </>
               )}
             </Animated.View>
@@ -313,9 +411,23 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.md, paddingTop: Spacing.xl },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: Spacing.md, 
+    paddingTop: Spacing.xl 
+  },
   backButton: { padding: Spacing.sm },
-  scoreBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.round, gap: Spacing.xs },
+  soundButton: { padding: Spacing.sm },
+  scoreBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: Spacing.md, 
+    paddingVertical: Spacing.sm, 
+    borderRadius: BorderRadius.round, 
+    gap: Spacing.xs 
+  },
   scoreText: { fontWeight: 'bold', fontSize: 18 },
   progressContainer: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
   progressBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
@@ -324,36 +436,157 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: Spacing.xxl },
   content: { alignItems: 'center', padding: Spacing.lg },
-  shapeCard: { width: width - 80, alignItems: 'center', padding: Spacing.lg, borderRadius: BorderRadius.lg, marginBottom: Spacing.lg, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5 },
+  shapeCard: { 
+    width: width - 80, 
+    alignItems: 'center', 
+    padding: Spacing.lg, 
+    borderRadius: BorderRadius.lg, 
+    marginBottom: Spacing.lg, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.1, 
+    shadowRadius: 8, 
+    elevation: 5 
+  },
   shapeSvgContainer: { padding: Spacing.lg, borderRadius: BorderRadius.lg, marginBottom: Spacing.md },
   shapeName: { fontSize: 32, fontWeight: 'bold', marginTop: Spacing.sm },
-  cornerBadge: { marginTop: Spacing.md, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.xs, borderRadius: BorderRadius.round },
+  cornerBadge: { 
+    marginTop: Spacing.md, 
+    paddingHorizontal: Spacing.lg, 
+    paddingVertical: Spacing.xs, 
+    borderRadius: BorderRadius.round,
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    alignItems: 'center'
+  },
   cornerText: { color: '#FFF', fontSize: 14, fontWeight: 'bold' },
-  descriptionContainer: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.lg, gap: Spacing.md },
+  descriptionContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: Spacing.md, 
+    borderRadius: BorderRadius.lg, 
+    marginBottom: Spacing.lg, 
+    gap: Spacing.md, 
+    width: '100%' 
+  },
   descriptionText: { flex: 1, fontSize: 14, lineHeight: 20 },
-  examplesContainer: { width: '100%', padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.lg },
+  examplesContainer: { 
+    width: '100%', 
+    padding: Spacing.md, 
+    borderRadius: BorderRadius.lg, 
+    marginBottom: Spacing.lg 
+  },
   examplesTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: Spacing.sm },
   examplesList: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   exampleItem: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md },
   exampleText: { fontSize: 14 },
-  activityContainer: { width: '100%', padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.lg, alignItems: 'center' },
+  activityContainer: { 
+    width: '100%', 
+    padding: Spacing.md, 
+    borderRadius: BorderRadius.lg, 
+    marginBottom: Spacing.lg, 
+    alignItems: 'center',
+    gap: Spacing.sm
+  },
   activityTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: Spacing.sm },
   activityText: { fontSize: 14, textAlign: 'center' },
   questionContainer: { marginVertical: Spacing.md },
   questionText: { fontSize: 22, fontWeight: 'bold', textAlign: 'center' },
   optionsContainer: { width: '100%', gap: Spacing.md, marginBottom: Spacing.md },
-  optionButton: { flexDirection: 'row', alignItems: 'center', padding: Spacing.lg, borderRadius: BorderRadius.md, gap: Spacing.md },
+  optionButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: Spacing.lg, 
+    borderRadius: BorderRadius.md, 
+    gap: Spacing.md 
+  },
   optionColor: { width: 40, height: 40, borderRadius: 20 },
   optionText: { flex: 1, fontSize: 18, fontWeight: '600' },
-  feedbackContainer: { marginTop: Spacing.md, alignItems: 'center', padding: Spacing.md, borderRadius: BorderRadius.md, width: '100%' },
-  feedbackText: { fontSize: 16, fontWeight: 'bold' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' },
-  rewardContent: { alignItems: 'center', padding: Spacing.xl, borderRadius: BorderRadius.lg, minWidth: 280 },
+  feedbackContainer: { 
+    marginTop: Spacing.md, 
+    alignItems: 'center', 
+    padding: Spacing.md, 
+    borderRadius: BorderRadius.md, 
+    width: '100%',
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    justifyContent: 'center'
+  },
+  feedbackText: { fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+  encouragementContainer: {
+    marginTop: Spacing.md,
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    width: '100%',
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    justifyContent: 'center'
+  },
+  encouragementText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  activityNotification: {
+    position: 'absolute',
+    bottom: 100,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.round,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  activityNotificationText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.85)', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  rewardContent: { 
+    alignItems: 'center', 
+    padding: Spacing.xl, 
+    borderRadius: BorderRadius.lg, 
+    minWidth: 280 
+  },
   rewardEmoji: { fontSize: 60, textAlign: 'center' },
-  rewardTitle: { fontSize: 28, fontWeight: 'bold', color: '#FFD700', marginTop: Spacing.md, textAlign: 'center' },
-  rewardMessage: { fontSize: 18, color: '#333', marginTop: Spacing.sm, textAlign: 'center' },
+  rewardTitle: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    color: '#FFD700', 
+    marginTop: Spacing.md, 
+    textAlign: 'center' 
+  },
+  rewardMessage: { 
+    fontSize: 18, 
+    color: '#333', 
+    marginTop: Spacing.sm, 
+    textAlign: 'center' 
+  },
   starContainer: { flexDirection: 'row', marginTop: Spacing.md, gap: Spacing.sm },
   star: { fontSize: 30 },
-  rewardButton: { marginTop: Spacing.lg, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
+  rewardButton: { 
+    marginTop: Spacing.lg, 
+    paddingHorizontal: Spacing.lg, 
+    paddingVertical: Spacing.md, 
+    borderRadius: BorderRadius.md 
+  },
   rewardButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  continueButton: {
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    minWidth: 150,
+    alignItems: 'center',
+  },
+  continueButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 });

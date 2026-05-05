@@ -1,6 +1,5 @@
-// app/(games)/MemoryMatchGame.tsx
+// app/(games)/MemoryMatchGame.tsx (with Sounds & Haptics)
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -15,6 +14,7 @@ import {
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useSound } from '../../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
@@ -111,6 +111,15 @@ const levels: Level[] = [
 
 export default function MemoryMatchGame() {
   const { colors } = useTheme();
+  const { 
+    playSound, 
+    playCelebration, 
+    playStarEarned, 
+    playCorrectAnswer,
+    toggleSound,
+    isEnabled: soundEnabled 
+  } = useSound();
+  
   const [currentLevel, setCurrentLevel] = useState(0);
   const [cards, setCards] = useState<Card[]>([]);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
@@ -119,6 +128,8 @@ export default function MemoryMatchGame() {
   const [showLevelComplete, setShowLevelComplete] = useState(false);
   const [showGameComplete, setShowGameComplete] = useState(false);
   const [stars, setStars] = useState(3);
+  const [flipSoundPlayed, setFlipSoundPlayed] = useState(false);
+  const [matchCount, setMatchCount] = useState(0);
   const [scaleAnim] = useState(new Animated.Value(1));
 
   const level = levels[currentLevel];
@@ -127,7 +138,7 @@ export default function MemoryMatchGame() {
     initializeGame();
   }, [currentLevel]);
 
-  const initializeGame = () => {
+  const initializeGame = async () => {
     const levelCards = level.cards;
     const deck = [...levelCards, ...levelCards].map((card, index) => ({
       id: index,
@@ -140,6 +151,8 @@ export default function MemoryMatchGame() {
     setSelectedCard(null);
     setMoves(0);
     setMatchedPairs(0);
+    setMatchCount(0);
+    await playSound('click', false);
   };
 
   const shuffleArray = (array: any[]) => {
@@ -157,10 +170,11 @@ export default function MemoryMatchGame() {
     return 1;
   };
 
-  const handleCardPress = (index: number) => {
+  const handleCardPress = async (index: number) => {
     if (cards[index].isMatched || cards[index].isFlipped || selectedCard === index) return;
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Play card flip sound
+    await playSound('click', false);
     
     const newCards = [...cards];
     newCards[index].isFlipped = true;
@@ -173,7 +187,8 @@ export default function MemoryMatchGame() {
       
       if (cards[selectedCard].emoji === cards[index].emoji) {
         // Match found
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await playSound('correct', true);
+        
         newCards[selectedCard].isMatched = true;
         newCards[index].isMatched = true;
         setCards(newCards);
@@ -181,10 +196,17 @@ export default function MemoryMatchGame() {
         
         const newMatchedPairs = matchedPairs + 1;
         setMatchedPairs(newMatchedPairs);
+        setMatchCount(matchCount + 1);
+        
+        // Play star sound for each match
+        await playStarEarned();
 
         if (newMatchedPairs === level.pairs) {
           const earnedStars = calculateStars();
           setStars(earnedStars);
+          
+          // Play level complete celebration
+          await playCelebration();
           
           if (currentLevel === levels.length - 1) {
             setShowGameComplete(true);
@@ -194,27 +216,36 @@ export default function MemoryMatchGame() {
         }
       } else {
         // No match
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        setTimeout(() => {
+        await playSound('error', true);
+        
+        setTimeout(async () => {
           const resetCards = [...cards];
           resetCards[selectedCard].isFlipped = false;
           resetCards[index].isFlipped = false;
           setCards(resetCards);
           setSelectedCard(null);
+          await playSound('click', false);
         }, 800);
       }
     }
   };
 
-  const nextLevel = () => {
+  const nextLevel = async () => {
     setShowLevelComplete(false);
     setCurrentLevel(currentLevel + 1);
+    await playSound('click', false);
   };
 
-  const resetGame = () => {
+  const resetGame = async () => {
     setCurrentLevel(0);
     setShowGameComplete(false);
     initializeGame();
+    await playSound('click', false);
+  };
+
+  const handleToggleSound = async () => {
+    await playSound('click', false);
+    toggleSound();
   };
 
   const getStarRating = (starCount: number) => {
@@ -249,6 +280,7 @@ export default function MemoryMatchGame() {
         ]}
         onPress={() => handleCardPress(index)}
         disabled={card.isMatched}
+        activeOpacity={0.7}
       >
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
           {(card.isFlipped || card.isMatched) ? (
@@ -271,7 +303,21 @@ export default function MemoryMatchGame() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
+        
+        {/* Sound Toggle Button */}
+        <TouchableOpacity 
+          style={styles.soundButton}
+          onPress={handleToggleSound}
+        >
+          <MaterialIcons 
+            name={soundEnabled ? "volume-up" : "volume-off"} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
+        
         <Text style={[styles.title, { color: colors.text }]}>Memory Match</Text>
+        
         <View style={[styles.statsContainer, { backgroundColor: colors.surface }]}>
           <Text style={[styles.statsText, { color: colors.text }]}>Moves: {moves}</Text>
           <Text style={[styles.statsText, { color: colors.text }]}>
@@ -282,10 +328,21 @@ export default function MemoryMatchGame() {
 
       {/* Level Info */}
       <View style={[styles.levelInfo, { backgroundColor: colors.primaryLight + '30' }]}>
+        <MaterialIcons name="info" size={16} color={colors.primary} />
         <Text style={[styles.levelText, { color: colors.text }]}>
           Level {currentLevel + 1}: {level.name}
         </Text>
       </View>
+
+      {/* Match Streak Indicator */}
+      {matchCount > 0 && (
+        <View style={[styles.streakContainer, { backgroundColor: colors.success + '20' }]}>
+          <MaterialIcons name="whatshot" size={16} color={colors.success} />
+          <Text style={[styles.streakText, { color: colors.success }]}>
+            Match Streak: {matchCount}
+          </Text>
+        </View>
+      )}
 
       {/* Game Board */}
       <ScrollView contentContainerStyle={styles.boardContainer}>
@@ -357,9 +414,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: Spacing.md,
     paddingTop: Spacing.xl,
+    flexWrap: 'wrap',
   },
   backButton: { padding: Spacing.sm },
-  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold' },
+  soundButton: { padding: Spacing.sm },
+  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold', flex: 1, textAlign: 'center' },
   statsContainer: {
     flexDirection: 'row',
     gap: Spacing.md,
@@ -369,13 +428,29 @@ const styles = StyleSheet.create({
   },
   statsText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
   levelInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
+    gap: Spacing.xs,
   },
   levelText: { fontSize: Typography.fontSize.md, fontWeight: '600' },
+  streakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    padding: Spacing.xs,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.xs,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.md,
+  },
+  streakText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
   boardContainer: { padding: Spacing.md },
   board: {
     flexDirection: 'row',

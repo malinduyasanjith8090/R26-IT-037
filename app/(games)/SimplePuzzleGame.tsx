@@ -1,6 +1,5 @@
-// app/(games)/SimplePuzzleGame.tsx
+// app/(games)/SimplePuzzleGame.tsx (with Sounds & Haptics)
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -14,6 +13,7 @@ import {
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useSound } from '../../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
@@ -97,6 +97,15 @@ const levels: Level[] = [
 
 export default function SimplePuzzleGame() {
   const { colors } = useTheme();
+  const { 
+    playSound, 
+    playCelebration, 
+    playStarEarned, 
+    playCorrectAnswer,
+    toggleSound,
+    isEnabled: soundEnabled 
+  } = useSound();
+  
   const [currentLevel, setCurrentLevel] = useState(0);
   const [pieces, setPieces] = useState<PuzzlePiece[]>([]);
   const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
@@ -104,7 +113,9 @@ export default function SimplePuzzleGame() {
   const [showReward, setShowReward] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [stars, setStars] = useState(3);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
+  const successAnim = useState(new Animated.Value(1))[0];
 
   const level = levels[currentLevel];
 
@@ -132,7 +143,7 @@ export default function SimplePuzzleGame() {
     return 1;
   };
 
-  const checkComplete = () => {
+  const checkComplete = async () => {
     const isComplete = pieces.every(
       (piece, index) => piece.id === pieces[index]?.id
     );
@@ -140,21 +151,34 @@ export default function SimplePuzzleGame() {
     if (isComplete) {
       const earnedStars = calculateStars();
       setStars(earnedStars);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // Play success sound and animation
+      await playCorrectAnswer();
+      await playStarEarned();
+      
+      setShowSuccessAnimation(true);
+      Animated.sequence([
+        Animated.timing(successAnim, { toValue: 1.3, duration: 200, useNativeDriver: true }),
+        Animated.timing(successAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+      
+      setTimeout(() => setShowSuccessAnimation(false), 1000);
       
       if (currentLevel === levels.length - 1) {
+        await playCelebration();
         setShowComplete(true);
       } else {
+        await playSound('reward', false);
         setShowReward(true);
       }
     }
   };
 
-  const handlePiecePress = (index: number) => {
+  const handlePiecePress = async (index: number) => {
     if (selectedPiece === null) {
       setSelectedPiece(index);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } else {
+      await playSound('click', true);
+    } else if (selectedPiece !== index) {
       const newPieces = [...pieces];
       const temp = newPieces[selectedPiece];
       newPieces[selectedPiece] = newPieces[index];
@@ -162,20 +186,41 @@ export default function SimplePuzzleGame() {
       
       setPieces(newPieces);
       setMoves(moves + 1);
+      
+      // Play swap sound
+      await playSound('click', true);
+      
       setSelectedPiece(null);
       
-      checkComplete();
+      // Check if puzzle is complete
+      await checkComplete();
+    } else {
+      // Deselect if tapping the same piece
+      setSelectedPiece(null);
+      await playSound('click', false);
     }
   };
 
-  const nextLevel = () => {
+  const nextLevel = async () => {
     setShowReward(false);
+    await playSound('click', false);
     setCurrentLevel(currentLevel + 1);
   };
 
-  const resetGame = () => {
-    setCurrentLevel(0);
+  const resetGame = async () => {
     setShowComplete(false);
+    await playSound('click', false);
+    setCurrentLevel(0);
+  };
+
+  const handleBack = async () => {
+    await playSound('click', false);
+    router.back();
+  };
+
+  const handleToggleSound = async () => {
+    await playSound('click', false);
+    toggleSound();
   };
 
   const getStarRating = (starCount: number) => (
@@ -194,7 +239,7 @@ export default function SimplePuzzleGame() {
   const renderPiece = (piece: PuzzlePiece, index: number) => {
     const pieceSize = (width - 80) / 2;
     const isSelected = selectedPiece === index;
-    const isCorrect = piece.id === index;
+    const isCorrect = piece.id === index && !showReward;
 
     return (
       <TouchableOpacity
@@ -205,15 +250,15 @@ export default function SimplePuzzleGame() {
             width: pieceSize,
             height: pieceSize,
             backgroundColor: isSelected ? colors.primaryLight : colors.surface,
-            borderColor: isCorrect && !showReward ? colors.success : colors.primaryLight,
-            borderWidth: isCorrect && !showReward ? 4 : 2,
+            borderColor: isCorrect ? colors.success : colors.primaryLight,
+            borderWidth: isCorrect ? 4 : 2,
           },
         ]}
         onPress={() => handlePiecePress(index)}
       >
         <Animated.View style={{ transform: [{ scale: isSelected ? 1.1 : 1 }] }}>
           <Text style={styles.pieceEmoji}>{piece.emoji}</Text>
-          {isCorrect && !showReward && (
+          {isCorrect && (
             <View style={styles.correctBadge}>
               <MaterialIcons name="check-circle" size={24} color={colors.success} />
             </View>
@@ -227,9 +272,22 @@ export default function SimplePuzzleGame() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
+        
+        {/* Sound Toggle Button */}
+        <TouchableOpacity 
+          style={styles.soundButton}
+          onPress={handleToggleSound}
+        >
+          <MaterialIcons 
+            name={soundEnabled ? "volume-up" : "volume-off"} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
+        
         <Text style={[styles.title, { color: colors.text }]}>Simple Puzzle</Text>
         <View style={[styles.movesBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="swap-horiz" size={20} color={colors.primary} />
@@ -263,6 +321,16 @@ export default function SimplePuzzleGame() {
           Tap a piece, then tap another piece to swap them!
         </Text>
       </View>
+
+      {/* Success Animation Overlay */}
+      {showSuccessAnimation && (
+        <Animated.View style={[styles.successOverlay, { transform: [{ scale: successAnim }] }]}>
+          <View style={[styles.successContent, { backgroundColor: colors.success }]}>
+            <MaterialIcons name="check-circle" size={60} color="#FFF" />
+            <Text style={styles.successText}>Perfect Match!</Text>
+          </View>
+        </Animated.View>
+      )}
 
       {/* Level Reward Modal */}
       <Modal visible={showReward} transparent animationType="fade">
@@ -306,7 +374,7 @@ export default function SimplePuzzleGame() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.modalButton, { backgroundColor: colors.secondary }]}
-                  onPress={() => router.back()}
+                  onPress={handleBack}
                 >
                   <Text style={styles.modalButtonText}>Back to Menu</Text>
                 </TouchableOpacity>
@@ -329,7 +397,8 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
   },
   backButton: { padding: Spacing.sm },
-  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold' },
+  soundButton: { padding: Spacing.sm },
+  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold', flex: 1, textAlign: 'center' },
   movesBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -383,6 +452,27 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   hintText: { fontSize: Typography.fontSize.sm },
+  successOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  successContent: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  successText: {
+    color: '#FFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',

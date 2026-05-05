@@ -1,31 +1,28 @@
-// app/(games)/ColorSortingGame.tsx
-//
-// Drag-and-drop colour sorting game.
-// Uses React Native PanResponder — no extra dependencies needed.
-//
+// app/(games)/ColorSortingGame.tsx (with Sounds & Haptics)
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, {
-    useCallback,
-    useEffect,
-    useRef,
-    useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
 } from 'react';
 import {
-    Alert,
-    Animated,
-    BackHandler,
-    Dimensions,
-    PanResponder,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  Animated,
+  BackHandler,
+  Dimensions,
+  PanResponder,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useSound } from '../../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 const Spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
@@ -127,12 +124,11 @@ interface GameItem {
   color: string;
   colorName: string;
   matched: boolean;
-  // Animated values owned per-item
-  dragXY: Animated.ValueXY;   // drag ghost position (absolute)
-  homeXY: Animated.ValueXY;   // snap-back position
-  scale: Animated.Value;       // scale during drag / match
-  opacity: Animated.Value;     // fade-out on match
-  rotation: Animated.Value;    // spin on match exit
+  dragXY: Animated.ValueXY;
+  homeXY: Animated.ValueXY;
+  scale: Animated.Value;
+  opacity: Animated.Value;
+  rotation: Animated.Value;
 }
 
 interface BinLayout {
@@ -188,7 +184,6 @@ function DraggableItem({
   isDragging,
   isDisabled,
 }: DraggableItemProps) {
-  // Page-absolute position of this item's home slot (set via onLayout + measure)
   const viewRef = useRef<View>(null);
   const homeAbsolute = useRef({ x: 0, y: 0 });
   const dragStart = useRef({ x: 0, y: 0 });
@@ -201,7 +196,6 @@ function DraggableItem({
       onPanResponderGrant: (evt) => {
         const { pageX, pageY } = evt.nativeEvent;
         dragStart.current = { x: pageX, y: pageY };
-        // Initialise ghost at current home position
         item.dragXY.setValue({
           x: homeAbsolute.current.x,
           y: homeAbsolute.current.y,
@@ -250,7 +244,6 @@ function DraggableItem({
   });
 
   if (item.matched) {
-    // Keep in flow so layout doesn't shift, but invisible + fading out
     return (
       <Animated.View
         style={[
@@ -275,7 +268,6 @@ function DraggableItem({
     <View
       ref={viewRef}
       onLayout={() => {
-        // Measure absolute position after layout
         viewRef.current?.measure((_x, _y, _w, _h, pageX, pageY) => {
           homeAbsolute.current = { x: pageX, y: pageY };
         });
@@ -307,6 +299,15 @@ function DraggableItem({
 export default function ColorSortingGame() {
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const { 
+    playSound, 
+    playCelebration, 
+    playStarEarned, 
+    playCorrectAnswer,
+    playSound: playSoundEffect,
+    toggleSound,
+    isEnabled: soundEnabled 
+  } = useSound();
 
   const [levelIdx, setLevelIdx] = useState(0);
   const [items, setItems] = useState<GameItem[]>([]);
@@ -315,18 +316,14 @@ export default function ColorSortingGame() {
   const [timeLeft, setTimeLeft] = useState(LEVELS[0].timeLimit);
   const [status, setStatus] = useState<'playing' | 'completed' | 'failed'>('playing');
 
-  // Currently dragged item id
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  // Which bin color is being hovered
   const [hoveredBin, setHoveredBin] = useState<string | null>(null);
 
-  // Drag ghost: absolute position of the floating clone
   const ghostXY = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const ghostScale = useRef(new Animated.Value(1)).current;
   const ghostColor = useRef('#000');
   const [ghostVisible, setGhostVisible] = useState(false);
 
-  // Shared animated values
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const timerBarAnim = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -335,20 +332,18 @@ export default function ColorSortingGame() {
   const wrongFlashAnim = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Bin layout rects (measured via onLayout in absolute page coords)
   const binLayouts = useRef<{ [color: string]: BinLayout }>({});
   const binRefs = useRef<{ [color: string]: View | null }>({});
 
   const level = LEVELS[levelIdx];
-  const totalItems = level.colors.length * 3; // ALL must be sorted
+  const totalItems = level.colors.length * 3;
   const isLast = levelIdx === LEVELS.length - 1;
 
-  // Keep a live ref to score so PanResponder callbacks can read it
   const scoreRef = useRef(0);
   scoreRef.current = score;
 
   // ── Init level ──────────────────────────────────────────────────────────────
-  const initLevel = useCallback((idx: number) => {
+  const initLevel = useCallback(async (idx: number) => {
     if (timerRef.current) clearInterval(timerRef.current);
 
     const lvl = LEVELS[idx];
@@ -390,7 +385,9 @@ export default function ColorSortingGame() {
     wrongFlashAnim.setValue(0);
     timerBarAnim.setValue(1);
     progressAnim.setValue(0);
-  }, [overlayOpacity, overlayScale, wrongFlashAnim, timerBarAnim, progressAnim]);
+    
+    await playSound('click', false);
+  }, [overlayOpacity, overlayScale, wrongFlashAnim, timerBarAnim, progressAnim, playSound]);
 
   useEffect(() => { initLevel(0); }, []);
 
@@ -409,6 +406,7 @@ export default function ColorSortingGame() {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
           setStatus('failed');
+          playSound('error', true);
           showOverlay();
           return 0;
         }
@@ -417,7 +415,7 @@ export default function ColorSortingGame() {
     }, 1000);
 
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [status, levelIdx]);
+  }, [status, levelIdx, playSound]);
 
   // ── Back handler ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -456,6 +454,7 @@ export default function ColorSortingGame() {
   };
 
   const animateWrong = () => {
+    playSound('error', true);
     Animated.sequence([
       Animated.timing(wrongFlashAnim, { toValue: 1, duration: 80, useNativeDriver: false }),
       Animated.timing(wrongFlashAnim, { toValue: 0, duration: 320, useNativeDriver: false }),
@@ -479,24 +478,23 @@ export default function ColorSortingGame() {
   };
 
   // ── Drag callbacks ──────────────────────────────────────────────────────────
-  const handleDragStart = useCallback((item: GameItem) => {
+  const handleDragStart = useCallback(async (item: GameItem) => {
     if (status !== 'playing') return;
     ghostColor.current = item.color;
-    ghostXY.setValue({ x: 0, y: 0 }); // will be set in move
+    ghostXY.setValue({ x: 0, y: 0 });
     ghostScale.setValue(1.25);
     setGhostVisible(true);
     setDraggingId(item.id);
-  }, [status, ghostXY, ghostScale]);
+    await playSound('click', false);
+  }, [status, ghostXY, ghostScale, playSound]);
 
   const handleDragMove = useCallback((item: GameItem, pageX: number, pageY: number) => {
     if (status !== 'playing') return;
-    // Update ghost position to follow finger
     ghostXY.setValue({
       x: pageX - ITEM_SIZE / 2,
       y: pageY - ITEM_SIZE / 2,
     });
 
-    // Detect which bin (if any) is being hovered
     let found: string | null = null;
     for (const [color, rect] of Object.entries(binLayouts.current)) {
       if (pointInRect(pageX, pageY, rect)) {
@@ -507,7 +505,7 @@ export default function ColorSortingGame() {
     setHoveredBin(found);
   }, [status, ghostXY]);
 
-  const handleDragEnd = useCallback((item: GameItem, pageX: number, pageY: number) => {
+  const handleDragEnd = useCallback(async (item: GameItem, pageX: number, pageY: number) => {
     if (status !== 'playing') {
       setGhostVisible(false);
       setDraggingId(null);
@@ -518,7 +516,6 @@ export default function ColorSortingGame() {
     setGhostVisible(false);
     setHoveredBin(null);
 
-    // Find which bin the finger landed in
     let droppedColor: string | null = null;
     for (const [color, rect] of Object.entries(binLayouts.current)) {
       if (pointInRect(pageX, pageY, rect)) {
@@ -529,6 +526,9 @@ export default function ColorSortingGame() {
 
     if (droppedColor && droppedColor === item.color) {
       // ✅ Correct drop
+      await playCorrectAnswer();
+      await playStarEarned();
+      
       const newScore = scoreRef.current + 1;
       animateMatch(item, () => {
         setItems(prev =>
@@ -545,21 +545,20 @@ export default function ColorSortingGame() {
       if (newScore >= level.colors.length * 3) {
         if (timerRef.current) clearInterval(timerRef.current);
         setStatus('completed');
+        await playCelebration();
         setTimeout(showOverlay, 500);
       }
     } else if (droppedColor) {
       // ❌ Wrong bin
       animateWrong();
-      // Bounce item back to its home position (scale pulse)
       Animated.sequence([
         Animated.spring(item.scale, { toValue: 1.15, friction: 4, useNativeDriver: true }),
         Animated.spring(item.scale, { toValue: 1, friction: 5, useNativeDriver: true }),
       ]).start();
     }
-    // If dropped outside all bins — just deselect silently
 
     setDraggingId(null);
-  }, [status, level, animateWrong, showOverlay]);
+  }, [status, level, playCorrectAnswer, playStarEarned, playCelebration]);
 
   // ── Bin layout measurement ──────────────────────────────────────────────────
   const measureBin = (color: string) => {
@@ -658,7 +657,10 @@ export default function ColorSortingGame() {
           {won && !isLast && (
             <TouchableOpacity
               style={[styles.overlayBtn, { backgroundColor: colors.primary }]}
-              onPress={() => initLevel(levelIdx + 1)}
+              onPress={async () => {
+                await playSound('click', false);
+                initLevel(levelIdx + 1);
+              }}
             >
               <Text style={styles.overlayBtnText}>Next Level →</Text>
             </TouchableOpacity>
@@ -666,7 +668,10 @@ export default function ColorSortingGame() {
           {won && isLast && (
             <TouchableOpacity
               style={[styles.overlayBtn, { backgroundColor: colors.primary }]}
-              onPress={() => initLevel(0)}
+              onPress={async () => {
+                await playSound('click', false);
+                initLevel(0);
+              }}
             >
               <Text style={styles.overlayBtnText}>Play Again 🎊</Text>
             </TouchableOpacity>
@@ -674,14 +679,20 @@ export default function ColorSortingGame() {
           {!won && (
             <TouchableOpacity
               style={[styles.overlayBtn, { backgroundColor: colors.primary }]}
-              onPress={() => initLevel(levelIdx)}
+              onPress={async () => {
+                await playSound('click', false);
+                initLevel(levelIdx);
+              }}
             >
               <Text style={styles.overlayBtnText}>Try Again</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
             style={[styles.overlayBtnSecondary, { borderColor: colors.textLight }]}
-            onPress={() => router.back()}
+            onPress={async () => {
+              await playSound('goodbye', false);
+              router.back();
+            }}
           >
             <Text style={[styles.overlayBtnSecondaryText, { color: colors.textLight }]}>
               Back to Games
@@ -706,9 +717,31 @@ export default function ColorSortingGame() {
       <Animated.View style={[styles.container, { transform: [{ translateX: shakeAnim }] }]}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity 
+            onPress={async () => {
+              await playSound('click', false);
+              router.back();
+            }} 
+            style={styles.backBtn}
+          >
             <MaterialIcons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
+          
+          {/* Sound Toggle Button */}
+          <TouchableOpacity 
+            style={styles.soundBtn}
+            onPress={async () => {
+              await playSound('click', false);
+              toggleSound();
+            }}
+          >
+            <MaterialIcons 
+              name={soundEnabled ? "volume-up" : "volume-off"} 
+              size={22} 
+              color={colors.text} 
+            />
+          </TouchableOpacity>
+          
           <View style={styles.levelInfo}>
             <Text style={[styles.levelLabel, { color: colors.textLight }]}>
               Level {level.level} / {LEVELS.length}
@@ -751,7 +784,7 @@ export default function ColorSortingGame() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          scrollEnabled={!draggingId}   // disable scroll while dragging
+          scrollEnabled={!draggingId}
         >
           {/* Items */}
           <Text style={[styles.sectionLabel, { color: colors.textLight }]}>
@@ -789,7 +822,7 @@ export default function ColorSortingGame() {
         </View>
       </Animated.View>
 
-      {/* ── Floating drag ghost (follows finger absolutely) ── */}
+      {/* Floating drag ghost */}
       {ghostVisible && draggingItem && (
         <Animated.View
           pointerEvents="none"
@@ -831,6 +864,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   backBtn: { padding: Spacing.sm, borderRadius: 20 },
+  soundBtn: { padding: Spacing.sm, borderRadius: 20, marginRight: Spacing.sm },
   levelInfo: { alignItems: 'center', flex: 1 },
   levelLabel: { fontSize: 12, opacity: 0.7 },
   levelName: { fontSize: 17, fontWeight: '700' },
@@ -911,7 +945,6 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
 
-  // Floating ghost
   ghost: {
     position: 'absolute',
     width: ITEM_SIZE,

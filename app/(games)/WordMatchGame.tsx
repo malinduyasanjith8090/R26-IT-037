@@ -1,6 +1,5 @@
-// app/(games)/WordMatchGame.tsx
+// app/(games)/WordMatchGame.tsx (with Sounds & Haptics)
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -16,6 +15,7 @@ import {
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useSound } from '../../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
@@ -73,6 +73,15 @@ const levels: Level[] = [
 export default function WordMatchGame() {
   const { colors } = useTheme();
   const { t, language, setLanguage } = useLanguage();
+  const { 
+    playSound, 
+    playCelebration, 
+    playStarEarned, 
+    playCorrectAnswer,
+    toggleSound,
+    isEnabled: soundEnabled 
+  } = useSound();
+  
   const [currentLevel, setCurrentLevel] = useState(0);
   const [currentPair, setCurrentPair] = useState<WordPair | null>(null);
   const [options, setOptions] = useState<string[]>([]);
@@ -85,6 +94,7 @@ export default function WordMatchGame() {
   const [stars, setStars] = useState(3);
   const [levelPairs, setLevelPairs] = useState<WordPair[]>([]);
   const [matchMode, setMatchMode] = useState<'engToSin' | 'sinToEng' | 'emojiToWord'>('engToSin');
+  const [showSoundSettings, setShowSoundSettings] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
   const shakeAnim = useState(new Animated.Value(0))[0];
 
@@ -173,7 +183,7 @@ export default function WordMatchGame() {
     ]).start();
   };
 
-  const handleAnswer = (answer: string) => {
+  const handleAnswer = async (answer: string) => {
     if (selectedAnswer !== null) return;
     
     setSelectedAnswer(answer);
@@ -181,33 +191,41 @@ export default function WordMatchGame() {
     setIsCorrect(correct);
 
     if (correct) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Play correct answer sound with star effects
+      await playCorrectAnswer();
+      
       const newScore = score + 10;
       setScore(newScore);
       
+      // Play additional star sounds
+      await playStarEarned();
+
       Animated.sequence([
         Animated.timing(scaleAnim, { toValue: 1.3, duration: 200, useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
 
-      setTimeout(() => {
+      setTimeout(async () => {
         if (questionCount + 1 >= level.pairs.length) {
           const earnedStars = calculateStars();
           setStars(earnedStars);
           
           if (currentLevel === levels.length - 1) {
+            await playCelebration();
             setShowComplete(true);
           } else {
+            await playSound('reward', false);
             setShowReward(true);
           }
         } else {
           setQuestionCount(questionCount + 1);
           setSelectedAnswer(null);
           setIsCorrect(false);
+          await playSound('click', false);
         }
       }, 1500);
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      await playSound('error', true);
       shakeAnimation();
       setTimeout(() => {
         setSelectedAnswer(null);
@@ -216,17 +234,29 @@ export default function WordMatchGame() {
     }
   };
 
-  const nextLevel = () => {
+  const nextLevel = async () => {
     setShowReward(false);
     setCurrentLevel(currentLevel + 1);
     setSelectedAnswer(null);
+    await playSound('click', false);
   };
 
-  const resetGame = () => {
+  const resetGame = async () => {
     setCurrentLevel(0);
     setScore(0);
     setShowComplete(false);
     setSelectedAnswer(null);
+    await playSound('click', false);
+  };
+
+  const handleModeChange = async (mode: 'engToSin' | 'sinToEng' | 'emojiToWord') => {
+    await playSound('click', false);
+    setMatchMode(mode);
+  };
+
+  const handleToggleSound = async () => {
+    await playSound('click', false);
+    toggleSound();
   };
 
   const getStarRating = (starCount: number) => (
@@ -257,7 +287,21 @@ export default function WordMatchGame() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
+        
         <Text style={[styles.title, { color: colors.text }]}>Word Match</Text>
+        
+        {/* Sound Toggle Button */}
+        <TouchableOpacity 
+          style={styles.soundButton}
+          onPress={handleToggleSound}
+        >
+          <MaterialIcons 
+            name={soundEnabled ? "volume-up" : "volume-off"} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
+        
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
@@ -268,7 +312,7 @@ export default function WordMatchGame() {
       <View style={styles.modeContainer}>
         <TouchableOpacity
           style={[styles.modeButton, matchMode === 'engToSin' && { backgroundColor: colors.primary }]}
-          onPress={() => setMatchMode('engToSin')}
+          onPress={() => handleModeChange('engToSin')}
         >
           <Text style={[styles.modeButtonText, { color: matchMode === 'engToSin' ? '#FFF' : colors.text }]}>
             English → සිංහල
@@ -276,7 +320,7 @@ export default function WordMatchGame() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.modeButton, matchMode === 'sinToEng' && { backgroundColor: colors.primary }]}
-          onPress={() => setMatchMode('sinToEng')}
+          onPress={() => handleModeChange('sinToEng')}
         >
           <Text style={[styles.modeButtonText, { color: matchMode === 'sinToEng' ? '#FFF' : colors.text }]}>
             සිංහල → English
@@ -284,7 +328,7 @@ export default function WordMatchGame() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.modeButton, matchMode === 'emojiToWord' && { backgroundColor: colors.primary }]}
-          onPress={() => setMatchMode('emojiToWord')}
+          onPress={() => handleModeChange('emojiToWord')}
         >
           <Text style={[styles.modeButtonText, { color: matchMode === 'emojiToWord' ? '#FFF' : colors.text }]}>
             🎯 Picture Match
@@ -349,6 +393,16 @@ export default function WordMatchGame() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* Encouragement Message */}
+      {score > 0 && score % 100 === 0 && score !== 0 && (
+        <View style={[styles.encouragementContainer, { backgroundColor: colors.success + '20', marginHorizontal: Spacing.lg, marginBottom: Spacing.md, padding: Spacing.sm, borderRadius: BorderRadius.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm }]}>
+          <MaterialIcons name="emoji-events" size={20} color={colors.success} />
+          <Text style={[styles.encouragementText, { color: colors.success, fontSize: 12 }]}>
+            🎉 Amazing progress! Keep learning! 🎉
+          </Text>
+        </View>
+      )}
 
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
@@ -436,7 +490,8 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
   },
   backButton: { padding: Spacing.sm },
-  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold' },
+  soundButton: { padding: Spacing.sm },
+  title: { fontSize: Typography.fontSize.lg, fontWeight: 'bold', flex: 1, textAlign: 'center' },
   scoreBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -489,6 +544,17 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   optionText: { fontSize: 18, fontWeight: '600', flex: 1 },
+  encouragementContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.sm,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+  },
+  encouragementText: { fontSize: 12, fontWeight: '600' },
   progressContainer: { paddingHorizontal: Spacing.lg, marginVertical: Spacing.md },
   progressBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },

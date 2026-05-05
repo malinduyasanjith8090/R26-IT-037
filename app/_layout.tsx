@@ -80,7 +80,10 @@ export default function RootLayout() {
   useEffect(() => {
     return () => {
       if (Platform.OS !== 'web') {
-        SoundService.unloadSounds().catch(console.error);
+        const unloadSounds = (SoundService as any).unloadSounds;
+        if (typeof unloadSounds === 'function') {
+          unloadSounds().catch(console.error);
+        }
       }
     };
   }, []);
