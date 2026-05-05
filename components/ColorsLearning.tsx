@@ -1,6 +1,5 @@
-// components/learning/ColorsLearning.tsx
+// components/learning/ColorsLearning.tsx (Fixed - Correct Hook Usage)
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import React, { useRef, useState } from 'react';
 import {
     Animated,
@@ -14,6 +13,7 @@ import {
 } from 'react-native';
 import { BorderRadius, Spacing } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { useSound } from '../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
@@ -40,6 +40,16 @@ const colorsData: ColorLesson[] = [
 
 export default function ColorsLearning({ onBack, onProgress }: any) {
   const { colors } = useTheme();
+  // ✅ CORRECT: Call hook at top level of component
+  const { 
+    playSound, 
+    playCelebration, 
+    playStarEarned, 
+    playCorrectAnswer,
+    toggleSound,
+    isEnabled: soundEnabled 
+  } = useSound();
+  
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [showRewardModal, setShowRewardModal] = useState(false);
@@ -63,24 +73,28 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
     return messages[Math.floor(Math.random() * messages.length)];
   };
 
-  const handleAnswer = (answer: string) => {
+  // ✅ CORRECT: Event handler calls the sound functions (not the hook)
+  const handleAnswer = async (answer: string) => {
     setSelectedAnswer(answer);
     const correct = answer === currentColor.name;
     setIsCorrect(correct);
 
     if (correct) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await playCorrectAnswer(); // ✅ Call sound function
+      
       const newScore = score + 10;
       setScore(newScore);
       setRewardMessage(getRandomRewardMessage());
       setShowRewardModal(true);
+      
+      await playStarEarned(); // ✅ Call sound function
 
       Animated.sequence([
         Animated.timing(scaleAnim, { toValue: 1.2, duration: 200, useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
 
-      setTimeout(() => {
+      setTimeout(async () => {
         setShowRewardModal(false);
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -88,13 +102,16 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
         if (currentIndex < colorsData.length - 1) {
           setCurrentIndex(currentIndex + 1);
           if (onProgress) onProgress(((currentIndex + 1) / colorsData.length) * 100);
+          await playSound('click', false); // ✅ Call sound function
         } else {
+          await playCelebration(); // ✅ Call sound function
           setShowRewardModal(true);
           setRewardMessage('🎉 Complete! You mastered all colors! 🎉');
         }
       }, 2000);
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      await playSound('error', true); // ✅ Call sound function
+      
       setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -116,6 +133,17 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
     return options;
   };
 
+  // ✅ CORRECT: Event handler for sound toggle
+  const handleToggleSound = async () => {
+    await playSound('click', false);
+    toggleSound();
+  };
+
+  // ✅ CORRECT: Event handler for playing color sound
+  const handleColorPress = async () => {
+    await playSound('click', false);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -123,6 +151,19 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
+        
+        {/* Sound Toggle Button - ✅ Fixed to use handleToggleSound */}
+        <TouchableOpacity 
+          style={styles.soundButton}
+          onPress={handleToggleSound}
+        >
+          <MaterialIcons 
+            name={soundEnabled ? "volume-up" : "volume-off"} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
+        
         <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.primary }]}>{score}</Text>
@@ -145,13 +186,18 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
-          {/* Color Display Card */}
-          <View style={[styles.colorCard, { backgroundColor: currentColor.colorCode }]}>
-            <View style={styles.colorIconContainer}>
-              <Text style={styles.colorIcon}>{currentColor.icon}</Text>
+          {/* Color Display Card - ✅ Fixed onPress */}
+          <TouchableOpacity 
+            activeOpacity={0.9}
+            onPress={handleColorPress}
+          >
+            <View style={[styles.colorCard, { backgroundColor: currentColor.colorCode }]}>
+              <View style={styles.colorIconContainer}>
+                <Text style={styles.colorIcon}>{currentColor.icon}</Text>
+              </View>
+              <Text style={styles.colorName}>{currentColor.name}</Text>
             </View>
-            <Text style={styles.colorName}>{currentColor.name}</Text>
-          </View>
+          </TouchableOpacity>
 
           {/* Example Objects */}
           <View style={[styles.objectsContainer, { backgroundColor: colors.surface }]}>
@@ -172,7 +218,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
             </Text>
           </View>
 
-          {/* Options - Fixed to ensure all display properly */}
+          {/* Options */}
           <View style={styles.optionsContainer}>
             {getOptions().map((option, idx) => (
               <TouchableOpacity
@@ -206,8 +252,19 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
           {/* Feedback */}
           {selectedAnswer && !isCorrect && (
             <View style={[styles.feedbackContainer, { backgroundColor: colors.error + '20' }]}>
+              <MaterialIcons name="sentiment-dissatisfied" size={24} color={colors.error} />
               <Text style={[styles.feedbackText, { color: colors.error }]}>
-                ✗ Try again! You can do it! ✗
+                ✗ Try again! The correct color is {currentColor.name}! ✗
+              </Text>
+            </View>
+          )}
+
+          {/* Encouragement Message */}
+          {score > 0 && score % 50 === 0 && score !== 0 && (
+            <View style={[styles.encouragementContainer, { backgroundColor: colors.success + '20' }]}>
+              <MaterialIcons name="emoji-events" size={24} color={colors.success} />
+              <Text style={[styles.encouragementText, { color: colors.success }]}>
+                🎉 Great progress! Keep going! 🎉
               </Text>
             </View>
           )}
@@ -231,8 +288,9 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
                   <Text style={styles.rewardMessage}>🎉 You're a color master! 🎉</Text>
                   <TouchableOpacity 
                     style={[styles.rewardButton, { backgroundColor: colors.primary }]}
-                    onPress={() => {
+                    onPress={async () => {
                       setShowRewardModal(false);
+                      await playSound('goodbye', false);
                       if (onBack) onBack();
                     }}
                   >
@@ -247,6 +305,12 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
                       <Text key={i} style={styles.star}>⭐</Text>
                     ))}
                   </View>
+                  <TouchableOpacity 
+                    style={[styles.continueButton, { backgroundColor: colors.primary }]}
+                    onPress={() => setShowRewardModal(false)}
+                  >
+                    <Text style={styles.continueButtonText}>Continue →</Text>
+                  </TouchableOpacity>
                 </>
               )}
             </Animated.View>
@@ -259,9 +323,23 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.md, paddingTop: Spacing.xl },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: Spacing.md, 
+    paddingTop: Spacing.xl 
+  },
   backButton: { padding: Spacing.sm },
-  scoreBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.round, gap: Spacing.xs },
+  soundButton: { padding: Spacing.sm },
+  scoreBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: Spacing.md, 
+    paddingVertical: Spacing.sm, 
+    borderRadius: BorderRadius.round, 
+    gap: Spacing.xs 
+  },
   scoreText: { fontWeight: 'bold', fontSize: 18 },
   progressContainer: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
   progressBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
@@ -270,36 +348,122 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: Spacing.xxl },
   content: { alignItems: 'center', padding: Spacing.lg },
-  colorCard: { width: width - 80, height: 180, borderRadius: BorderRadius.xl, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 },
-  colorIconContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md },
+  colorCard: { 
+    width: width - 80, 
+    height: 180, 
+    borderRadius: BorderRadius.xl, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginBottom: Spacing.lg, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.2, 
+    shadowRadius: 8, 
+    elevation: 5 
+  },
+  colorIconContainer: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 40, 
+    backgroundColor: 'rgba(255,255,255,0.3)', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginBottom: Spacing.md 
+  },
   colorIcon: { fontSize: 48 },
-  colorName: { fontSize: 32, fontWeight: 'bold', color: '#FFF', textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
-  objectsContainer: { width: '100%', padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.lg },
+  colorName: { 
+    fontSize: 32, 
+    fontWeight: 'bold', 
+    color: '#FFF', 
+    textShadowColor: 'rgba(0,0,0,0.3)', 
+    textShadowOffset: { width: 1, height: 1 }, 
+    textShadowRadius: 3 
+  },
+  objectsContainer: { 
+    width: '100%', 
+    padding: Spacing.md, 
+    borderRadius: BorderRadius.lg, 
+    marginBottom: Spacing.lg 
+  },
   objectsTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: Spacing.sm },
   objectsList: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   objectItem: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md },
   objectText: { fontSize: 14 },
-  mixingContainer: { width: '100%', padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.lg, alignItems: 'center' },
-  mixingTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: Spacing.sm },
-  mixingIcons: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginVertical: Spacing.sm },
-  mixingIcon: { fontSize: 32 },
-  mixingArrow: { fontSize: 24, fontWeight: 'bold' },
-  mixingResult: { fontSize: 40 },
-  mixingText: { fontSize: 14, textAlign: 'center', marginTop: Spacing.sm },
   questionContainer: { marginVertical: Spacing.md },
   questionText: { fontSize: 22, fontWeight: 'bold', textAlign: 'center' },
   optionsContainer: { width: '100%', gap: Spacing.md, marginBottom: Spacing.md },
-  optionButton: { flexDirection: 'row', alignItems: 'center', padding: Spacing.lg, borderRadius: BorderRadius.md, gap: Spacing.md },
+  optionButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: Spacing.lg, 
+    borderRadius: BorderRadius.md, 
+    gap: Spacing.md 
+  },
   optionColor: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: '#DDD' },
   optionText: { flex: 1, fontSize: 18, fontWeight: '600' },
-  feedbackContainer: { marginTop: Spacing.md, alignItems: 'center', padding: Spacing.md, borderRadius: BorderRadius.md, width: '100%' },
-  feedbackText: { fontSize: 16, fontWeight: 'bold' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' },
-  rewardContent: { alignItems: 'center', padding: Spacing.xl, borderRadius: BorderRadius.lg, minWidth: 280 },
-  rewardTitle: { fontSize: 28, fontWeight: 'bold', color: '#FFD700', marginTop: Spacing.md, textAlign: 'center' },
-  rewardMessage: { fontSize: 18, color: '#333', marginTop: Spacing.sm, textAlign: 'center' },
+  feedbackContainer: { 
+    marginTop: Spacing.md, 
+    alignItems: 'center', 
+    padding: Spacing.md, 
+    borderRadius: BorderRadius.md, 
+    width: '100%',
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    justifyContent: 'center'
+  },
+  feedbackText: { fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+  encouragementContainer: {
+    marginTop: Spacing.md,
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    width: '100%',
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    justifyContent: 'center'
+  },
+  encouragementText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.85)', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  rewardContent: { 
+    alignItems: 'center', 
+    padding: Spacing.xl, 
+    borderRadius: BorderRadius.lg, 
+    minWidth: 280 
+  },
+  rewardTitle: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    color: '#FFD700', 
+    marginTop: Spacing.md, 
+    textAlign: 'center' 
+  },
+  rewardMessage: { 
+    fontSize: 18, 
+    color: '#333', 
+    marginTop: Spacing.sm, 
+    textAlign: 'center' 
+  },
   starContainer: { flexDirection: 'row', marginTop: Spacing.md, gap: Spacing.sm },
   star: { fontSize: 30 },
-  rewardButton: { marginTop: Spacing.lg, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
+  rewardButton: { 
+    marginTop: Spacing.lg, 
+    paddingHorizontal: Spacing.lg, 
+    paddingVertical: Spacing.md, 
+    borderRadius: BorderRadius.md 
+  },
   rewardButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  continueButton: {
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    minWidth: 150,
+    alignItems: 'center',
+  },
+  continueButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 });

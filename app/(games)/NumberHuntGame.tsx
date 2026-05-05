@@ -2,7 +2,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Animated,
     Dimensions,
@@ -111,6 +111,10 @@ export default function NumberHuntGame() {
   const level = levels[currentLevel];
   const currentQuestion = level.questions[currentQuestionIndex];
 
+  useEffect(() => {
+    generateOptions();
+  }, [currentQuestionIndex]);
+
   const generateOptions = () => {
     const numbers = [];
     for (let i = level.numberRange.min; i <= level.numberRange.max; i++) {
@@ -122,10 +126,6 @@ export default function NumberHuntGame() {
     }
     setOptions(numbers.slice(0, 4));
   };
-
-  useEffect(() => {
-    generateOptions();
-  }, [currentQuestionIndex]);
 
   const calculateStars = () => {
     const correctCount = Math.floor(score / 10);
@@ -509,7 +509,3 @@ const styles = StyleSheet.create({
   modalButtons: { flexDirection: 'row', gap: Spacing.md },
   modalButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 });
-
-function useEffect(arg0: () => void, arg1: number[]) {
-    throw new Error('Function not implemented.');
-}

@@ -1,7 +1,7 @@
 // context/LanguageContext.tsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Localization from 'expo-localization';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export type LanguageType = 'en' | 'si' | 'ta';
 
@@ -337,42 +337,71 @@ const translations = {
     lessons: 'පාඩම්',
     completed: 'සම්පූර්ණ',
     
-    // Games Screen
+        // Games Screen
     funGames: 'විනෝදජනක ක්‍රීඩා',
-    playLearnGrow: 'ක්‍රීඩා කරන්න, ඉගෙන ගන්න සහ වර්ධනය වන්න!',
+    playLearnGrow: 'ක්‍රීඩා කරන්න, ඉගෙන ගන්න, වර්ධනය වන්න!',
     dailyChallenge: 'දෛනික අභියෝගය',
-    completeForRewards: 'අතිරේක ප්‍රසාද සඳහා සම්පූර්ණ කරන්න',
+    completeForRewards: 'ප්‍රසාද දිරිගැන්වීම් සඳහා සම්පූර්ණ කරන්න',
     completeMemoryGames: 'මතක ක්‍රීඩා 3 ක් සම්පූර්ණ කරන්න',
-    rewardStars: 'ප්‍රසාදය: තරු 50',
+    rewardStars: 'දිරිගැන්වීම: තරු 50',
     progress: 'ප්‍රගතිය',
     playNow: 'දැන් ක්‍රීඩා කරන්න',
     allGames: 'සියලුම ක්‍රීඩා',
-    memoryMatch: 'මතක ගැළපීම',
-    matchPairs: 'පත්‍ර යුගල ගැලපෙන්න',
-    colorSorting: 'වර්ණ වර්ගීකරණය',
-    sortObjectsByColor: 'වස්තු වර්ණය අනුව වර්ග කරන්න',
-    shapePuzzle: 'හැඩතල ප්‍රහේලිකා',
+    memoryMatch: 'මතක ගැලපීම',
+    matchPairs: 'කාඩ් යුගල ගලපන්න',
+    colorSorting: 'වර්ණ වර්ග කිරීම',
+    sortObjectsByColor: 'වස්තු වර්ණ අනුව වර්ග කරන්න',
+    shapePuzzle: 'හැඩතල ප්‍රහේලිකාව',
     completeShapePuzzles: 'හැඩතල ප්‍රහේලිකා සම්පූර්ණ කරන්න',
     emotionMatch: 'හැඟීම් ගැලපීම',
-    matchFacesWithEmotions: 'හැඟීම් සමග මුහුණු ගැලපෙන්න',
-    patternMaker: 'රටා සාදනය',
+    matchFacesWithEmotions: 'හැඟීම් සමඟ මුහුණු ගලපන්න',
+    patternMaker: 'රටා සාදන්නා',
     createPatterns: 'රටා සාදන්න',
-    numberHunt: 'අංක හීන්මැරීම',
+    numberHunt: 'අංක සොයාගැනීම',
     findHiddenNumbers: 'සැඟවුණු අංක සොයන්න',
     recentlyPlayed: 'මෑතකදී ක්‍රීඩා කළ',
     playedAgo: 'පැය 2 කට පෙර ක්‍රීඩා කළා',
-    filterByCategory: 'කාණ්ඩය අනුව පෙරහන් කරන්න:',
+    filterByCategory: 'කාණ්ඩය අනුව පෙරන්න:',
     all: 'සියල්ල',
     memory: 'මතකය',
-    puzzle: 'ප්‍රහේලිකා',
+    puzzle: 'ප්‍රහේලිකාව',
     educational: 'අධ්‍යාපනික',
     fun: 'විනෝදය',
     socialCat: 'සමාජ',
-    difficulty: 'දුෂ්කරතාවය',
+    difficulty: 'දුෂ්කරතාව',
     stars: 'තරු',
     easy: 'පහසු',
-    medium: 'මධ්‍යස්ථ',
-    hard: 'කඩිසර',
+    medium: 'මධ්‍යම',
+    hard: 'දුෂ්කර',
+
+        // Game Messages
+    gameUnderDevelopment: 'මෙම ක්‍රීඩාව සංවර්ධනය වෙමින් පවතී. රැඳී සිටින්න!',
+    comingSoon: 'ඉක්මනින් එනවා!',
+    question: 'ප්‍රශ්නය',
+    score: 'ලකුණු',
+    levelComplete: 'මට්ටම සම්පූර්ණයි!',
+    gameComplete: 'ක්‍රීඩාව සම්පූර්ණයි!',
+    congratulations: 'සුභ පැතුම්!',
+    tryAgain: 'නැවත උත්සාහ කරන්න!',
+    correct: 'නිවැරදියි!',
+    incorrect: 'වැරදියි!',
+    
+    // More additions for games
+    oddOneOut: 'වෙනස් එක සොයන්න',
+    whatComesNext: 'ඊළඟට එන්නේ කුමක්ද?',
+    sortingGame: 'වර්ගීකරණ ක්‍රීඩාව',
+    wordAnalogies: 'වචන සාදෘශ්‍ය',
+    traceLetter: 'අකුරු ලුහුබැඳීම',
+    traceNumber: 'අංක ලුහුබැඳීම',
+    arExperience: 'AR අත්දැකීම',
+    
+    // Rewards and Feedback
+    greatJob: 'නියමයි!',
+    excellentWork: 'විශිෂ්ට කාර්යයක්!',
+    keepPracticing: 'දිගටම පුහුණු වන්න!',
+    youCanDoIt: 'ඔබට එය කළ හැකියි!',
+    almostThere: 'බොහෝ දුරට එහි!',
+    perfectScoreMessage: 'පරිපූර්ණ ලකුණු! ඔබ මෙය ප්‍රගුණ කළා!',
     
     // Routine Screen
     dailyRoutineTitle: 'දෛනික චර්යාව',

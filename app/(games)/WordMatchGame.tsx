@@ -1,4 +1,4 @@
-// app/(games)/EmotionMatchGame.tsx
+// app/(games)/WordMatchGame.tsx
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
@@ -14,62 +14,68 @@ import {
     View,
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
-interface Emotion {
+interface WordPair {
   id: string;
+  englishWord: string;
+  sinhalaWord: string;
   emoji: string;
-  name: string;
-  description: string;
-  color: string;
+  category: string;
+  imageEmoji: string;
 }
 
 interface Level {
   id: number;
   name: string;
-  emotions: Emotion[];
+  nameSin: string;
+  pairs: WordPair[];
 }
 
-const levels: Level[] = [
-  {
-    id: 1,
-    name: 'Basic Emotions',
-    emotions: [
-      { id: 'happy', emoji: '😊', name: 'Happy', description: 'Feeling good and smiling', color: '#FFD700' },
-      { id: 'sad', emoji: '😢', name: 'Sad', description: 'Feeling down with tears', color: '#6B8EFF' },
-      { id: 'angry', emoji: '😠', name: 'Angry', description: 'Feeling upset and frustrated', color: '#FF6B6B' },
-      { id: 'surprised', emoji: '😲', name: 'Surprised', description: 'Unexpected surprise!', color: '#FFB347' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'More Feelings',
-    emotions: [
-      { id: 'loved', emoji: '🥰', name: 'Loved', description: 'Feeling cared for', color: '#FF69B4' },
-      { id: 'scared', emoji: '😨', name: 'Scared', description: 'Feeling afraid', color: '#9370DB' },
-      { id: 'tired', emoji: '😴', name: 'Tired', description: 'Need to rest', color: '#A9A9A9' },
-      { id: 'excited', emoji: '🤩', name: 'Excited', description: 'Can\'t wait!', color: '#FF4500' },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Advanced Emotions',
-    emotions: [
-      { id: 'calm', emoji: '😌', name: 'Calm', description: 'Peaceful and relaxed', color: '#90EE90' },
-      { id: 'silly', emoji: '😜', name: 'Silly', description: 'Playful and funny', color: '#FFA500' },
-      { id: 'proud', emoji: '🦸', name: 'Proud', description: 'Happy with achievement', color: '#FFD700' },
-      { id: 'lonely', emoji: '🥺', name: 'Lonely', description: 'Wanting company', color: '#B0C4DE' },
-    ],
-  },
+const wordPairs: WordPair[] = [
+  // Animals
+  { id: 'cat', englishWord: 'Cat', sinhalaWord: 'බළලා', emoji: '🐱', category: 'Animals', imageEmoji: '🐱' },
+  { id: 'dog', englishWord: 'Dog', sinhalaWord: 'බල්ලා', emoji: '🐶', category: 'Animals', imageEmoji: '🐶' },
+  { id: 'bird', englishWord: 'Bird', sinhalaWord: 'කුරුල්ලා', emoji: '🐦', category: 'Animals', imageEmoji: '🐦' },
+  { id: 'fish', englishWord: 'Fish', sinhalaWord: 'මාළුවා', emoji: '🐠', category: 'Animals', imageEmoji: '🐠' },
+  { id: 'rabbit', englishWord: 'Rabbit', sinhalaWord: 'හාවා', emoji: '🐰', category: 'Animals', imageEmoji: '🐰' },
+  
+  // Fruits
+  { id: 'apple', englishWord: 'Apple', sinhalaWord: 'ඇපල්', emoji: '🍎', category: 'Fruits', imageEmoji: '🍎' },
+  { id: 'banana', englishWord: 'Banana', sinhalaWord: 'කෙසෙල්', emoji: '🍌', category: 'Fruits', imageEmoji: '🍌' },
+  { id: 'orange', englishWord: 'Orange', sinhalaWord: 'දොඩම්', emoji: '🍊', category: 'Fruits', imageEmoji: '🍊' },
+  { id: 'mango', englishWord: 'Mango', sinhalaWord: 'අඹ', emoji: '🥭', category: 'Fruits', imageEmoji: '🥭' },
+  
+  // Colors
+  { id: 'red', englishWord: 'Red', sinhalaWord: 'රතු', emoji: '🔴', category: 'Colors', imageEmoji: '🔴' },
+  { id: 'blue', englishWord: 'Blue', sinhalaWord: 'නිල්', emoji: '🔵', category: 'Colors', imageEmoji: '🔵' },
+  { id: 'green', englishWord: 'Green', sinhalaWord: 'කොළ', emoji: '🟢', category: 'Colors', imageEmoji: '🟢' },
+  { id: 'yellow', englishWord: 'Yellow', sinhalaWord: 'කහ', emoji: '🟡', category: 'Colors', imageEmoji: '🟡' },
+  
+  // Vehicles
+  { id: 'car', englishWord: 'Car', sinhalaWord: 'කාර් එක', emoji: '🚗', category: 'Vehicles', imageEmoji: '🚗' },
+  { id: 'bus', englishWord: 'Bus', sinhalaWord: 'බස් එක', emoji: '🚌', category: 'Vehicles', imageEmoji: '🚌' },
+  { id: 'train', englishWord: 'Train', sinhalaWord: 'දුම්රිය', emoji: '🚂', category: 'Vehicles', imageEmoji: '🚂' },
+  { id: 'airplane', englishWord: 'Airplane', sinhalaWord: 'ගුවන් යානය', emoji: '✈️', category: 'Vehicles', imageEmoji: '✈️' },
 ];
 
-export default function EmotionMatchGame() {
+const levels: Level[] = [
+  { id: 1, name: 'Animals', nameSin: 'සතුන්', pairs: wordPairs.filter(w => w.category === 'Animals').slice(0, 4) },
+  { id: 2, name: 'Fruits', nameSin: 'පලතුරු', pairs: wordPairs.filter(w => w.category === 'Fruits').slice(0, 4) },
+  { id: 3, name: 'Colors', nameSin: 'වර්ණ', pairs: wordPairs.filter(w => w.category === 'Colors') },
+  { id: 4, name: 'Vehicles', nameSin: 'වාහන', pairs: wordPairs.filter(w => w.category === 'Vehicles') },
+  { id: 5, name: 'Mixed', nameSin: 'මිශ්‍ර', pairs: wordPairs.slice(0, 8) },
+];
+
+export default function WordMatchGame() {
   const { colors } = useTheme();
+  const { t, language, setLanguage } = useLanguage();
   const [currentLevel, setCurrentLevel] = useState(0);
-  const [currentEmotion, setCurrentEmotion] = useState<Emotion | null>(null);
-  const [options, setOptions] = useState<Emotion[]>([]);
+  const [currentPair, setCurrentPair] = useState<WordPair | null>(null);
+  const [options, setOptions] = useState<string[]>([]);
   const [score, setScore] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
   const [showReward, setShowReward] = useState(false);
@@ -77,7 +83,8 @@ export default function EmotionMatchGame() {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState(false);
   const [stars, setStars] = useState(3);
-  const [levelEmotions, setLevelEmotions] = useState<Emotion[]>([]);
+  const [levelPairs, setLevelPairs] = useState<WordPair[]>([]);
+  const [matchMode, setMatchMode] = useState<'engToSin' | 'sinToEng' | 'emojiToWord'>('engToSin');
   const scaleAnim = useState(new Animated.Value(1))[0];
   const shakeAnim = useState(new Animated.Value(0))[0];
 
@@ -85,47 +92,76 @@ export default function EmotionMatchGame() {
 
   useEffect(() => {
     initializeLevel();
-  }, [currentLevel]);
+  }, [currentLevel, matchMode]);
 
   useEffect(() => {
-    if (levelEmotions.length > 0 && questionCount < levelEmotions.length) {
-      const current = levelEmotions[questionCount];
-      setCurrentEmotion(current);
-      
-      // Generate options (current + 3 random others)
-      const otherEmotions = level.emotions.filter(e => e.id !== current.id);
-      const shuffledOthers = [...otherEmotions];
-      for (let i = shuffledOthers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffledOthers[i], shuffledOthers[j]] = [shuffledOthers[j], shuffledOthers[i]];
-      }
-      const optionList = [current, ...shuffledOthers.slice(0, 3)];
-      for (let i = optionList.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [optionList[i], optionList[j]] = [optionList[j], optionList[i]];
-      }
-      setOptions(optionList);
+    if (levelPairs.length > 0 && questionCount < levelPairs.length) {
+      const current = levelPairs[questionCount];
+      setCurrentPair(current);
+      generateOptions(current);
     }
-  }, [questionCount, levelEmotions]);
+  }, [questionCount, levelPairs]);
 
   const initializeLevel = () => {
-    const shuffled = [...level.emotions];
+    const shuffled = [...level.pairs];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    setLevelEmotions(shuffled);
+    setLevelPairs(shuffled);
     setQuestionCount(0);
     setScore(0);
     setSelectedAnswer(null);
     setIsCorrect(false);
   };
 
+  const generateOptions = (current: WordPair) => {
+    const otherPairs = levelPairs.filter(p => p.id !== current.id);
+    const shuffledOthers = [...otherPairs];
+    for (let i = shuffledOthers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledOthers[i], shuffledOthers[j]] = [shuffledOthers[j], shuffledOthers[i]];
+    }
+    
+    let optionValues: string[] = [];
+    if (matchMode === 'engToSin') {
+      optionValues = [current.sinhalaWord, ...shuffledOthers.slice(0, 3).map(p => p.sinhalaWord)];
+    } else if (matchMode === 'sinToEng') {
+      optionValues = [current.englishWord, ...shuffledOthers.slice(0, 3).map(p => p.englishWord)];
+    } else {
+      optionValues = [current.englishWord, ...shuffledOthers.slice(0, 3).map(p => p.englishWord)];
+    }
+    
+    for (let i = optionValues.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [optionValues[i], optionValues[j]] = [optionValues[j], optionValues[i]];
+    }
+    setOptions(optionValues);
+  };
+
   const calculateStars = () => {
-    const correctAnswers = Math.floor(score / 10);
-    if (correctAnswers === level.emotions.length) return 3;
-    if (correctAnswers >= level.emotions.length - 1) return 2;
+    const correctCount = Math.floor(score / 10);
+    if (correctCount === level.pairs.length) return 3;
+    if (correctCount >= level.pairs.length - 1) return 2;
     return 1;
+  };
+
+  const getQuestionText = () => {
+    if (!currentPair) return '';
+    if (matchMode === 'engToSin') {
+      return `${currentPair.englishWord} ${currentPair.emoji} means?`;
+    } else if (matchMode === 'sinToEng') {
+      return `${currentPair.sinhalaWord} ${currentPair.emoji} means?`;
+    } else {
+      return `What is this? ${currentPair.emoji}`;
+    }
+  };
+
+  const getCorrectAnswer = (): string => {
+    if (!currentPair) return '';
+    if (matchMode === 'engToSin') return currentPair.sinhalaWord;
+    if (matchMode === 'sinToEng') return currentPair.englishWord;
+    return currentPair.englishWord;
   };
 
   const shakeAnimation = () => {
@@ -137,11 +173,11 @@ export default function EmotionMatchGame() {
     ]).start();
   };
 
-  const handleAnswer = (selected: Emotion) => {
+  const handleAnswer = (answer: string) => {
     if (selectedAnswer !== null) return;
     
-    setSelectedAnswer(selected.id);
-    const correct = selected.id === currentEmotion?.id;
+    setSelectedAnswer(answer);
+    const correct = answer === getCorrectAnswer();
     setIsCorrect(correct);
 
     if (correct) {
@@ -155,7 +191,7 @@ export default function EmotionMatchGame() {
       ]).start();
 
       setTimeout(() => {
-        if (questionCount + 1 >= level.emotions.length) {
+        if (questionCount + 1 >= level.pairs.length) {
           const earnedStars = calculateStars();
           setStars(earnedStars);
           
@@ -206,7 +242,7 @@ export default function EmotionMatchGame() {
     </View>
   );
 
-  if (!currentEmotion) {
+  if (!currentPair) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
         <Text style={{ color: colors.text }}>Loading...</Text>
@@ -221,55 +257,78 @@ export default function EmotionMatchGame() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.text }]}>Emotion Match</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Word Match</Text>
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
         </View>
       </View>
 
+      {/* Mode Selector */}
+      <View style={styles.modeContainer}>
+        <TouchableOpacity
+          style={[styles.modeButton, matchMode === 'engToSin' && { backgroundColor: colors.primary }]}
+          onPress={() => setMatchMode('engToSin')}
+        >
+          <Text style={[styles.modeButtonText, { color: matchMode === 'engToSin' ? '#FFF' : colors.text }]}>
+            English → සිංහල
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modeButton, matchMode === 'sinToEng' && { backgroundColor: colors.primary }]}
+          onPress={() => setMatchMode('sinToEng')}
+        >
+          <Text style={[styles.modeButtonText, { color: matchMode === 'sinToEng' ? '#FFF' : colors.text }]}>
+            සිංහල → English
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modeButton, matchMode === 'emojiToWord' && { backgroundColor: colors.primary }]}
+          onPress={() => setMatchMode('emojiToWord')}
+        >
+          <Text style={[styles.modeButtonText, { color: matchMode === 'emojiToWord' ? '#FFF' : colors.text }]}>
+            🎯 Picture Match
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Level Info */}
       <View style={[styles.levelContainer, { backgroundColor: colors.primaryLight + '30' }]}>
-        <Text style={[styles.levelName, { color: colors.text }]}>{level.name}</Text>
+        <Text style={[styles.levelName, { color: colors.text }]}>
+          {language === 'en' ? level.name : level.nameSin}
+        </Text>
         <Text style={[styles.levelProgress, { color: colors.textLight }]}>
-          Question {questionCount + 1} of {level.emotions.length}
+          {t('question')} {questionCount + 1} of {level.pairs.length}
         </Text>
       </View>
 
-      {/* Current Emotion Display */}
+      {/* Question Card */}
       <Animated.View 
         style={[
-          styles.emotionCard, 
-          { 
-            backgroundColor: currentEmotion.color + '20',
-            transform: [{ translateX: shakeAnim }]
-          }
+          styles.questionCard,
+          { backgroundColor: colors.surface },
+          { transform: [{ translateX: shakeAnim }] }
         ]}
       >
-        <Text style={styles.emotionEmoji}>{currentEmotion.emoji}</Text>
-        <Text style={[styles.emotionDescription, { color: colors.text }]}>
-          {currentEmotion.description}
+        {matchMode === 'emojiToWord' && (
+          <Text style={styles.questionEmoji}>{currentPair.emoji}</Text>
+        )}
+        <Text style={[styles.questionText, { color: colors.text }]}>
+          {getQuestionText()}
         </Text>
       </Animated.View>
 
-      {/* Question */}
-      <View style={styles.questionContainer}>
-        <Text style={[styles.questionText, { color: colors.text }]}>
-          How is this person feeling?
-        </Text>
-      </View>
-
       {/* Options */}
       <ScrollView contentContainerStyle={styles.optionsContainer}>
-        {options.map((option) => (
+        {options.map((option, index) => (
           <TouchableOpacity
-            key={option.id}
+            key={index}
             style={[
               styles.optionButton,
               {
                 backgroundColor: colors.surface,
-                borderColor: selectedAnswer === option.id
-                  ? (isCorrect && option.id === currentEmotion?.id ? colors.success : colors.error)
+                borderColor: selectedAnswer === option
+                  ? (isCorrect ? colors.success : colors.error)
                   : colors.primaryLight,
                 borderWidth: 3,
               },
@@ -277,18 +336,14 @@ export default function EmotionMatchGame() {
             onPress={() => handleAnswer(option)}
             disabled={selectedAnswer !== null}
           >
-            <Text style={styles.optionEmoji}>{option.emoji}</Text>
-            <View style={styles.optionTextContainer}>
-              <Text style={[styles.optionName, { color: colors.text }]}>{option.name}</Text>
-              <Text style={[styles.optionDescription, { color: colors.textLight }]}>
-                {option.description}
-              </Text>
-            </View>
-            {selectedAnswer === option.id && (
+            <Text style={[styles.optionText, { color: colors.text, fontSize: matchMode === 'emojiToWord' ? 18 : 20 }]}>
+              {option}
+            </Text>
+            {selectedAnswer === option && (
               <MaterialIcons
-                name={isCorrect && option.id === currentEmotion?.id ? "check-circle" : "cancel"}
+                name={isCorrect ? "check-circle" : "cancel"}
                 size={28}
-                color={isCorrect && option.id === currentEmotion?.id ? colors.success : colors.error}
+                color={isCorrect ? colors.success : colors.error}
               />
             )}
           </TouchableOpacity>
@@ -302,20 +357,12 @@ export default function EmotionMatchGame() {
             style={[
               styles.progressFill,
               {
-                width: `${((questionCount) / level.emotions.length) * 100}%`,
+                width: `${((questionCount) / level.pairs.length) * 100}%`,
                 backgroundColor: colors.primary,
               },
             ]}
           />
         </View>
-      </View>
-
-      {/* Tip */}
-      <View style={[styles.tipContainer, { backgroundColor: colors.primaryLight + '20' }]}>
-        <MaterialIcons name="emoji-emotions" size={20} color={colors.primary} />
-        <Text style={[styles.tipText, { color: colors.textLight }]}>
-          Tip: Look at the face and think about how they feel!
-        </Text>
       </View>
 
       {/* Level Reward Modal */}
@@ -326,7 +373,7 @@ export default function EmotionMatchGame() {
               <Text style={styles.modalEmoji}>🎉</Text>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Great Job!</Text>
               <Text style={[styles.modalMessage, { color: colors.textLight }]}>
-                You understand {level.name} well!
+                You completed {language === 'en' ? level.name : level.nameSin}!
               </Text>
               <Text style={[styles.modalScore, { color: colors.primary }]}>
                 Score: {score} points
@@ -349,9 +396,9 @@ export default function EmotionMatchGame() {
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <Text style={styles.modalEmoji}>🏆</Text>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Emotion Master!</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Word Master!</Text>
               <Text style={[styles.modalMessage, { color: colors.textLight }]}>
-                You understand all emotions!
+                You learned so many words in both languages!
               </Text>
               <Text style={[styles.modalScore, { color: colors.primary }]}>
                 Total Score: {score} points
@@ -399,6 +446,21 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   scoreText: { fontSize: Typography.fontSize.md, fontWeight: 'bold' },
+  modeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  modeButton: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    backgroundColor: '#E0E0E0',
+  },
+  modeButtonText: { fontSize: Typography.fontSize.xs, fontWeight: '600' },
   levelContainer: {
     marginHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
@@ -408,43 +470,28 @@ const styles = StyleSheet.create({
   },
   levelName: { fontSize: Typography.fontSize.md, fontWeight: 'bold' },
   levelProgress: { fontSize: Typography.fontSize.sm, marginTop: Spacing.xs },
-  emotionCard: {
+  questionCard: {
     marginHorizontal: Spacing.lg,
     marginVertical: Spacing.md,
     padding: Spacing.xl,
     borderRadius: BorderRadius.lg,
     alignItems: 'center',
   },
-  emotionEmoji: { fontSize: 80, marginBottom: Spacing.md },
-  emotionDescription: { fontSize: 18, textAlign: 'center' },
-  questionContainer: { alignItems: 'center', marginVertical: Spacing.md },
-  questionText: { fontSize: Typography.fontSize.lg, fontWeight: 'bold' },
+  questionEmoji: { fontSize: 80, marginBottom: Spacing.md },
+  questionText: { fontSize: 24, fontWeight: 'bold', textAlign: 'center' },
   optionsContainer: { padding: Spacing.md },
   optionButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.sm,
-    gap: Spacing.md,
   },
-  optionEmoji: { fontSize: 40 },
-  optionTextContainer: { flex: 1 },
-  optionName: { fontSize: 18, fontWeight: 'bold' },
-  optionDescription: { fontSize: 12, marginTop: 4 },
+  optionText: { fontSize: 18, fontWeight: '600', flex: 1 },
   progressContainer: { paddingHorizontal: Spacing.lg, marginVertical: Spacing.md },
   progressBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
-  tipContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    gap: Spacing.sm,
-  },
-  tipText: { fontSize: Typography.fontSize.sm, flex: 1 },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',

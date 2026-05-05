@@ -1,4 +1,4 @@
-// app/(tabs)/learning.tsx (Complete Updated Version)
+// app/(tabs)/learning.tsx (Complete Updated Version with Words Module)
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
@@ -13,15 +13,16 @@ import ColorsLearning from '../../components/ColorsLearning';
 import FruitsLearning from '../../components/FruitsLearning';
 import ShapesLearning from '../../components/ShapesLearning';
 import TracingGame from '../../components/TracingCanvas';
+import WordsLearning from '../../components/WordsLearning';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function LearningScreen() {
   const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [selectedType, setSelectedType] = useState<'letters' | 'sinhala' | 'numbers' | null>(null);
-  const [selectedPractice, setSelectedPractice] = useState<'colors' | 'shapes' | 'animals' | 'fruits' | null>(null);
+  const [selectedPractice, setSelectedPractice] = useState<'colors' | 'shapes' | 'animals' | 'fruits' | 'words' | null>(null);
   const [learningProgress, setLearningProgress] = useState(0);
 
   // Handle Tracing Game (Letters/Numbers)
@@ -34,7 +35,9 @@ export default function LearningScreen() {
           onPress={() => setSelectedType(null)}
         >
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
-          <Text style={[styles.backText, { color: colors.primary }]}>Back to Learning</Text>
+          <Text style={[styles.backText, { color: colors.primary }]}>
+            {language === 'en' ? 'Back to Learning' : 'ඉගෙනීමට ආපසු'}
+          </Text>
         </TouchableOpacity>
 
         {/* Tracing Game - Pass the correct type */}
@@ -55,13 +58,14 @@ export default function LearningScreen() {
     );
   }
 
-  // Handle Practice Modules (Colors, Shapes, Animals, Fruits)
+  // Handle Practice Modules (Colors, Shapes, Animals, Fruits, Words)
   if (selectedPractice) {
     const PracticeComponent = {
       colors: ColorsLearning,
       shapes: ShapesLearning,
       animals: AnimalsLearning,
       fruits: FruitsLearning,
+      words: WordsLearning,
     }[selectedPractice];
 
     return (
@@ -78,9 +82,11 @@ export default function LearningScreen() {
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Learning Journey</Text>
+        <Text style={[styles.title, { color: colors.text }]}>
+          {language === 'en' ? 'Learning Journey' : 'ඉගෙනුම් ගමන'}
+        </Text>
         <Text style={[styles.subtitle, { color: colors.textLight }]}>
-          Trace and learn letters & numbers
+          {language === 'en' ? 'Trace and learn letters & numbers' : 'අකුරු සහ අංක සොයා ගෙන ඉගෙන ගන්න'}
         </Text>
       </View>
 
@@ -89,24 +95,32 @@ export default function LearningScreen() {
         <View style={styles.statItem}>
           <MaterialIcons name="stars" size={32} color={colors.accentYellow} />
           <Text style={[styles.statValue, { color: colors.text }]}>245</Text>
-          <Text style={[styles.statLabel, { color: colors.textLight }]}>Stars Earned</Text>
+          <Text style={[styles.statLabel, { color: colors.textLight }]}>
+            {language === 'en' ? 'Stars Earned' : 'තරු උපයා ඇත'}
+          </Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <MaterialIcons name="emoji-events" size={32} color={colors.accentOrange} />
           <Text style={[styles.statValue, { color: colors.text }]}>12</Text>
-          <Text style={[styles.statLabel, { color: colors.textLight }]}>Badges</Text>
+          <Text style={[styles.statLabel, { color: colors.textLight }]}>
+            {language === 'en' ? 'Badges' : 'පදක්කම්'}
+          </Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <MaterialIcons name="local-fire-department" size={32} color={colors.accentPink} />
           <Text style={[styles.statValue, { color: colors.text }]}>7</Text>
-          <Text style={[styles.statLabel, { color: colors.textLight }]}>Day Streak</Text>
+          <Text style={[styles.statLabel, { color: colors.textLight }]}>
+            {language === 'en' ? 'Day Streak' : 'දින අඛණ්ඩතාව'}
+          </Text>
         </View>
       </View>
 
       {/* Tracing Learning Section */}
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>Trace & Learn</Text>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        {language === 'en' ? 'Trace & Learn' : 'ලිහිල් කර ඉගෙන ගන්න'}
+      </Text>
       
       {/* English Letters Card */}
       <TouchableOpacity
@@ -117,15 +131,21 @@ export default function LearningScreen() {
           <Text style={styles.cardEmoji}>🔤</Text>
         </View>
         <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>English Letters A-Z</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>
+            {language === 'en' ? 'English Letters A-Z' : 'ඉංග්‍රීසි අකුරු A-Z'}
+          </Text>
           <Text style={[styles.cardDescription, { color: colors.textLight }]}>
-            Trace uppercase English letters from A to Z with guided dotted lines
+            {language === 'en' 
+              ? 'Trace uppercase English letters from A to Z with guided dotted lines'
+              : 'මඟ පෙන්වන තිත් රේඛා සමඟ A සිට Z දක්වා ඉංග්‍රීසි ලොකු අකුරු සොයා ගන්න'}
           </Text>
           <View style={styles.cardProgress}>
             <View style={[styles.progressBar, { backgroundColor: colors.primaryLight }]}>
               <View style={[styles.progressFill, { width: '60%', backgroundColor: '#FF6B6B' }]} />
             </View>
-            <Text style={[styles.progressText, { color: colors.textLight }]}>15/26 Completed</Text>
+            <Text style={[styles.progressText, { color: colors.textLight }]}>
+              {language === 'en' ? '15/26 Completed' : '15/26 සම්පූර්ණයි'}
+            </Text>
           </View>
         </View>
         <MaterialIcons name="chevron-right" size={32} color={colors.textLight} />
@@ -140,15 +160,21 @@ export default function LearningScreen() {
           <Text style={styles.cardEmoji}>🕉️</Text>
         </View>
         <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>සිංහල අකුරු (Sinhala Letters)</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>
+            {language === 'en' ? 'Sinhala Letters' : 'සිංහල අකුරු'}
+          </Text>
           <Text style={[styles.cardDescription, { color: colors.textLight }]}>
-            Trace Sinhala letters including vowels and consonants with guided dotted lines
+            {language === 'en'
+              ? 'Trace Sinhala letters including vowels and consonants with guided dotted lines'
+              : 'මඟ පෙන්වන තිත් රේඛා සමඟ ස්වර සහ ව්‍යාංජන ඇතුළු සිංහල අකුරු සොයා ගන්න'}
           </Text>
           <View style={styles.cardProgress}>
             <View style={[styles.progressBar, { backgroundColor: colors.primaryLight }]}>
               <View style={[styles.progressFill, { width: '30%', backgroundColor: '#9C27B0' }]} />
             </View>
-            <Text style={[styles.progressText, { color: colors.textLight }]}>18/60 Completed</Text>
+            <Text style={[styles.progressText, { color: colors.textLight }]}>
+              {language === 'en' ? '18/60 Completed' : '18/60 සම්පූර්ණයි'}
+            </Text>
           </View>
         </View>
         <MaterialIcons name="chevron-right" size={32} color={colors.textLight} />
@@ -163,22 +189,30 @@ export default function LearningScreen() {
           <Text style={styles.cardEmoji}>🔢</Text>
         </View>
         <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Numbers 0-9</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>
+            {language === 'en' ? 'Numbers 0-9' : 'අංක 0-9'}
+          </Text>
           <Text style={[styles.cardDescription, { color: colors.textLight }]}>
-            Trace numbers with fun animations and voice guidance
+            {language === 'en'
+              ? 'Trace numbers with fun animations and voice guidance'
+              : 'විනෝදජනක සජීවිකරණ සහ හඬ මඟ පෙන්වීම් සමඟ අංක සොයා ගන්න'}
           </Text>
           <View style={styles.cardProgress}>
             <View style={[styles.progressBar, { backgroundColor: colors.primaryLight }]}>
               <View style={[styles.progressFill, { width: '40%', backgroundColor: '#4ECDC4' }]} />
             </View>
-            <Text style={[styles.progressText, { color: colors.textLight }]}>4/10 Completed</Text>
+            <Text style={[styles.progressText, { color: colors.textLight }]}>
+              {language === 'en' ? '4/10 Completed' : '4/10 සම්පූර්ණයි'}
+            </Text>
           </View>
         </View>
         <MaterialIcons name="chevron-right" size={32} color={colors.textLight} />
       </TouchableOpacity>
 
       {/* Practice Section */}
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>Practice Zone</Text>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        {language === 'en' ? 'Practice Zone' : 'පුහුණු කලාපය'}
+      </Text>
       <View style={styles.practiceGrid}>
         {/* Colors Card */}
         <TouchableOpacity 
@@ -190,10 +224,16 @@ export default function LearningScreen() {
             <View style={[styles.colorSwatch, { backgroundColor: '#00FF00', marginTop: 4 }]} />
             <View style={[styles.colorSwatch, { backgroundColor: '#0000FF', marginTop: 4 }]} />
           </View>
-          <Text style={[styles.practiceName, { color: colors.text }]}>Colors</Text>
-          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>Learn basic colors</Text>
+          <Text style={[styles.practiceName, { color: colors.text }]}>
+            {language === 'en' ? 'Colors' : 'වර්ණ'}
+          </Text>
+          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>
+            {language === 'en' ? 'Learn basic colors' : 'මූලික වර්ණ ඉගෙන ගන්න'}
+          </Text>
           <TouchableOpacity style={[styles.practiceButton, { backgroundColor: '#FF6B6B' }]}>
-            <Text style={styles.practiceButtonText}>Start</Text>
+            <Text style={styles.practiceButtonText}>
+              {language === 'en' ? 'Start' : 'ආරම්භ කරන්න'}
+            </Text>
           </TouchableOpacity>
         </TouchableOpacity>
 
@@ -206,10 +246,16 @@ export default function LearningScreen() {
             <View style={[styles.shapeDemo, { backgroundColor: '#4ECDC4', borderRadius: 30 }]} />
             <View style={[styles.shapeDemo, { backgroundColor: '#4ECDC4', borderRadius: 8, marginTop: 4 }]} />
           </View>
-          <Text style={[styles.practiceName, { color: colors.text }]}>Shapes</Text>
-          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>Learn basic shapes</Text>
+          <Text style={[styles.practiceName, { color: colors.text }]}>
+            {language === 'en' ? 'Shapes' : 'හැඩතල'}
+          </Text>
+          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>
+            {language === 'en' ? 'Learn basic shapes' : 'මූලික හැඩතල ඉගෙන ගන්න'}
+          </Text>
           <TouchableOpacity style={[styles.practiceButton, { backgroundColor: '#4ECDC4' }]}>
-            <Text style={styles.practiceButtonText}>Start</Text>
+            <Text style={styles.practiceButtonText}>
+              {language === 'en' ? 'Start' : 'ආරම්භ කරන්න'}
+            </Text>
           </TouchableOpacity>
         </TouchableOpacity>
 
@@ -222,10 +268,16 @@ export default function LearningScreen() {
             <Text style={styles.animalIconDemo}>🐶</Text>
             <Text style={styles.animalIconDemo}>🐱</Text>
           </View>
-          <Text style={[styles.practiceName, { color: colors.text }]}>Animals</Text>
-          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>Learn about animals</Text>
+          <Text style={[styles.practiceName, { color: colors.text }]}>
+            {language === 'en' ? 'Animals' : 'සතුන්'}
+          </Text>
+          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>
+            {language === 'en' ? 'Learn about animals' : 'සතුන් ගැන ඉගෙන ගන්න'}
+          </Text>
           <TouchableOpacity style={[styles.practiceButton, { backgroundColor: '#FFD166' }]}>
-            <Text style={styles.practiceButtonText}>Start</Text>
+            <Text style={styles.practiceButtonText}>
+              {language === 'en' ? 'Start' : 'ආරම්භ කරන්න'}
+            </Text>
           </TouchableOpacity>
         </TouchableOpacity>
 
@@ -238,24 +290,70 @@ export default function LearningScreen() {
             <Text style={styles.fruitIconDemo}>🍎</Text>
             <Text style={styles.fruitIconDemo}>🍌</Text>
           </View>
-          <Text style={[styles.practiceName, { color: colors.text }]}>Fruits</Text>
-          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>Learn about fruits</Text>
+          <Text style={[styles.practiceName, { color: colors.text }]}>
+            {language === 'en' ? 'Fruits' : 'පලතුරු'}
+          </Text>
+          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>
+            {language === 'en' ? 'Learn about fruits' : 'පලතුරු ගැන ඉගෙන ගන්න'}
+          </Text>
           <TouchableOpacity style={[styles.practiceButton, { backgroundColor: '#06D6A0' }]}>
-            <Text style={styles.practiceButtonText}>Start</Text>
+            <Text style={styles.practiceButtonText}>
+              {language === 'en' ? 'Start' : 'ආරම්භ කරන්න'}
+            </Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* Words Card - NEW */}
+        <TouchableOpacity 
+          style={[styles.practiceCard, { backgroundColor: colors.surface }]}
+          onPress={() => setSelectedPractice('words')}
+        >
+          <View style={[styles.practiceIcon, { backgroundColor: '#9C27B020' }]}>
+            <Text style={styles.wordIconDemo}>📚</Text>
+            <Text style={styles.wordIconDemo}>🔤</Text>
+          </View>
+          <Text style={[styles.practiceName, { color: colors.text }]}>
+            {language === 'en' ? 'Words' : 'වචන'}
+          </Text>
+          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>
+            {language === 'en' ? 'Learn English & Sinhala words' : 'ඉංග්‍රීසි සහ සිංහල වචන ඉගෙන ගන්න'}
+          </Text>
+          <TouchableOpacity style={[styles.practiceButton, { backgroundColor: '#9C27B0' }]}>
+            <Text style={styles.practiceButtonText}>
+              {language === 'en' ? 'Start' : 'ආරම්භ කරන්න'}
+            </Text>
           </TouchableOpacity>
         </TouchableOpacity>
       </View>
 
+      {/* Bilingual Learning Banner */}
+      <View style={[styles.bilingualBanner, { backgroundColor: colors.primaryLight + '20', marginHorizontal: Spacing.lg, marginVertical: Spacing.md, padding: Spacing.md, borderRadius: BorderRadius.lg }]}>
+        <View style={styles.languageFlags}>
+          <Text style={styles.flagEmoji}>🇬🇧</Text>
+          <MaterialIcons name="swap-horiz" size={24} color={colors.primary} />
+          <Text style={styles.flagEmoji}>🇱🇰</Text>
+        </View>
+        <Text style={[styles.bilingualText, { color: colors.text }]}>
+          {language === 'en' 
+            ? 'Learn both English and Sinhala words!' 
+            : 'ඉංග්‍රීසි සහ සිංහල වචන දෙකම ඉගෙන ගන්න!'}
+        </Text>
+      </View>
+
       {/* Achievements */}
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Achievements</Text>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        {language === 'en' ? 'Recent Achievements' : 'මෑත ජයග්‍රහණ'}
+      </Text>
       <View style={styles.achievementsContainer}>
         {[
-          { title: 'First Trace', icon: '🏆', earned: true, date: 'Yesterday' },
-          { title: 'English Letter Master', icon: '🔤', earned: true, date: '2 days ago' },
-          { title: 'Color Explorer', icon: '🎨', earned: true, date: '3 days ago' },
-          { title: 'Sinhala Letter Master', icon: '🕉️', earned: false, date: null },
-          { title: 'Number Ninja', icon: '🔢', earned: false, date: null },
-          { title: 'Shape Master', icon: '🔷', earned: false, date: null },
+          { title: language === 'en' ? 'First Trace' : 'පළමු ලුහුබැඳීම', icon: '🏆', earned: true, date: language === 'en' ? 'Yesterday' : 'ඊයේ' },
+          { title: language === 'en' ? 'English Letter Master' : 'ඉංග්‍රීසි අකුරු ප්‍රවීණයා', icon: '🔤', earned: true, date: language === 'en' ? '2 days ago' : 'දින 2කට පෙර' },
+          { title: language === 'en' ? 'Color Explorer' : 'වර්ණ ගවේෂකයා', icon: '🎨', earned: true, date: language === 'en' ? '3 days ago' : 'දින 3කට පෙර' },
+          { title: language === 'en' ? 'Sinhala Letter Master' : 'සිංහල අකුරු ප්‍රවීණයා', icon: '🕉️', earned: false, date: null },
+          { title: language === 'en' ? 'Number Ninja' : 'අංක නින්ජා', icon: '🔢', earned: false, date: null },
+          { title: language === 'en' ? 'Shape Master' : 'හැඩතල ප්‍රවීණයා', icon: '🔷', earned: false, date: null },
+          { title: language === 'en' ? 'Word Wizard' : 'වචන මායාකාරයා', icon: '📚', earned: false, date: null },
+          { title: language === 'en' ? 'Vocabulary Star' : 'වචන තරුව', icon: '⭐', earned: false, date: null },
         ].map((achievement, index) => (
           <View key={index} style={[styles.achievementCard, { 
             backgroundColor: colors.surface,
@@ -413,6 +511,9 @@ const styles = StyleSheet.create({
   fruitIconDemo: {
     fontSize: 28,
   },
+  wordIconDemo: {
+    fontSize: 28,
+  },
   practiceName: {
     fontWeight: 'bold',
     fontSize: 18,
@@ -435,6 +536,23 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  bilingualBanner: {
+    alignItems: 'center',
+    padding: Spacing.md,
+  },
+  languageFlags: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  flagEmoji: {
+    fontSize: 32,
+  },
+  bilingualText: {
+    fontSize: Typography.fontSize.sm,
+    textAlign: 'center',
   },
   achievementsContainer: {
     flexDirection: 'row',

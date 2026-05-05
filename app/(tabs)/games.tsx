@@ -1,4 +1,4 @@
-// app/(tabs)/games.tsx (Updated with all games)
+// app/(tabs)/games.tsx (Complete updated version)
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -16,7 +16,6 @@ import { Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 
-// Games with translation keys and working routes
 const games = [
   {
     id: '1',
@@ -78,6 +77,46 @@ const games = [
     stars: 3,
     route: '/(games)/NumberHuntGame',
   },
+  {
+    id: '7',
+    titleKey: 'colorSorting',
+    descriptionKey: 'sortObjectsByColor',
+    icon: 'color-lens',
+    color: '#FF6B6B',
+    difficulty: 'medium',
+    stars: 4,
+    route: '/(games)/ColorSortingGame',
+  },
+  {
+    id: '8',
+    titleKey: 'wordMatch',
+    descriptionKey: 'matchWordsInBothLanguages',
+    icon: 'translate',
+    color: '#9C27B0',
+    difficulty: 'easy',
+    stars: 4,
+    route: '/(games)/WordMatchGame',
+  },
+  {
+    id: '9',
+    titleKey: 'thinkingGames',
+    descriptionKey: 'solvePuzzlesAndSequences',
+    icon: 'psychology',
+    color: '#4ECDC4',
+    difficulty: 'medium',
+    stars: 4,
+    route: '/(games)/ThinkingGames',
+  },
+  {
+    id: '10',
+    titleKey: 'creativeWriting',
+    descriptionKey: 'expressYourselfThroughWords',
+    icon: 'edit',
+    color: '#FFD166',
+    difficulty: 'medium',
+    stars: 4,
+    route: '/(games)/CreativeWritingGame',
+  },
 ];
 
 export default function GamesScreen() {
@@ -88,11 +127,9 @@ export default function GamesScreen() {
   const handleGamePress = (game: any) => {
     setSelectedGame(game.id);
     
-    // Navigate to the specific game screen
     try {
       router.push(game.route as any);
     } catch (error) {
-      // If route doesn't exist yet, show coming soon message
       Alert.alert(
         t('comingSoon') || 'Coming Soon!',
         t('gameUnderDevelopment') || 'This game is under development. Stay tuned!',
@@ -117,7 +154,7 @@ export default function GamesScreen() {
   };
 
   const renderGame = ({ item }: any) => (
-      <TouchableOpacity
+    <TouchableOpacity
       style={[
         styles.gameCard,
         {
@@ -154,7 +191,8 @@ export default function GamesScreen() {
     t('puzzle'),
     t('educational'),
     t('fun'),
-    t('socialCat'),
+    t('language'),
+    t('creative'),
   ];
 
   return (
@@ -183,7 +221,7 @@ export default function GamesScreen() {
         <View style={styles.challenge}>
           <View style={styles.challengeInfo}>
             <Text style={[styles.challengeTitle, { color: colors.text }]}>
-              {t('completeMemoryGames')}
+              {t('completeThreeGames')}
             </Text>
             <Text style={[styles.challengeReward, { color: colors.accentOrange }]}>
               {t('rewardStars')}
@@ -208,7 +246,7 @@ export default function GamesScreen() {
         </View>
       </Card>
 
-      {/* Game Categories */}
+      {/* All Games Section */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         {t('allGames')}
       </Text>
@@ -298,6 +336,18 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.md,
     marginTop: Spacing.xs,
   },
+  bilingualBanner: {
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+  },
+  languageFlags: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  flagEmoji: { fontSize: 32 },
+  bilingualText: { fontSize: Typography.fontSize.sm, textAlign: 'center' },
   challenge: {
     flexDirection: 'row',
     alignItems: 'center',
