@@ -1,4 +1,4 @@
-// app/(games)/ColorSortingGame.tsx (with Sounds & Haptics)
+// app/(games)/ColorSortingGame.tsx (with Sounds, Haptics & Full i18n)
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, {
@@ -28,93 +28,93 @@ const { width } = Dimensions.get('window');
 const Spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
 const ITEM_SIZE = width * 0.17;
 
-// ─── Level config ─────────────────────────────────────────────────────────────
+// ─── Level config (now using translation keys) ─────────────────────────────────
 const LEVELS = [
   {
     level: 1,
-    name: 'Primary Colors',
+    nameKey: 'game.colorSorting.level1.name',
     colors: ['#FF3B30', '#34C759', '#007AFF'],
-    colorNames: ['Red', 'Green', 'Blue'],
+    colorNameKeys: ['color.red', 'color.green', 'color.blue'],
     timeLimit: 60,
-    description: 'Drag ALL items into the matching bin',
+    descKey: 'game.colorSorting.level1.desc',
   },
   {
     level: 2,
-    name: 'Warm Tones',
+    nameKey: 'game.colorSorting.level2.name',
     colors: ['#FF9500', '#FF2D55', '#FFCC00'],
-    colorNames: ['Orange', 'Pink', 'Yellow'],
+    colorNameKeys: ['color.orange', 'color.pink', 'color.yellow'],
     timeLimit: 65,
-    description: 'Drag ALL warm-coloured items to their bins',
+    descKey: 'game.colorSorting.level2.desc',
   },
   {
     level: 3,
-    name: 'Cool Tones',
+    nameKey: 'game.colorSorting.level3.name',
     colors: ['#5AC8FA', '#5856D6', '#34C759'],
-    colorNames: ['Sky', 'Purple', 'Green'],
+    colorNameKeys: ['color.sky', 'color.purple', 'color.green'],
     timeLimit: 65,
-    description: 'Drag ALL cool-coloured items to their bins',
+    descKey: 'game.colorSorting.level3.desc',
   },
   {
     level: 4,
-    name: 'Pastels',
+    nameKey: 'game.colorSorting.level4.name',
     colors: ['#FFB6C1', '#ADD8E6', '#90EE90', '#FFD700'],
-    colorNames: ['Pink', 'Blue', 'Mint', 'Gold'],
+    colorNameKeys: ['color.pink', 'color.blue', 'color.mint', 'color.gold'],
     timeLimit: 75,
-    description: 'Drag ALL pastel items to their bins',
+    descKey: 'game.colorSorting.level4.desc',
   },
   {
     level: 5,
-    name: 'Neons',
+    nameKey: 'game.colorSorting.level5.name',
     colors: ['#FF1493', '#00DDAA', '#FF4500', '#00BFFF', '#AAEE00'],
-    colorNames: ['Deep Pink', 'Aqua', 'Red-Orange', 'Cerulean', 'Lime'],
+    colorNameKeys: ['color.deepPink', 'color.aqua', 'color.redOrange', 'color.cerulean', 'color.lime'],
     timeLimit: 90,
-    description: 'Drag ALL neon items to their bins',
+    descKey: 'game.colorSorting.level5.desc',
   },
   {
     level: 6,
-    name: 'Earthy',
+    nameKey: 'game.colorSorting.level6.name',
     colors: ['#8B4513', '#556B2F', '#CD853F', '#6B8E23', '#A0522D'],
-    colorNames: ['Brown', 'Olive', 'Tan', 'Fern', 'Sienna'],
+    colorNameKeys: ['color.brown', 'color.olive', 'color.tan', 'color.fern', 'color.sienna'],
     timeLimit: 90,
-    description: 'Drag ALL earth-toned items to their bins',
+    descKey: 'game.colorSorting.level6.desc',
   },
   {
     level: 7,
-    name: 'Rainbow',
+    nameKey: 'game.colorSorting.level7.name',
     colors: ['#FF0000', '#FF7F00', '#DDDD00', '#00CC00', '#0000FF', '#8B00FF'],
-    colorNames: ['Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Violet'],
+    colorNameKeys: ['color.red', 'color.orange', 'color.yellow', 'color.green', 'color.blue', 'color.violet'],
     timeLimit: 105,
-    description: 'Drag ALL rainbow items to their bins',
+    descKey: 'game.colorSorting.level7.desc',
   },
   {
     level: 8,
-    name: 'Jewels',
+    nameKey: 'game.colorSorting.level8.name',
     colors: ['#DC143C', '#1E90FF', '#228B22', '#9400D3', '#FF8C00'],
-    colorNames: ['Ruby', 'Sapphire', 'Emerald', 'Amethyst', 'Topaz'],
+    colorNameKeys: ['color.ruby', 'color.sapphire', 'color.emerald', 'color.amethyst', 'color.topaz'],
     timeLimit: 90,
-    description: 'Drag ALL gem-coloured items to their bins',
+    descKey: 'game.colorSorting.level8.desc',
   },
   {
     level: 9,
-    name: 'Mixed Challenge',
+    nameKey: 'game.colorSorting.level9.name',
     colors: ['#FF69B4', '#00CED1', '#FF6347', '#32CD32', '#9370DB', '#FFD700', '#1E90FF'],
-    colorNames: ['Hot Pink', 'Turquoise', 'Tomato', 'Lime', 'Violet', 'Gold', 'Dodger'],
+    colorNameKeys: ['color.hotPink', 'color.turquoise', 'color.tomato', 'color.lime', 'color.violet', 'color.gold', 'color.dodger'],
     timeLimit: 120,
-    description: 'Drag ALL mixed-colour items to their bins',
+    descKey: 'game.colorSorting.level9.desc',
   },
   {
     level: 10,
-    name: 'Expert',
+    nameKey: 'game.colorSorting.level10.name',
     colors: [
       '#DC143C', '#00CC88', '#1E90FF', '#FF8C00', '#9932CC',
       '#2E8B57', '#DA70D6', '#CD5C5C', '#48D1CC', '#FF6B35',
     ],
-    colorNames: [
-      'Crimson', 'Spring', 'Dodger', 'D-Orange', 'D-Orchid',
-      'Sea Green', 'Orchid', 'Indian', 'Turquoise', 'Tangerine',
+    colorNameKeys: [
+      'color.crimson', 'color.spring', 'color.dodger', 'color.dOrange', 'color.dOrchid',
+      'color.seaGreen', 'color.orchid', 'color.indian', 'color.turquoise', 'color.tangerine',
     ],
     timeLimit: 150,
-    description: 'Expert drag-and-drop — sort them ALL!',
+    descKey: 'game.colorSorting.level10.desc',
   },
 ];
 
@@ -122,7 +122,7 @@ const LEVELS = [
 interface GameItem {
   id: string;
   color: string;
-  colorName: string;
+  colorNameKey: string;
   matched: boolean;
   dragXY: Animated.ValueXY;
   homeXY: Animated.ValueXY;
@@ -174,6 +174,7 @@ interface DraggableItemProps {
   onDragEnd: (item: GameItem, px: number, py: number) => void;
   isDragging: boolean;
   isDisabled: boolean;
+  t: (key: string) => string;
 }
 
 function DraggableItem({
@@ -183,6 +184,7 @@ function DraggableItem({
   onDragEnd,
   isDragging,
   isDisabled,
+  t,
 }: DraggableItemProps) {
   const viewRef = useRef<View>(null);
   const homeAbsolute = useRef({ x: 0, y: 0 });
@@ -304,7 +306,6 @@ export default function ColorSortingGame() {
     playCelebration, 
     playStarEarned, 
     playCorrectAnswer,
-    playSound: playSoundEffect,
     toggleSound,
     isEnabled: soundEnabled 
   } = useSound();
@@ -347,7 +348,6 @@ export default function ColorSortingGame() {
     if (timerRef.current) clearInterval(timerRef.current);
 
     const lvl = LEVELS[idx];
-    const total = lvl.colors.length * 3;
     const newItems: GameItem[] = [];
 
     lvl.colors.forEach((color, ci) => {
@@ -355,7 +355,7 @@ export default function ColorSortingGame() {
         newItems.push({
           id: `${color}-${ci}-${k}`,
           color,
-          colorName: lvl.colorNames[ci],
+          colorNameKey: lvl.colorNameKeys[ci],
           matched: false,
           dragXY: new Animated.ValueXY({ x: 0, y: 0 }),
           homeXY: new Animated.ValueXY({ x: 0, y: 0 }),
@@ -421,16 +421,16 @@ export default function ColorSortingGame() {
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (status === 'playing') {
-        Alert.alert('Exit Game', 'Are you sure? Progress will be lost.', [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Exit', style: 'destructive', onPress: () => router.back() },
+        Alert.alert(t('game.exitGame'), t('game.exitConfirm'), [
+          { text: t('game.cancel'), style: 'cancel' },
+          { text: t('game.exit'), style: 'destructive', onPress: () => router.back() },
         ]);
         return true;
       }
       return false;
     });
     return () => sub.remove();
-  }, [status]);
+  }, [status, t]);
 
   // ── Shared animations ────────────────────────────────────────────────────────
   const showOverlay = () => {
@@ -525,7 +525,6 @@ export default function ColorSortingGame() {
     }
 
     if (droppedColor && droppedColor === item.color) {
-      // ✅ Correct drop
       await playCorrectAnswer();
       await playStarEarned();
       
@@ -549,7 +548,6 @@ export default function ColorSortingGame() {
         setTimeout(showOverlay, 500);
       }
     } else if (droppedColor) {
-      // ❌ Wrong bin
       animateWrong();
       Animated.sequence([
         Animated.spring(item.scale, { toValue: 1.15, friction: 4, useNativeDriver: true }),
@@ -582,7 +580,7 @@ export default function ColorSortingGame() {
   });
 
   // ── Render bin ──────────────────────────────────────────────────────────────
-  const renderBin = (color: string, colorName: string) => {
+  const renderBin = (color: string, colorNameKey: string) => {
     const binItems = bins[color] || [];
     const isFull = binItems.length >= 3;
     const isHovered = hoveredBin === color;
@@ -614,7 +612,7 @@ export default function ColorSortingGame() {
           ]}
         >
           <Text style={styles.binHeaderText} numberOfLines={1}>
-            {isFull ? '✓ ' : ''}{colorName}
+            {isFull ? '✓ ' : ''}{t(colorNameKey)}
           </Text>
         </View>
         <View style={styles.binBody}>
@@ -646,12 +644,12 @@ export default function ColorSortingGame() {
         >
           <Text style={styles.overlayEmoji}>{won ? '🎉' : '⏰'}</Text>
           <Text style={[styles.overlayTitle, { color: colors.text }]}>
-            {won ? 'Level Complete!' : "Time's Up!"}
+            {won ? t('game.levelComplete') : t('game.timesUp')}
           </Text>
           <Text style={[styles.overlaySubtitle, { color: colors.textLight }]}>
             {won
-              ? `All ${total} items sorted in "${level.name}"!`
-              : `You sorted ${score} of ${total} — so close!`}
+              ? t('game.colorSorting.completeMessage', { total, levelName: t(level.nameKey) })
+              : t('game.colorSorting.failedMessage', { score, total })}
           </Text>
 
           {won && !isLast && (
@@ -662,7 +660,7 @@ export default function ColorSortingGame() {
                 initLevel(levelIdx + 1);
               }}
             >
-              <Text style={styles.overlayBtnText}>Next Level →</Text>
+              <Text style={styles.overlayBtnText}>{t('game.nextLevel')} →</Text>
             </TouchableOpacity>
           )}
           {won && isLast && (
@@ -673,7 +671,7 @@ export default function ColorSortingGame() {
                 initLevel(0);
               }}
             >
-              <Text style={styles.overlayBtnText}>Play Again 🎊</Text>
+              <Text style={styles.overlayBtnText}>{t('game.playAgain')} 🎊</Text>
             </TouchableOpacity>
           )}
           {!won && (
@@ -684,7 +682,7 @@ export default function ColorSortingGame() {
                 initLevel(levelIdx);
               }}
             >
-              <Text style={styles.overlayBtnText}>Try Again</Text>
+              <Text style={styles.overlayBtnText}>{t('game.tryAgain')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -695,7 +693,7 @@ export default function ColorSortingGame() {
             }}
           >
             <Text style={[styles.overlayBtnSecondaryText, { color: colors.textLight }]}>
-              Back to Games
+              {t('game.backToGames')}
             </Text>
           </TouchableOpacity>
         </Animated.View>
@@ -744,9 +742,9 @@ export default function ColorSortingGame() {
           
           <View style={styles.levelInfo}>
             <Text style={[styles.levelLabel, { color: colors.textLight }]}>
-              Level {level.level} / {LEVELS.length}
+              {t('game.level')} {level.level} / {LEVELS.length}
             </Text>
-            <Text style={[styles.levelName, { color: colors.primary }]}>{level.name}</Text>
+            <Text style={[styles.levelName, { color: colors.primary }]}>{t(level.nameKey)}</Text>
           </View>
           <View style={styles.scoreBox}>
             <MaterialIcons name="star" size={18} color="#FFCC00" />
@@ -779,7 +777,7 @@ export default function ColorSortingGame() {
         </View>
 
         {/* Description */}
-        <Text style={[styles.desc, { color: colors.textLight }]}>{level.description}</Text>
+        <Text style={[styles.desc, { color: colors.textLight }]}>{t(level.descKey)}</Text>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -789,8 +787,8 @@ export default function ColorSortingGame() {
           {/* Items */}
           <Text style={[styles.sectionLabel, { color: colors.textLight }]}>
             {draggingId
-              ? 'Drop into the matching bin below ↓'
-              : `Hold & drag a circle  ·  ${totalItems - score} remaining`}
+              ? t('game.colorSorting.dropHint')
+              : t('game.colorSorting.dragHint', { remaining: totalItems - score })}
           </Text>
           <View style={styles.itemsGrid}>
             {items.map(item => (
@@ -802,14 +800,15 @@ export default function ColorSortingGame() {
                 onDragEnd={handleDragEnd}
                 isDragging={draggingId === item.id}
                 isDisabled={status !== 'playing'}
+                t={t}
               />
             ))}
           </View>
 
           {/* Bins */}
-          <Text style={[styles.sectionLabel, { color: colors.textLight }]}>Sorting bins</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textLight }]}>{t('game.colorSorting.sortingBins')}</Text>
           <View style={styles.binsGrid}>
-            {level.colors.map((c, i) => renderBin(c, level.colorNames[i]))}
+            {level.colors.map((c, i) => renderBin(c, level.colorNameKeys[i]))}
           </View>
         </ScrollView>
 
@@ -817,7 +816,7 @@ export default function ColorSortingGame() {
         <View style={[styles.instructionPill, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="info-outline" size={14} color={colors.primary} />
           <Text style={[styles.instructionText, { color: colors.textLight }]}>
-            Drag each circle and drop it into the matching colour bin
+            {t('game.colorSorting.instruction')}
           </Text>
         </View>
       </Animated.View>

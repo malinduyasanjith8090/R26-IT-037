@@ -1,17 +1,18 @@
-// components/learning/ColorsLearning.tsx (Fixed - Correct Hook Usage)
+// components/learning/ColorsLearning.tsx (with Full i18n)
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { BorderRadius, Spacing } from '../constants/theme';
+import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSound } from '../hooks/useSound';
 
@@ -19,28 +20,29 @@ const { width } = Dimensions.get('window');
 
 interface ColorLesson {
   id: string;
-  name: string;
+  nameKey: string;        // translation key for color name
   colorCode: string;
   icon: string;
-  objects: string[];
+  objectKeys: string[];   // translation keys for example objects
 }
 
+// Color data using translation keys – names and objects will be translated
 const colorsData: ColorLesson[] = [
-  { id: 'red', name: 'Red', colorCode: '#FF0000', icon: '🔴', objects: ['Apple', 'Rose', 'Ball'] },
-  { id: 'blue', name: 'Blue', colorCode: '#0000FF', icon: '🔵', objects: ['Sky', 'Ocean', 'Blueberry'] },
-  { id: 'green', name: 'Green', colorCode: '#00FF00', icon: '🟢', objects: ['Grass', 'Tree', 'Leaf'] },
-  { id: 'yellow', name: 'Yellow', colorCode: '#FFFF00', icon: '🟡', objects: ['Sun', 'Banana', 'Star'] },
-  { id: 'orange', name: 'Orange', colorCode: '#FFA500', icon: '🟠', objects: ['Orange Fruit', 'Pumpkin', 'Carrot'] },
-  { id: 'purple', name: 'Purple', colorCode: '#800080', icon: '🟣', objects: ['Grapes', 'Eggplant', 'Lavender'] },
-  { id: 'pink', name: 'Pink', colorCode: '#FFC0CB', icon: '🌸', objects: ['Flower', 'Cotton Candy', 'Pig'] },
-  { id: 'brown', name: 'Brown', colorCode: '#8B4513', icon: '🟤', objects: ['Chocolate', 'Tree Trunk', 'Bear'] },
-  { id: 'black', name: 'Black', colorCode: '#000000', icon: '⚫', objects: ['Night Sky', 'Penguin', 'Tire'] },
-  { id: 'white', name: 'White', colorCode: '#FFFFFF', icon: '⚪', objects: ['Cloud', 'Snow', 'Milk'] },
+  { id: 'red', nameKey: 'color.red', colorCode: '#FF0000', icon: '🔴', objectKeys: ['object.apple', 'object.rose', 'object.ball'] },
+  { id: 'blue', nameKey: 'color.blue', colorCode: '#0000FF', icon: '🔵', objectKeys: ['object.sky', 'object.ocean', 'object.blueberry'] },
+  { id: 'green', nameKey: 'color.green', colorCode: '#00FF00', icon: '🟢', objectKeys: ['object.grass', 'object.tree', 'object.leaf'] },
+  { id: 'yellow', nameKey: 'color.yellow', colorCode: '#FFFF00', icon: '🟡', objectKeys: ['object.sun', 'object.banana', 'object.star'] },
+  { id: 'orange', nameKey: 'color.orange', colorCode: '#FFA500', icon: '🟠', objectKeys: ['object.orangeFruit', 'object.pumpkin', 'object.carrot'] },
+  { id: 'purple', nameKey: 'color.purple', colorCode: '#800080', icon: '🟣', objectKeys: ['object.grapes', 'object.eggplant', 'object.lavender'] },
+  { id: 'pink', nameKey: 'color.pink', colorCode: '#FFC0CB', icon: '🌸', objectKeys: ['object.flower', 'object.cottonCandy', 'object.pig'] },
+  { id: 'brown', nameKey: 'color.brown', colorCode: '#8B4513', icon: '🟤', objectKeys: ['object.chocolate', 'object.treeTrunk', 'object.bear'] },
+  { id: 'black', nameKey: 'color.black', colorCode: '#000000', icon: '⚫', objectKeys: ['object.nightSky', 'object.penguin', 'object.tire'] },
+  { id: 'white', nameKey: 'color.white', colorCode: '#FFFFFF', icon: '⚪', objectKeys: ['object.cloud', 'object.snow', 'object.milk'] },
 ];
 
 export default function ColorsLearning({ onBack, onProgress }: any) {
   const { colors } = useTheme();
-  // ✅ CORRECT: Call hook at top level of component
+  const { t } = useLanguage();   // <-- use translation function
   const { 
     playSound, 
     playCelebration, 
@@ -60,34 +62,34 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
 
   const currentColor = colorsData[currentIndex];
 
-  const getRandomRewardMessage = () => {
-    const messages = [
-      '🌟 Amazing! 🌟',
-      '🎉 Great Job! 🎉',
-      '⭐ You\'re a Star! ⭐',
-      '🎈 Fantastic! 🎈',
-      '🏆 Excellent! 🏆',
-      '💪 Keep Going! 💪',
-      '🌈 Beautiful! 🌈',
+  // Rewards messages with translation keys
+  const getRandomRewardMessageKey = () => {
+    const messageKeys = [
+      'reward.amazing',
+      'reward.greatJob',
+      'reward.youreAStar',
+      'reward.fantastic',
+      'reward.excellent',
+      'reward.keepGoing',
+      'reward.beautiful',
     ];
-    return messages[Math.floor(Math.random() * messages.length)];
+    return messageKeys[Math.floor(Math.random() * messageKeys.length)];
   };
 
-  // ✅ CORRECT: Event handler calls the sound functions (not the hook)
   const handleAnswer = async (answer: string) => {
     setSelectedAnswer(answer);
-    const correct = answer === currentColor.name;
+    const correct = answer === t(currentColor.nameKey);
     setIsCorrect(correct);
 
     if (correct) {
-      await playCorrectAnswer(); // ✅ Call sound function
+      await playCorrectAnswer();
       
       const newScore = score + 10;
       setScore(newScore);
-      setRewardMessage(getRandomRewardMessage());
+      setRewardMessage(t(getRandomRewardMessageKey()));
       setShowRewardModal(true);
       
-      await playStarEarned(); // ✅ Call sound function
+      await playStarEarned();
 
       Animated.sequence([
         Animated.timing(scaleAnim, { toValue: 1.2, duration: 200, useNativeDriver: true }),
@@ -102,15 +104,15 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
         if (currentIndex < colorsData.length - 1) {
           setCurrentIndex(currentIndex + 1);
           if (onProgress) onProgress(((currentIndex + 1) / colorsData.length) * 100);
-          await playSound('click', false); // ✅ Call sound function
+          await playSound('click', false);
         } else {
-          await playCelebration(); // ✅ Call sound function
+          await playCelebration();
           setShowRewardModal(true);
-          setRewardMessage('🎉 Complete! You mastered all colors! 🎉');
+          setRewardMessage(t('reward.completeAllColors'));
         }
       }, 2000);
     } else {
-      await playSound('error', true); // ✅ Call sound function
+      await playSound('error', true);
       
       setTimeout(() => {
         setSelectedAnswer(null);
@@ -120,12 +122,16 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
   };
 
   const getOptions = () => {
-    const options = [currentColor.name];
-    const otherColors = colorsData
-      .filter(c => c.name !== currentColor.name)
-      .map(c => c.name)
+    // Get the translated current color name
+    const currentName = t(currentColor.nameKey);
+    const options = [currentName];
+    // Get translated names of other colors (excluding current)
+    const otherNames = colorsData
+      .filter(c => c.id !== currentColor.id)
+      .map(c => t(c.nameKey))
       .slice(0, 3);
-    options.push(...otherColors);
+    options.push(...otherNames);
+    // Shuffle
     for (let i = options.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [options[i], options[j]] = [options[j], options[i]];
@@ -133,13 +139,11 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
     return options;
   };
 
-  // ✅ CORRECT: Event handler for sound toggle
   const handleToggleSound = async () => {
     await playSound('click', false);
     toggleSound();
   };
 
-  // ✅ CORRECT: Event handler for playing color sound
   const handleColorPress = async () => {
     await playSound('click', false);
   };
@@ -152,7 +156,6 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         
-        {/* Sound Toggle Button - ✅ Fixed to use handleToggleSound */}
         <TouchableOpacity 
           style={styles.soundButton}
           onPress={handleToggleSound}
@@ -176,7 +179,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
           <View style={[styles.progressFill, { width: `${((currentIndex + 1) / colorsData.length) * 100}%`, backgroundColor: colors.primary }]} />
         </View>
         <Text style={[styles.progressText, { color: colors.textLight }]}>
-          {currentIndex + 1} of {colorsData.length} Colors
+          {t('progress.of', { current: currentIndex + 1, total: colorsData.length, item: t('colors') })}
         </Text>
       </View>
 
@@ -186,7 +189,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
-          {/* Color Display Card - ✅ Fixed onPress */}
+          {/* Color Display Card */}
           <TouchableOpacity 
             activeOpacity={0.9}
             onPress={handleColorPress}
@@ -195,17 +198,19 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
               <View style={styles.colorIconContainer}>
                 <Text style={styles.colorIcon}>{currentColor.icon}</Text>
               </View>
-              <Text style={styles.colorName}>{currentColor.name}</Text>
+              <Text style={styles.colorName}>{t(currentColor.nameKey)}</Text>
             </View>
           </TouchableOpacity>
 
           {/* Example Objects */}
           <View style={[styles.objectsContainer, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.objectsTitle, { color: colors.text }]}>Things that are {currentColor.name}:</Text>
+            <Text style={[styles.objectsTitle, { color: colors.text }]}>
+              {t('color.thingsThatAre', { color: t(currentColor.nameKey) })}:
+            </Text>
             <View style={styles.objectsList}>
-              {currentColor.objects.map((obj, idx) => (
+              {currentColor.objectKeys.map((objKey, idx) => (
                 <View key={idx} style={[styles.objectItem, { backgroundColor: colors.primaryLight }]}>
-                  <Text style={[styles.objectText, { color: colors.text }]}>{obj}</Text>
+                  <Text style={[styles.objectText, { color: colors.text }]}>{t(objKey)}</Text>
                 </View>
               ))}
             </View>
@@ -214,47 +219,52 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
           {/* Question */}
           <View style={styles.questionContainer}>
             <Text style={[styles.questionText, { color: colors.text }]}>
-              🤔 What color is this? 🤔
+              🤔 {t('color.whatColorIsThis')} 🤔
             </Text>
           </View>
 
           {/* Options */}
           <View style={styles.optionsContainer}>
-            {getOptions().map((option, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={[
-                  styles.optionButton,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: selectedAnswer === option
-                      ? (isCorrect ? colors.success : colors.error)
-                      : colors.primaryLight,
-                    borderWidth: 3,
-                  }
-                ]}
-                onPress={() => handleAnswer(option)}
-                disabled={selectedAnswer !== null}
-              >
-                <View style={[styles.optionColor, { backgroundColor: colorsData.find(c => c.name === option)?.colorCode || colors.primary }]} />
-                <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
-                {selectedAnswer === option && (
-                  <MaterialIcons
-                    name={isCorrect ? "check-circle" : "cancel"}
-                    size={28}
-                    color={isCorrect ? colors.success : colors.error}
-                  />
-                )}
-              </TouchableOpacity>
-            ))}
+            {getOptions().map((option, idx) => {
+              // Find color code for this option (by matching translated name to color id)
+              const colorEntry = colorsData.find(c => t(c.nameKey) === option);
+              const optionColorCode = colorEntry?.colorCode || colors.primary;
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[
+                    styles.optionButton,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: selectedAnswer === option
+                        ? (isCorrect ? colors.success : colors.error)
+                        : colors.primaryLight,
+                      borderWidth: 3,
+                    }
+                  ]}
+                  onPress={() => handleAnswer(option)}
+                  disabled={selectedAnswer !== null}
+                >
+                  <View style={[styles.optionColor, { backgroundColor: optionColorCode }]} />
+                  <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
+                  {selectedAnswer === option && (
+                    <MaterialIcons
+                      name={isCorrect ? "check-circle" : "cancel"}
+                      size={28}
+                      color={isCorrect ? colors.success : colors.error}
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {/* Feedback */}
+          {/* Feedback for wrong answer */}
           {selectedAnswer && !isCorrect && (
             <View style={[styles.feedbackContainer, { backgroundColor: colors.error + '20' }]}>
               <MaterialIcons name="sentiment-dissatisfied" size={24} color={colors.error} />
               <Text style={[styles.feedbackText, { color: colors.error }]}>
-                ✗ Try again! The correct color is {currentColor.name}! ✗
+                ✗ {t('color.tryAgainCorrectIs', { color: t(currentColor.nameKey) })} ✗
               </Text>
             </View>
           )}
@@ -264,7 +274,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
             <View style={[styles.encouragementContainer, { backgroundColor: colors.success + '20' }]}>
               <MaterialIcons name="emoji-events" size={24} color={colors.success} />
               <Text style={[styles.encouragementText, { color: colors.success }]}>
-                🎉 Great progress! Keep going! 🎉
+                🎉 {t('reward.greatProgress')} 🎉
               </Text>
             </View>
           )}
@@ -283,9 +293,9 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <MaterialIcons name="emoji-events" size={80} color="#FFD700" />
               <Text style={styles.rewardTitle}>{rewardMessage}</Text>
-              {rewardMessage.includes('Complete') ? (
+              {rewardMessage === t('reward.completeAllColors') ? (
                 <>
-                  <Text style={styles.rewardMessage}>🎉 You're a color master! 🎉</Text>
+                  <Text style={styles.rewardMessage}>{t('reward.youAreColorMaster')}</Text>
                   <TouchableOpacity 
                     style={[styles.rewardButton, { backgroundColor: colors.primary }]}
                     onPress={async () => {
@@ -294,12 +304,14 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
                       if (onBack) onBack();
                     }}
                   >
-                    <Text style={styles.rewardButtonText}>Back to Menu</Text>
+                    <Text style={styles.rewardButtonText}>{t('common.backToMenu')}</Text>
                   </TouchableOpacity>
                 </>
               ) : (
                 <>
-                  <Text style={styles.rewardMessage}>+10 points for {currentColor.name}!</Text>
+                  <Text style={styles.rewardMessage}>
+                    {t('reward.pointsForColor', { points: 10, color: t(currentColor.nameKey) })}
+                  </Text>
                   <View style={styles.starContainer}>
                     {[...Array(3)].map((_, i) => (
                       <Text key={i} style={styles.star}>⭐</Text>
@@ -309,7 +321,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
                     style={[styles.continueButton, { backgroundColor: colors.primary }]}
                     onPress={() => setShowRewardModal(false)}
                   >
-                    <Text style={styles.continueButtonText}>Continue →</Text>
+                    <Text style={styles.continueButtonText}>{t('common.continue')} →</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -346,7 +358,7 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', borderRadius: 4 },
   progressText: { fontSize: 12, textAlign: 'center', marginTop: Spacing.xs },
   scrollView: { flex: 1 },
-  scrollContent: { paddingBottom: Spacing.xxl },
+  scrollContent: { paddingBottom: Spacing.xxl || 40 },
   content: { alignItems: 'center', padding: Spacing.lg },
   colorCard: { 
     width: width - 80, 

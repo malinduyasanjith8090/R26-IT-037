@@ -1,18 +1,19 @@
-// components/learning/ShapesLearning.tsx (with Sounds & Haptics)
+// components/learning/ShapesLearning.tsx (with Full i18n)
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Polygon, Rect } from 'react-native-svg';
 import { BorderRadius, Spacing } from '../constants/theme';
+import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSound } from '../hooks/useSound';
 
@@ -20,82 +21,84 @@ const { width } = Dimensions.get('window');
 
 interface ShapeLesson {
   id: string;
-  name: string;
+  nameKey: string;          // translation key for shape name
   shape: React.ReactNode;
   color: string;
-  description: string;
-  examples: string[];
+  descKey: string;          // translation key for description
+  exampleKeys: string[];    // translation keys for examples
   corners: number;
 }
 
+// Shape data using translation keys
 const shapesData: ShapeLesson[] = [
   { 
     id: 'circle', 
-    name: 'Circle', 
+    nameKey: 'shape.circle', 
     shape: <Circle cx="100" cy="100" r="60" fill="#FF6B6B" />, 
     color: '#FF6B6B',
-    description: 'Round shape with no corners', 
-    examples: ['Ball', 'Sun', 'Clock', 'Wheel'],
+    descKey: 'shape.circle.desc', 
+    exampleKeys: ['shape.circle.ex1', 'shape.circle.ex2', 'shape.circle.ex3', 'shape.circle.ex4'],
     corners: 0
   },
   { 
     id: 'square', 
-    name: 'Square', 
+    nameKey: 'shape.square', 
     shape: <Rect x="40" y="40" width="120" height="120" fill="#4ECDC4" />, 
     color: '#4ECDC4',
-    description: 'Four equal sides and four corners', 
-    examples: ['Box', 'Window', 'Tile', 'House'],
+    descKey: 'shape.square.desc', 
+    exampleKeys: ['shape.square.ex1', 'shape.square.ex2', 'shape.square.ex3', 'shape.square.ex4'],
     corners: 4
   },
   { 
     id: 'triangle', 
-    name: 'Triangle', 
+    nameKey: 'shape.triangle', 
     shape: <Polygon points="100,30 30,170 170,170" fill="#FFD166" />, 
     color: '#FFD166',
-    description: 'Three sides and three corners', 
-    examples: ['Pizza Slice', 'Roof', 'Pyramid', 'Mountain'],
+    descKey: 'shape.triangle.desc', 
+    exampleKeys: ['shape.triangle.ex1', 'shape.triangle.ex2', 'shape.triangle.ex3', 'shape.triangle.ex4'],
     corners: 3
   },
   { 
     id: 'rectangle', 
-    name: 'Rectangle', 
+    nameKey: 'shape.rectangle', 
     shape: <Rect x="40" y="60" width="120" height="80" fill="#06D6A0" />, 
     color: '#06D6A0',
-    description: 'Four sides with opposite sides equal', 
-    examples: ['Door', 'Book', 'Phone', 'Table'],
+    descKey: 'shape.rectangle.desc', 
+    exampleKeys: ['shape.rectangle.ex1', 'shape.rectangle.ex2', 'shape.rectangle.ex3', 'shape.rectangle.ex4'],
     corners: 4
   },
   { 
     id: 'oval', 
-    name: 'Oval', 
+    nameKey: 'shape.oval', 
     shape: <Ellipse cx="100" cy="100" rx="80" ry="40" fill="#118AB2" />, 
     color: '#118AB2',
-    description: 'Stretched circle, like an egg', 
-    examples: ['Egg', 'Football', 'Mirror', 'Tummy'],
+    descKey: 'shape.oval.desc', 
+    exampleKeys: ['shape.oval.ex1', 'shape.oval.ex2', 'shape.oval.ex3', 'shape.oval.ex4'],
     corners: 0
   },
   { 
     id: 'heart', 
-    name: 'Heart', 
+    nameKey: 'shape.heart', 
     shape: <Path d="M 100 40 C 100 20, 60 20, 60 50 C 60 80, 100 120, 100 140 C 100 120, 140 80, 140 50 C 140 20, 100 20, 100 40 Z" fill="#EF476F" />, 
     color: '#EF476F',
-    description: 'Symbol of love and friendship', 
-    examples: ['Valentine', 'Love Symbol', 'Candy', 'Cards'],
+    descKey: 'shape.heart.desc', 
+    exampleKeys: ['shape.heart.ex1', 'shape.heart.ex2', 'shape.heart.ex3', 'shape.heart.ex4'],
     corners: 0
   },
   { 
     id: 'star', 
-    name: 'Star', 
+    nameKey: 'shape.star', 
     shape: <Path d="M 100 20 L 120 70 L 180 70 L 130 100 L 150 160 L 100 130 L 50 160 L 70 100 L 20 70 L 80 70 Z" fill="#FFD166" />, 
     color: '#FFD166',
-    description: 'Shining star with five points', 
-    examples: ['Night Star', 'Decoration', 'Badge', 'Wish'],
+    descKey: 'shape.star.desc', 
+    exampleKeys: ['shape.star.ex1', 'shape.star.ex2', 'shape.star.ex3', 'shape.star.ex4'],
     corners: 5
   },
 ];
 
 export default function ShapesLearning({ onBack, onProgress }: any) {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const { 
     playSound, 
     playCelebration, 
@@ -116,32 +119,31 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
 
   const currentShape = shapesData[currentIndex];
 
-  const getRandomRewardMessage = () => {
-    const messages = [
-      '🌟 Shape-tastic! 🌟',
-      '🎉 Perfect Shape! 🎉',
-      '⭐ Shape Master! ⭐',
-      '🎈 Well Rounded! 🎈',
-      '🏆 Sharp Skills! 🏆',
+  // Reward messages – use translation keys
+  const getRandomRewardMessageKey = () => {
+    const messageKeys = [
+      'reward.shapeTastic',
+      'reward.perfectShape',
+      'reward.shapeMaster',
+      'reward.wellRounded',
+      'reward.sharpSkills',
     ];
-    return messages[Math.floor(Math.random() * messages.length)];
+    return messageKeys[Math.floor(Math.random() * messageKeys.length)];
   };
 
   const handleAnswer = async (answer: string) => {
     setSelectedAnswer(answer);
-    const correct = answer === currentShape.name;
+    const correct = answer === t(currentShape.nameKey);
     setIsCorrect(correct);
 
     if (correct) {
-      // Play correct answer sound
       await playCorrectAnswer();
       
       const newScore = score + 10;
       setScore(newScore);
-      setRewardMessage(getRandomRewardMessage());
+      setRewardMessage(t(getRandomRewardMessageKey()));
       setShowRewardModal(true);
       
-      // Play star sounds for extra delight
       await playStarEarned();
 
       Animated.sequence([
@@ -161,7 +163,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
         } else {
           await playCelebration();
           setShowRewardModal(true);
-          setRewardMessage('🎉 Complete! You mastered all shapes! 🎉');
+          setRewardMessage(t('reward.completeAllShapes'));
         }
       }, 2000);
     } else {
@@ -175,9 +177,14 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
   };
 
   const getOptions = () => {
-    const options = [currentShape.name];
-    const otherShapes = shapesData.filter(s => s.name !== currentShape.name).map(s => s.name).slice(0, 3);
-    options.push(...otherShapes);
+    const currentName = t(currentShape.nameKey);
+    const options = [currentName];
+    const otherNames = shapesData
+      .filter(s => s.id !== currentShape.id)
+      .map(s => t(s.nameKey))
+      .slice(0, 3);
+    options.push(...otherNames);
+    // Shuffle
     for (let i = options.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [options[i], options[j]] = [options[j], options[i]];
@@ -200,11 +207,10 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
     setTimeout(() => setShowActivityPrompt(false), 3000);
   };
 
-  // Calculate shape difficulty based on corners
   const getDifficultyLevel = () => {
-    if (currentShape.corners === 0) return 'Easy';
-    if (currentShape.corners <= 4) return 'Medium';
-    return 'Challenge';
+    if (currentShape.corners === 0) return t('shape.difficulty.easy');
+    if (currentShape.corners <= 4) return t('shape.difficulty.medium');
+    return t('shape.difficulty.challenge');
   };
 
   return (
@@ -215,7 +221,6 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         
-        {/* Sound Toggle Button */}
         <TouchableOpacity 
           style={styles.soundButton}
           onPress={handleToggleSound}
@@ -239,7 +244,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
           <View style={[styles.progressFill, { width: `${((currentIndex + 1) / shapesData.length) * 100}%`, backgroundColor: colors.primary }]} />
         </View>
         <Text style={[styles.progressText, { color: colors.textLight }]}>
-          {currentIndex + 1} of {shapesData.length} Shapes
+          {t('progress.of', { current: currentIndex + 1, total: shapesData.length, item: t('shapes') })}
         </Text>
       </View>
 
@@ -260,13 +265,15 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
                   {currentShape.shape}
                 </Svg>
               </View>
-              <Text style={[styles.shapeName, { color: currentShape.color }]}>{currentShape.name}</Text>
+              <Text style={[styles.shapeName, { color: currentShape.color }]}>{t(currentShape.nameKey)}</Text>
               <TouchableOpacity 
                 style={[styles.cornerBadge, { backgroundColor: currentShape.color }]}
                 onPress={showFunActivity}
               >
                 <MaterialIcons name="stars" size={16} color="#FFF" />
-                <Text style={styles.cornerText}>{currentShape.corners} corners • {getDifficultyLevel()}</Text>
+                <Text style={styles.cornerText}>
+                  {t('shape.corners', { count: currentShape.corners })} • {getDifficultyLevel()}
+                </Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -274,16 +281,18 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
           {/* Shape Description */}
           <View style={[styles.descriptionContainer, { backgroundColor: colors.surface }]}>
             <MaterialIcons name="info" size={24} color={colors.primary} />
-            <Text style={[styles.descriptionText, { color: colors.text }]}>{currentShape.description}</Text>
+            <Text style={[styles.descriptionText, { color: colors.text }]}>{t(currentShape.descKey)}</Text>
           </View>
 
           {/* Examples */}
           <View style={[styles.examplesContainer, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.examplesTitle, { color: colors.text }]}>📦 Things that are {currentShape.name}s:</Text>
+            <Text style={[styles.examplesTitle, { color: colors.text }]}>
+              {t('shape.thingsThatAre', { shape: t(currentShape.nameKey) })}:
+            </Text>
             <View style={styles.examplesList}>
-              {currentShape.examples.map((example, idx) => (
+              {currentShape.exampleKeys.map((exKey, idx) => (
                 <View key={idx} style={[styles.exampleItem, { backgroundColor: colors.primaryLight }]}>
-                  <Text style={[styles.exampleText, { color: colors.text }]}>{example}</Text>
+                  <Text style={[styles.exampleText, { color: colors.text }]}>{t(exKey)}</Text>
                 </View>
               ))}
             </View>
@@ -292,47 +301,51 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
           {/* Question */}
           <View style={styles.questionContainer}>
             <Text style={[styles.questionText, { color: colors.text }]}>
-              🤔 What shape is this? 🤔
+              🤔 {t('shape.whatShapeIsThis')} 🤔
             </Text>
           </View>
 
           {/* Options */}
           <View style={styles.optionsContainer}>
-            {getOptions().map((option, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={[
-                  styles.optionButton,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: selectedAnswer === option
-                      ? (isCorrect ? colors.success : colors.error)
-                      : colors.primaryLight,
-                    borderWidth: 3,
-                  }
-                ]}
-                onPress={() => handleAnswer(option)}
-                disabled={selectedAnswer !== null}
-              >
-                <View style={[styles.optionColor, { backgroundColor: shapesData.find(s => s.name === option)?.color || colors.primary }]} />
-                <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
-                {selectedAnswer === option && (
-                  <MaterialIcons
-                    name={isCorrect ? "check-circle" : "cancel"}
-                    size={28}
-                    color={isCorrect ? colors.success : colors.error}
-                  />
-                )}
-              </TouchableOpacity>
-            ))}
+            {getOptions().map((option, idx) => {
+              const shapeEntry = shapesData.find(s => t(s.nameKey) === option);
+              const optionColor = shapeEntry?.color || colors.primary;
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[
+                    styles.optionButton,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: selectedAnswer === option
+                        ? (isCorrect ? colors.success : colors.error)
+                        : colors.primaryLight,
+                      borderWidth: 3,
+                    }
+                  ]}
+                  onPress={() => handleAnswer(option)}
+                  disabled={selectedAnswer !== null}
+                >
+                  <View style={[styles.optionColor, { backgroundColor: optionColor }]} />
+                  <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
+                  {selectedAnswer === option && (
+                    <MaterialIcons
+                      name={isCorrect ? "check-circle" : "cancel"}
+                      size={28}
+                      color={isCorrect ? colors.success : colors.error}
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {/* Feedback */}
+          {/* Feedback for wrong answer */}
           {selectedAnswer && !isCorrect && (
             <View style={[styles.feedbackContainer, { backgroundColor: colors.error + '20' }]}>
               <MaterialIcons name="sentiment-dissatisfied" size={24} color={colors.error} />
               <Text style={[styles.feedbackText, { color: colors.error }]}>
-                ✗ Try again! The correct shape is {currentShape.name}! ✗
+                {t('shape.tryAgainCorrectIs', { shape: t(currentShape.nameKey) })}
               </Text>
             </View>
           )}
@@ -342,7 +355,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
             <View style={[styles.encouragementContainer, { backgroundColor: colors.success + '20' }]}>
               <MaterialIcons name="emoji-events" size={24} color={colors.success} />
               <Text style={[styles.encouragementText, { color: colors.success }]}>
-                🎉 Great progress! You're becoming a shape master! 🎉
+                🎉 {t('reward.greatProgressShape')} 🎉
               </Text>
             </View>
           )}
@@ -354,7 +367,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
         <Animated.View style={[styles.activityNotification, { backgroundColor: currentShape.color }]}>
           <MaterialIcons name="gesture" size={20} color="#FFF" />
           <Text style={styles.activityNotificationText}>
-            Draw a {currentShape.name} in the air! ✋
+            {t('shape.drawInAir', { shape: t(currentShape.nameKey) })}
           </Text>
         </Animated.View>
       )}
@@ -371,9 +384,9 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <Text style={styles.rewardEmoji}>⭐</Text>
               <Text style={styles.rewardTitle}>{rewardMessage}</Text>
-              {rewardMessage.includes('Complete') ? (
+              {rewardMessage === t('reward.completeAllShapes') ? (
                 <>
-                  <Text style={styles.rewardMessage}>🎉 You're a shape expert! 🎉</Text>
+                  <Text style={styles.rewardMessage}>{t('reward.youAreShapeExpert')}</Text>
                   <TouchableOpacity 
                     style={[styles.rewardButton, { backgroundColor: colors.primary }]}
                     onPress={async () => {
@@ -382,12 +395,14 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
                       if (onBack) onBack();
                     }}
                   >
-                    <Text style={styles.rewardButtonText}>Back to Menu</Text>
+                    <Text style={styles.rewardButtonText}>{t('common.backToMenu')}</Text>
                   </TouchableOpacity>
                 </>
               ) : (
                 <>
-                  <Text style={styles.rewardMessage}>+10 points for learning {currentShape.name}!</Text>
+                  <Text style={styles.rewardMessage}>
+                    {t('reward.pointsForShape', { points: 10, shape: t(currentShape.nameKey) })}
+                  </Text>
                   <View style={styles.starContainer}>
                     {[...Array(3)].map((_, i) => (
                       <Text key={i} style={styles.star}>⭐</Text>
@@ -397,7 +412,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
                     style={[styles.continueButton, { backgroundColor: colors.primary }]}
                     onPress={() => setShowRewardModal(false)}
                   >
-                    <Text style={styles.continueButtonText}>Continue →</Text>
+                    <Text style={styles.continueButtonText}>{t('common.continue')} →</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -434,7 +449,7 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', borderRadius: 4 },
   progressText: { fontSize: 12, textAlign: 'center', marginTop: Spacing.xs },
   scrollView: { flex: 1 },
-  scrollContent: { paddingBottom: Spacing.xxl },
+  scrollContent: { paddingBottom: Spacing.xxl || 40 },
   content: { alignItems: 'center', padding: Spacing.lg },
   shapeCard: { 
     width: width - 80, 
@@ -480,16 +495,6 @@ const styles = StyleSheet.create({
   examplesList: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   exampleItem: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md },
   exampleText: { fontSize: 14 },
-  activityContainer: { 
-    width: '100%', 
-    padding: Spacing.md, 
-    borderRadius: BorderRadius.lg, 
-    marginBottom: Spacing.lg, 
-    alignItems: 'center',
-    gap: Spacing.sm
-  },
-  activityTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: Spacing.sm },
-  activityText: { fontSize: 14, textAlign: 'center' },
   questionContainer: { marginVertical: Spacing.md },
   questionText: { fontSize: 22, fontWeight: 'bold', textAlign: 'center' },
   optionsContainer: { width: '100%', gap: Spacing.md, marginBottom: Spacing.md },

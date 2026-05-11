@@ -1,16 +1,16 @@
-// app/(games)/ThinkingGames.tsx (with Sounds & Haptics)
+// app/(games)/ThinkingGames.tsx (with Full i18n)
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
@@ -21,10 +21,8 @@ const { width } = Dimensions.get('window');
 
 interface ThinkingGame {
   id: string;
-  title: string;
-  titleSin: string;
-  description: string;
-  descriptionSin: string;
+  titleKey: string;
+  descKey: string;
   icon: string;
   color: string;
   component: string;
@@ -33,40 +31,32 @@ interface ThinkingGame {
 const thinkingGames: ThinkingGame[] = [
   {
     id: 'odd-one-out',
-    title: 'Odd One Out',
-    titleSin: 'වෙනස් එක සොයන්න',
-    description: 'Find which item doesn\'t belong',
-    descriptionSin: 'නොගැලපෙන අයිතමය සොයන්න',
+    titleKey: 'thinkingGames.oddOneOut.title',
+    descKey: 'thinkingGames.oddOneOut.desc',
     icon: 'find-replace',
     color: '#FF6B6B',
     component: 'OddOneOut',
   },
   {
     id: 'what-comes-next',
-    title: 'What Comes Next?',
-    titleSin: 'ඊළඟට එන්නේ කුමක්ද?',
-    description: 'Complete the sequence',
-    descriptionSin: 'අනුක්‍රමය සම්පූර්ණ කරන්න',
+    titleKey: 'thinkingGames.sequence.title',
+    descKey: 'thinkingGames.sequence.desc',
     icon: 'timeline',
     color: '#4ECDC4',
     component: 'SequenceGame',
   },
   {
     id: 'sorting-game',
-    title: 'Sorting Game',
-    titleSin: 'වර්ගීකරණ ක්‍රීඩාව',
-    description: 'Sort items into categories',
-    descriptionSin: 'අයිතම කාණ්ඩගත කරන්න',
+    titleKey: 'thinkingGames.sorting.title',
+    descKey: 'thinkingGames.sorting.desc',
     icon: 'category',
     color: '#FFD166',
     component: 'SortingGame',
   },
   {
     id: 'analogy-game',
-    title: 'Word Analogies',
-    titleSin: 'වචන සාදෘශ්‍ය',
-    description: 'Complete the analogy',
-    descriptionSin: 'සාදෘශ්‍යය සම්පූර්ණ කරන්න',
+    titleKey: 'thinkingGames.analogy.title',
+    descKey: 'thinkingGames.analogy.desc',
     icon: 'compare-arrows',
     color: '#06D6A0',
     component: 'AnalogyGame',
@@ -75,7 +65,8 @@ const thinkingGames: ThinkingGame[] = [
 
 // Odd One Out Component
 function OddOneOut({ colors, onComplete }: any) {
-  const { playSound, playCorrectAnswer, playStarEarned, isEnabled } = useSound();
+  const { playSound, playCorrectAnswer, playStarEarned } = useSound();
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -83,14 +74,15 @@ function OddOneOut({ colors, onComplete }: any) {
   const [showReward, setShowReward] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
 
+  // Questions use translation keys for items and explanation
   const questions = [
-    { items: ['🍎', '🍌', '🍊', '🚗'], oddIndex: 3, explanation: 'Car is not a fruit' },
-    { items: ['🐱', '🐶', '🐦', '✈️'], oddIndex: 3, explanation: 'Airplane is not an animal' },
-    { items: ['🔴', '🔵', '🟢', '🍎'], oddIndex: 3, explanation: 'Apple is not a color' },
-    { items: ['😊', '😢', '🚗', '😠'], oddIndex: 2, explanation: 'Car is not an emotion' },
-    { items: ['1', '2', '3', 'A'], oddIndex: 3, explanation: 'A is a letter, not a number' },
-    { items: ['🐶', '🐱', '🐭', '🍕'], oddIndex: 3, explanation: 'Pizza is not a pet' },
-    { items: ['📚', '✏️', '📖', '🍔'], oddIndex: 3, explanation: 'Burger is not school supply' },
+    { items: ['🍎', '🍌', '🍊', '🚗'], oddIndex: 3, explanationKey: 'thinkingGames.oddOneOut.explain.fruit' },
+    { items: ['🐱', '🐶', '🐦', '✈️'], oddIndex: 3, explanationKey: 'thinkingGames.oddOneOut.explain.animal' },
+    { items: ['🔴', '🔵', '🟢', '🍎'], oddIndex: 3, explanationKey: 'thinkingGames.oddOneOut.explain.color' },
+    { items: ['😊', '😢', '🚗', '😠'], oddIndex: 2, explanationKey: 'thinkingGames.oddOneOut.explain.emotion' },
+    { items: ['1', '2', '3', 'A'], oddIndex: 3, explanationKey: 'thinkingGames.oddOneOut.explain.letter' },
+    { items: ['🐶', '🐱', '🐭', '🍕'], oddIndex: 3, explanationKey: 'thinkingGames.oddOneOut.explain.pet' },
+    { items: ['📚', '✏️', '📖', '🍔'], oddIndex: 3, explanationKey: 'thinkingGames.oddOneOut.explain.school' },
   ];
 
   const currentQuestion = questions[currentIndex];
@@ -135,7 +127,7 @@ function OddOneOut({ colors, onComplete }: any) {
 
   return (
     <View style={styles.gameContainer}>
-      <Text style={[styles.gameQuestion, { color: colors.text }]}>Which one is different?</Text>
+      <Text style={[styles.gameQuestion, { color: colors.text }]}>{t('thinkingGames.oddOneOut.question')}</Text>
       <View style={styles.itemsContainer}>
         {currentQuestion.items.map((item, idx) => (
           <TouchableOpacity
@@ -166,7 +158,7 @@ function OddOneOut({ colors, onComplete }: any) {
         <View style={[styles.explanationContainer, { backgroundColor: colors.error + '20' }]}>
           <MaterialIcons name="lightbulb" size={20} color={colors.error} />
           <Text style={[styles.explanationText, { color: colors.error }]}>
-            Hint: {currentQuestion.explanation}
+            {t('thinkingGames.hint')}: {t(currentQuestion.explanationKey)}
           </Text>
         </View>
       )}
@@ -175,8 +167,8 @@ function OddOneOut({ colors, onComplete }: any) {
           <View style={[styles.rewardModal, { backgroundColor: colors.surface }]}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <Text style={styles.rewardEmoji}>🎉</Text>
-              <Text style={[styles.rewardTitle, { color: colors.text }]}>Great Thinking!</Text>
-              <Text style={[styles.rewardMessage, { color: colors.textLight }]}>You found the odd one out!</Text>
+              <Text style={[styles.rewardTitle, { color: colors.text }]}>{t('thinkingGames.reward.oddOneOut.title')}</Text>
+              <Text style={[styles.rewardMessage, { color: colors.textLight }]}>{t('thinkingGames.reward.oddOneOut.message')}</Text>
               <View style={styles.starContainer}>
                 {[...Array(3)].map((_, i) => (
                   <Text key={i} style={styles.star}>⭐</Text>
@@ -193,6 +185,7 @@ function OddOneOut({ colors, onComplete }: any) {
 // Sequence Game Component
 function SequenceGame({ colors, onComplete }: any) {
   const { playSound, playCorrectAnswer, playStarEarned, playCelebration } = useSound();
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -200,6 +193,7 @@ function SequenceGame({ colors, onComplete }: any) {
   const [showReward, setShowReward] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
 
+  // Questions: sequences and options (items are emoji or numbers, no translation needed)
   const questions = [
     { sequence: ['🔴', '🔵', '🔴', '?'], options: ['🔴', '🔵', '🟢'], correct: '🔴' },
     { sequence: ['⭐', '❤️', '⭐', '?'], options: ['⭐', '❤️', '💙'], correct: '⭐' },
@@ -253,7 +247,7 @@ function SequenceGame({ colors, onComplete }: any) {
 
   return (
     <View style={styles.gameContainer}>
-      <Text style={[styles.gameQuestion, { color: colors.text }]}>What comes next in the pattern?</Text>
+      <Text style={[styles.gameQuestion, { color: colors.text }]}>{t('thinkingGames.sequence.question')}</Text>
       <View style={styles.sequenceContainer}>
         {currentQuestion.sequence.map((item, idx) => (
           <View key={idx} style={[
@@ -290,7 +284,7 @@ function SequenceGame({ colors, onComplete }: any) {
         <View style={[styles.explanationContainer, { backgroundColor: colors.error + '20' }]}>
           <MaterialIcons name="tips-and-updates" size={20} color={colors.error} />
           <Text style={[styles.explanationText, { color: colors.error }]}>
-            Look at the pattern! It repeats every two items.
+            {t('thinkingGames.sequence.hint')}
           </Text>
         </View>
       )}
@@ -299,8 +293,8 @@ function SequenceGame({ colors, onComplete }: any) {
           <View style={[styles.rewardModal, { backgroundColor: colors.surface }]}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <Text style={styles.rewardEmoji}>🎉</Text>
-              <Text style={[styles.rewardTitle, { color: colors.text }]}>Pattern Master!</Text>
-              <Text style={[styles.rewardMessage, { color: colors.textLight }]}>You completed the sequence!</Text>
+              <Text style={[styles.rewardTitle, { color: colors.text }]}>{t('thinkingGames.reward.sequence.title')}</Text>
+              <Text style={[styles.rewardMessage, { color: colors.textLight }]}>{t('thinkingGames.reward.sequence.message')}</Text>
               <View style={styles.starContainer}>
                 {[...Array(3)].map((_, i) => (
                   <Text key={i} style={styles.star}>⭐</Text>
@@ -317,12 +311,11 @@ function SequenceGame({ colors, onComplete }: any) {
 // Main Thinking Games Component
 export default function ThinkingGames() {
   const { colors } = useTheme();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { playSound, toggleSound, isEnabled, playCelebration } = useSound();
   const [selectedGame, setSelectedGame] = useState<ThinkingGame | null>(null);
   const [gameScore, setGameScore] = useState(0);
   const [showGameComplete, setShowGameComplete] = useState(false);
-  const [showSoundSettings, setShowSoundSettings] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
 
   const handleGameComplete = async (score: number) => {
@@ -352,9 +345,9 @@ export default function ThinkingGames() {
         return (
           <View style={styles.comingSoonContainer}>
             <MaterialIcons name="build" size={60} color={colors.primaryLight} />
-            <Text style={[styles.comingSoonText, { color: colors.text }]}>Coming Soon!</Text>
+            <Text style={[styles.comingSoonText, { color: colors.text }]}>{t('thinkingGames.comingSoon')}</Text>
             <Text style={[styles.comingSoonSubtext, { color: colors.textLight }]}>
-              More thinking games are being developed
+              {t('thinkingGames.comingSoonMessage')}
             </Text>
           </View>
         );
@@ -372,7 +365,7 @@ export default function ThinkingGames() {
             <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.text }]}>
-            {language === 'en' ? selectedGame.title : selectedGame.titleSin}
+            {t(selectedGame.titleKey)}
           </Text>
           <TouchableOpacity onPress={handleToggleSound} style={styles.soundButton}>
             <MaterialIcons 
@@ -392,11 +385,13 @@ export default function ThinkingGames() {
             <View style={[styles.completeModal, { backgroundColor: colors.surface }]}>
               <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
                 <Text style={styles.completeEmoji}>🏆</Text>
-                <Text style={[styles.completeTitle, { color: colors.text }]}>Challenge Complete!</Text>
+                <Text style={[styles.completeTitle, { color: colors.text }]}>{t('thinkingGames.complete.title')}</Text>
                 <Text style={[styles.completeMessage, { color: colors.textLight }]}>
-                  You're getting smarter every day!
+                  {t('thinkingGames.complete.message')}
                 </Text>
-                <Text style={[styles.completeScore, { color: colors.primary }]}>Score: {gameScore}</Text>
+                <Text style={[styles.completeScore, { color: colors.primary }]}>
+                  {t('score')}: {gameScore}
+                </Text>
                 <View style={styles.starContainer}>
                   {[...Array(3)].map((_, i) => (
                     <Text key={i} style={styles.star}>⭐</Text>
@@ -420,7 +415,7 @@ export default function ThinkingGames() {
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>
-          {language === 'en' ? 'Thinking Games' : 'චින්තන ක්‍රීඩා'}
+          {t('thinkingGames.mainTitle')}
         </Text>
         <TouchableOpacity onPress={handleToggleSound} style={styles.soundButton}>
           <MaterialIcons 
@@ -435,7 +430,7 @@ export default function ThinkingGames() {
       <View style={[styles.brainBanner, { backgroundColor: colors.primaryLight + '20' }]}>
         <MaterialIcons name="psychology" size={32} color={colors.primary} />
         <Text style={[styles.brainText, { color: colors.text }]}>
-          🧠 Train your brain with fun logic puzzles! 🧠
+          {t('thinkingGames.brainBanner')}
         </Text>
       </View>
 
@@ -453,14 +448,14 @@ export default function ThinkingGames() {
               <MaterialIcons name={game.icon as any} size={40} color={game.color} />
             </View>
             <Text style={[styles.gameTitle, { color: colors.text }]}>
-              {language === 'en' ? game.title : game.titleSin}
+              {t(game.titleKey)}
             </Text>
             <Text style={[styles.gameDescription, { color: colors.textLight }]}>
-              {language === 'en' ? game.description : game.descriptionSin}
+              {t(game.descKey)}
             </Text>
             <View style={[styles.playBadge, { backgroundColor: game.color }]}>
               <MaterialIcons name="play-arrow" size={16} color="#FFF" />
-              <Text style={styles.playBadgeText}>Play Now</Text>
+              <Text style={styles.playBadgeText}>{t('thinkingGames.playNow')}</Text>
             </View>
           </TouchableOpacity>
         ))}
@@ -468,9 +463,9 @@ export default function ThinkingGames() {
 
       {/* Tip Section */}
       <View style={[styles.tipContainer, { backgroundColor: colors.primaryLight + '20', margin: Spacing.md, padding: Spacing.md, borderRadius: BorderRadius.lg }]}>
-        <MaterialIcons name="lightbulb" size={24} color={colors.accentYellow} />
+        <MaterialIcons name="lightbulb" size={24} color="#FFD700" />
         <Text style={[styles.tipText, { color: colors.textLight, flex: 1, marginLeft: Spacing.sm }]}>
-          💡 Tip: Take your time and look for patterns. Every puzzle helps your brain grow stronger!
+          {t('thinkingGames.tip')}
         </Text>
       </View>
     </View>

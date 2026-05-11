@@ -1,4 +1,4 @@
-// app/(tabs)/routine.tsx (Dynamic Current Activity + Add Custom Routine)
+// app/(tabs)/routine.tsx (Daily Calming Activity + all previous features)
 
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
@@ -33,8 +33,41 @@ const initialRoutines = [
 ];
 
 // Available icons and colors for custom routines
-const AVAILABLE_ICONS = ['brightness-6', 'brush', 'restaurant', 'school', 'toys', 'lunch-dining', 'library-music', 'park', 'dinner-dining', 'bedtime', 'accessibility-new', 'favorite', 'pets', 'book', 'music-note'];
-const AVAILABLE_COLORS = ['#FFEB3B', '#9C27B0', '#FF9800', '#4CAF50', '#E91E63', '#2196F3', '#7B1FA2', '#795548', '#607D8B', '#F44336'];
+const AVAILABLE_ICONS = [
+  'brightness-6', 'brush', 'restaurant', 'school', 'toys',
+  'lunch-dining', 'library-music', 'park', 'dinner-dining', 'bedtime',
+  'accessibility-new', 'favorite', 'pets', 'book', 'music-note'
+];
+const AVAILABLE_COLORS = [
+  '#FFEB3B', '#9C27B0', '#FF9800', '#4CAF50', '#E91E63',
+  '#2196F3', '#7B1FA2', '#795548', '#607D8B', '#F44336'
+];
+
+// Helper to format time string from hour, minute, period
+const formatTimeString = (h: number, m: number, period: 'AM' | 'PM') => {
+  const hour = h.toString().padStart(2, '0');
+  const minute = m.toString().padStart(2, '0');
+  return `${hour}:${minute} ${period}`;
+};
+
+// ---------- Calming activities of the day ----------
+const CALMING_ACTIVITIES = [
+  { key: 'deepBreathing',   icon: 'air',          color: '#4FC3F7' },
+  { key: 'sensoryPlay',     icon: 'touch-app',    color: '#BA68C8' },
+  { key: 'listenMusic',     icon: 'headset',       color: '#4DB6AC' },
+  { key: 'coloring',        icon: 'brush',         color: '#FFB74D' },
+  { key: 'stretching',      icon: 'accessibility', color: '#AED581' },
+  { key: 'weightedBlanket', icon: 'checkroom',     color: '#90A4AE' },
+  { key: 'bubblePlay',      icon: 'bubble-chart',  color: '#64B5F6' },
+];
+
+const getDailyCalmingActivity = () => {
+  const today = new Date();
+  const startOfYear = new Date(today.getFullYear(), 0, 0);
+  const diff = today.getTime() - startOfYear.getTime();
+  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+  return CALMING_ACTIVITIES[dayOfYear % CALMING_ACTIVITIES.length];
+};
 
 export default function RoutineScreen() {
   const { colors } = useTheme();
@@ -42,16 +75,22 @@ export default function RoutineScreen() {
 
   // ------------- State -------------
   const [routines, setRoutines] = useState(initialRoutines);
-  const [activeRoutineId, setActiveRoutineId] = useState('4'); // default to learning time
+  const [activeRoutineId, setActiveRoutineId] = useState('4');
   const [stars, setStars] = useState(0);
-  const [timerSeconds, setTimerSeconds] = useState(15 * 60); // 15 minutes default
+  const [timerSeconds, setTimerSeconds] = useState(15 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [timerInput, setTimerInput] = useState('15'); // minutes
+  const [timerInput, setTimerInput] = useState('15');
   const [modalVisible, setModalVisible] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newTime, setNewTime] = useState('');
+  // Time picker state
+  const [selectedHour, setSelectedHour] = useState(9);
+  const [selectedMinute, setSelectedMinute] = useState(0);
+  const [selectedPeriod, setSelectedPeriod] = useState<'AM' | 'PM'>('AM');
   const [selectedIcon, setSelectedIcon] = useState('accessibility-new');
   const [selectedColor, setSelectedColor] = useState('#2196F3');
+
+  // Daily calming activity (changes each day)
+  const dailyCalming = getDailyCalmingActivity();
 
   // Animated values for circular timer
   const timerProgress = useRef(new Animated.Value(1)).current;
@@ -110,18 +149,19 @@ export default function RoutineScreen() {
     );
     setStars(prev => {
       const routine = routines.find(r => r.id === id);
-      return routine && !routine.completed ? prev + 1 : prev; // add star when newly completed
+      return routine && !routine.completed ? prev + 1 : prev;
     });
   };
 
   // ---------- Add custom routine ----------
   const handleAddCustomRoutine = () => {
-    if (!newTitle.trim() || !newTime.trim()) return;
+    if (!newTitle.trim()) return;
 
+    const newTime = formatTimeString(selectedHour, selectedMinute, selectedPeriod);
     const newRoutine = {
       id: Date.now().toString(),
-      time: newTime.trim(),
-      titleKey: newTitle.trim(), // custom routines use the entered text directly (no translation)
+      time: newTime,
+      titleKey: newTitle.trim(),
       icon: selectedIcon,
       color: selectedColor,
       completed: false,
@@ -129,11 +169,21 @@ export default function RoutineScreen() {
 
     setRoutines(prev => [...prev, newRoutine]);
     setModalVisible(false);
+    // Reset form
     setNewTitle('');
-    setNewTime('');
+    setSelectedHour(9);
+    setSelectedMinute(0);
+    setSelectedPeriod('AM');
     setSelectedIcon('accessibility-new');
     setSelectedColor('#2196F3');
   };
+
+  // ---------- Time picker helpers ----------
+  const incrementHour = () => setSelectedHour(prev => (prev % 12) + 1);
+  const decrementHour = () => setSelectedHour(prev => prev === 1 ? 12 : prev - 1);
+  const incrementMinute = () => setSelectedMinute(prev => (prev + 5) % 60);
+  const decrementMinute = () => setSelectedMinute(prev => prev === 0 ? 55 : prev - 5);
+  const togglePeriod = () => setSelectedPeriod(prev => (prev === 'AM' ? 'PM' : 'AM'));
 
   // ---------- Render routine item ----------
   const renderRoutineItem = ({ item }: any) => (
@@ -156,7 +206,6 @@ export default function RoutineScreen() {
         </View>
         <View style={styles.textContainer}>
           <Text style={[styles.routineTitle, { color: colors.text }]}>
-            {/* If titleKey contains spaces (custom), display directly, else use translation */}
             {item.titleKey.includes(' ') ? item.titleKey : t(item.titleKey)}
           </Text>
           <Text style={[styles.routineStatus, { color: colors.textLight }]}>
@@ -318,6 +367,24 @@ export default function RoutineScreen() {
           </Text>
         </TouchableOpacity>
 
+        {/* Calming Activity of the Day */}
+        <Card
+          title={t('calmingActivity') || 'Calming Activity'}
+          icon={dailyCalming.icon}
+          iconColor={dailyCalming.color}
+          backgroundColor={dailyCalming.color + '15'}
+        >
+          <View style={styles.calmingContainer}>
+            <MaterialIcons name={dailyCalming.icon as any} size={48} color={dailyCalming.color} />
+            <Text style={[styles.calmingText, { color: colors.text }]}>
+              {t(dailyCalming.key) || dailyCalming.key.replace(/([A-Z])/g, ' $1').trim()}
+            </Text>
+            <Text style={[styles.calmingSubtext, { color: colors.textLight }]}>
+              {t('calmingActivityHint') || 'Try this today to feel calm and focused.'}
+            </Text>
+          </View>
+        </Card>
+
         {/* Routine Tips */}
         <Card
           title={t('routineTips')}
@@ -357,17 +424,62 @@ export default function RoutineScreen() {
               onChangeText={setNewTitle}
             />
 
-            {/* Time Input */}
-            <TextInput
-              style={[styles.input, { color: colors.text, borderColor: colors.primaryLight, backgroundColor: colors.surface }]}
-              placeholder={t('time') || 'e.g., 3:30 PM'}
-              placeholderTextColor={colors.textLight}
-              value={newTime}
-              onChangeText={setNewTime}
-            />
+            {/* Visual Time Picker */}
+            <Text style={[styles.pickerLabel, { color: colors.text, marginBottom: Spacing.sm }]}>
+              {t('time') || 'Time'}
+            </Text>
+            <View style={styles.timePickerContainer}>
+              {/* Hour Picker */}
+              <View style={styles.timeColumn}>
+                <TouchableOpacity onPress={incrementHour} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.timeValue, { color: colors.text }]}>
+                  {selectedHour.toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity onPress={decrementHour} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={styles.timeUnit}>Hour</Text>
+              </View>
+
+              {/* Minute Picker */}
+              <View style={styles.timeColumn}>
+                <TouchableOpacity onPress={incrementMinute} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.timeValue, { color: colors.text }]}>
+                  {selectedMinute.toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity onPress={decrementMinute} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={styles.timeUnit}>Min</Text>
+              </View>
+
+              {/* AM/PM Toggle */}
+              <View style={styles.timeColumn}>
+                <TouchableOpacity
+                  onPress={togglePeriod}
+                  style={[styles.periodButton, { backgroundColor: selectedPeriod === 'AM' ? colors.primary : colors.primaryLight }]}
+                >
+                  <Text style={[styles.periodText, { color: selectedPeriod === 'AM' ? '#FFFFFF' : colors.text }]}>
+                    AM
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={togglePeriod}
+                  style={[styles.periodButton, { backgroundColor: selectedPeriod === 'PM' ? colors.primary : colors.primaryLight, marginTop: 8 }]}
+                >
+                  <Text style={[styles.periodText, { color: selectedPeriod === 'PM' ? '#FFFFFF' : colors.text }]}>
+                    PM
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
             {/* Icon Picker */}
-            <Text style={[styles.pickerLabel, { color: colors.text }]}>
+            <Text style={[styles.pickerLabel, { color: colors.text, marginTop: Spacing.md }]}>
               {t('chooseIcon') || 'Choose icon'}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconRow}>
@@ -375,7 +487,13 @@ export default function RoutineScreen() {
                 <TouchableOpacity
                   key={icon}
                   onPress={() => setSelectedIcon(icon)}
-                  style={[styles.iconOption, { borderColor: selectedIcon === icon ? colors.primary : 'transparent', backgroundColor: selectedIcon === icon ? colors.primaryLight : colors.surface }]}
+                  style={[
+                    styles.iconOption,
+                    {
+                      borderColor: selectedIcon === icon ? colors.primary : 'transparent',
+                      backgroundColor: selectedIcon === icon ? colors.primaryLight : colors.surface,
+                    },
+                  ]}
                 >
                   <MaterialIcons name={icon as any} size={32} color={selectedIcon === icon ? colors.primary : colors.textLight} />
                 </TouchableOpacity>
@@ -391,7 +509,10 @@ export default function RoutineScreen() {
                 <TouchableOpacity
                   key={color}
                   onPress={() => setSelectedColor(color)}
-                  style={[styles.colorOption, { backgroundColor: color, borderColor: selectedColor === color ? colors.primary : 'transparent', }]}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: color, borderColor: selectedColor === color ? colors.primary : 'transparent' },
+                  ]}
                 />
               ))}
             </View>
@@ -433,10 +554,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     gap: 8,
   },
-  starText: {
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.lg,
-  },
+  starText: { fontWeight: 'bold', fontSize: Typography.fontSize.lg },
   currentActivityRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md },
   currentIcon: {
     width: 60,
@@ -606,6 +724,22 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     lineHeight: 24,
   },
+  // Calming activity styles
+  calmingContainer: {
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+  },
+  calmingText: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: 'bold',
+    marginTop: Spacing.sm,
+    textAlign: 'center',
+  },
+  calmingSubtext: {
+    fontSize: Typography.fontSize.sm,
+    marginTop: Spacing.xs,
+    textAlign: 'center',
+  },
   // Modal styles
   modalOverlay: {
     flex: 1,
@@ -615,7 +749,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '90%',
-    maxHeight: '80%',
+    maxHeight: '90%',
     borderRadius: 20,
     padding: Spacing.xl,
   },
@@ -633,7 +767,45 @@ const styles = StyleSheet.create({
   },
   pickerLabel: {
     fontWeight: '600',
-    marginBottom: Spacing.sm,
+    fontSize: Typography.fontSize.md,
+    marginBottom: Spacing.xs,
+  },
+  timePickerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    paddingVertical: Spacing.md,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+  },
+  timeColumn: {
+    alignItems: 'center',
+    width: 80,
+  },
+  timeArrowButton: {
+    padding: 4,
+  },
+  timeValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    marginVertical: 4,
+  },
+  timeUnit: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+  },
+  periodButton: {
+    width: 70,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  periodText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   iconRow: {
     flexDirection: 'row',

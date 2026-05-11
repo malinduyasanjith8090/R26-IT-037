@@ -1,17 +1,18 @@
-// app/(games)/NumberHuntGame.tsx (with Sounds & Haptics)
+// app/(games)/NumberHuntGame.tsx (with Full i18n)
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSound } from '../../hooks/useSound';
 
@@ -19,7 +20,7 @@ const { width } = Dimensions.get('window');
 
 interface Level {
   id: number;
-  name: string;
+  nameKey: string;
   numberRange: { min: number; max: number };
   questions: Question[];
 }
@@ -27,75 +28,76 @@ interface Level {
 interface Question {
   id: number;
   targetNumber: number;
-  description: string;
+  descKey: string;
   emoji: string;
 }
 
 const levels: Level[] = [
   {
     id: 1,
-    name: 'Numbers 1-5',
+    nameKey: 'numberHunt.level1.name',
     numberRange: { min: 1, max: 5 },
     questions: [
-      { id: 1, targetNumber: 1, description: 'Find number one', emoji: '☝️' },
-      { id: 2, targetNumber: 2, description: 'Find number two', emoji: '✌️' },
-      { id: 3, targetNumber: 3, description: 'Find number three', emoji: '👌' },
-      { id: 4, targetNumber: 4, description: 'Find number four', emoji: '🖖' },
-      { id: 5, targetNumber: 5, description: 'Find number five', emoji: '🖐️' },
+      { id: 1, targetNumber: 1, descKey: 'numberHunt.level1.q1', emoji: '☝️' },
+      { id: 2, targetNumber: 2, descKey: 'numberHunt.level1.q2', emoji: '✌️' },
+      { id: 3, targetNumber: 3, descKey: 'numberHunt.level1.q3', emoji: '👌' },
+      { id: 4, targetNumber: 4, descKey: 'numberHunt.level1.q4', emoji: '🖖' },
+      { id: 5, targetNumber: 5, descKey: 'numberHunt.level1.q5', emoji: '🖐️' },
     ],
   },
   {
     id: 2,
-    name: 'Numbers 1-10',
+    nameKey: 'numberHunt.level2.name',
     numberRange: { min: 1, max: 10 },
     questions: [
-      { id: 1, targetNumber: 6, description: 'Find number six', emoji: '6️⃣' },
-      { id: 2, targetNumber: 7, description: 'Find number seven', emoji: '7️⃣' },
-      { id: 3, targetNumber: 8, description: 'Find number eight', emoji: '8️⃣' },
-      { id: 4, targetNumber: 9, description: 'Find number nine', emoji: '9️⃣' },
-      { id: 5, targetNumber: 10, description: 'Find number ten', emoji: '🔟' },
+      { id: 1, targetNumber: 6, descKey: 'numberHunt.level2.q1', emoji: '6️⃣' },
+      { id: 2, targetNumber: 7, descKey: 'numberHunt.level2.q2', emoji: '7️⃣' },
+      { id: 3, targetNumber: 8, descKey: 'numberHunt.level2.q3', emoji: '8️⃣' },
+      { id: 4, targetNumber: 9, descKey: 'numberHunt.level2.q4', emoji: '9️⃣' },
+      { id: 5, targetNumber: 10, descKey: 'numberHunt.level2.q5', emoji: '🔟' },
     ],
   },
   {
     id: 3,
-    name: 'Counting Objects',
+    nameKey: 'numberHunt.level3.name',
     numberRange: { min: 1, max: 5 },
     questions: [
-      { id: 1, targetNumber: 1, description: 'How many apples?', emoji: '🍎' },
-      { id: 2, targetNumber: 2, description: 'How many stars?', emoji: '⭐⭐' },
-      { id: 3, targetNumber: 3, description: 'How many hearts?', emoji: '❤️❤️❤️' },
-      { id: 4, targetNumber: 4, description: 'How many circles?', emoji: '🔴🔴🔴🔴' },
-      { id: 5, targetNumber: 5, description: 'How many squares?', emoji: '🟦🟦🟦🟦🟦' },
+      { id: 1, targetNumber: 1, descKey: 'numberHunt.level3.q1', emoji: '🍎' },
+      { id: 2, targetNumber: 2, descKey: 'numberHunt.level3.q2', emoji: '⭐⭐' },
+      { id: 3, targetNumber: 3, descKey: 'numberHunt.level3.q3', emoji: '❤️❤️❤️' },
+      { id: 4, targetNumber: 4, descKey: 'numberHunt.level3.q4', emoji: '🔴🔴🔴🔴' },
+      { id: 5, targetNumber: 5, descKey: 'numberHunt.level3.q5', emoji: '🟦🟦🟦🟦🟦' },
     ],
   },
   {
     id: 4,
-    name: 'Number Words',
+    nameKey: 'numberHunt.level4.name',
     numberRange: { min: 1, max: 5 },
     questions: [
-      { id: 1, targetNumber: 1, description: 'ONE', emoji: '🔢' },
-      { id: 2, targetNumber: 2, description: 'TWO', emoji: '🔢' },
-      { id: 3, targetNumber: 3, description: 'THREE', emoji: '🔢' },
-      { id: 4, targetNumber: 4, description: 'FOUR', emoji: '🔢' },
-      { id: 5, targetNumber: 5, description: 'FIVE', emoji: '🔢' },
+      { id: 1, targetNumber: 1, descKey: 'numberHunt.level4.q1', emoji: '🔢' },
+      { id: 2, targetNumber: 2, descKey: 'numberHunt.level4.q2', emoji: '🔢' },
+      { id: 3, targetNumber: 3, descKey: 'numberHunt.level4.q3', emoji: '🔢' },
+      { id: 4, targetNumber: 4, descKey: 'numberHunt.level4.q4', emoji: '🔢' },
+      { id: 5, targetNumber: 5, descKey: 'numberHunt.level4.q5', emoji: '🔢' },
     ],
   },
   {
     id: 5,
-    name: 'Number Hunt',
+    nameKey: 'numberHunt.level5.name',
     numberRange: { min: 1, max: 10 },
     questions: [
-      { id: 1, targetNumber: 3, description: 'Find the hidden number 3', emoji: '🔍' },
-      { id: 2, targetNumber: 7, description: 'Find the hidden number 7', emoji: '🔍' },
-      { id: 3, targetNumber: 5, description: 'Find the hidden number 5', emoji: '🔍' },
-      { id: 4, targetNumber: 9, description: 'Find the hidden number 9', emoji: '🔍' },
-      { id: 5, targetNumber: 2, description: 'Find the hidden number 2', emoji: '🔍' },
+      { id: 1, targetNumber: 3, descKey: 'numberHunt.level5.q1', emoji: '🔍' },
+      { id: 2, targetNumber: 7, descKey: 'numberHunt.level5.q2', emoji: '🔍' },
+      { id: 3, targetNumber: 5, descKey: 'numberHunt.level5.q3', emoji: '🔍' },
+      { id: 4, targetNumber: 9, descKey: 'numberHunt.level5.q4', emoji: '🔍' },
+      { id: 5, targetNumber: 2, descKey: 'numberHunt.level5.q5', emoji: '🔍' },
     ],
   },
 ];
 
 export default function NumberHuntGame() {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const { 
     playSound, 
     playCelebration, 
@@ -123,7 +125,6 @@ export default function NumberHuntGame() {
 
   useEffect(() => {
     generateOptions();
-    // Play level start sound
     playSound('click', false);
   }, [currentQuestionIndex]);
 
@@ -163,7 +164,7 @@ export default function NumberHuntGame() {
       return (
         <View style={styles.wordContainer}>
           <Text style={[styles.wordText, { color: colors.primary }]}>
-            {currentQuestion.description}
+            {t(currentQuestion.descKey)}
           </Text>
         </View>
       );
@@ -172,7 +173,7 @@ export default function NumberHuntGame() {
         <View style={styles.numberDisplay}>
           <Text style={styles.numberEmoji}>{emoji}</Text>
           <Text style={[styles.numberDescription, { color: colors.text }]}>
-            {currentQuestion.description}
+            {t(currentQuestion.descKey)}
           </Text>
         </View>
       );
@@ -193,13 +194,9 @@ export default function NumberHuntGame() {
     setIsCorrect(correct);
 
     if (correct) {
-      // Play correct answer sound with star effects
       await playCorrectAnswer();
-      
       const newScore = score + 10;
       setScore(newScore);
-      
-      // Play star earned sound
       await playStarEarned();
 
       Animated.sequence([
@@ -228,7 +225,6 @@ export default function NumberHuntGame() {
         }
       }, 1500);
     } else {
-      // Play wrong answer sound
       await playSound('wrong', true);
       
       Animated.sequence([
@@ -281,12 +277,11 @@ export default function NumberHuntGame() {
     </View>
   );
 
-  // Get encouraging message based on score
   const getEncouragementMessage = () => {
-    if (score === 0) return "Let's start counting! 🌟";
-    if (score < 30) return "Great start! Keep going! 🎉";
-    if (score < 60) return "You're doing amazing! ⭐";
-    return "Number champion in the making! 🏆";
+    if (score === 0) return t('numberHunt.encouragement.start');
+    if (score < 30) return t('numberHunt.encouragement.greatStart');
+    if (score < 60) return t('numberHunt.encouragement.amazing');
+    return t('numberHunt.encouragement.champion');
   };
 
   return (
@@ -296,18 +291,10 @@ export default function NumberHuntGame() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.text }]}>Number Hunt</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('numberHunt.title')}</Text>
         
-        {/* Sound Toggle Button */}
-        <TouchableOpacity 
-          style={styles.soundButton}
-          onPress={handleToggleSound}
-        >
-          <MaterialIcons 
-            name={soundEnabled ? "volume-up" : "volume-off"} 
-            size={24} 
-            color={colors.primary} 
-          />
+        <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
+          <MaterialIcons name={soundEnabled ? "volume-up" : "volume-off"} size={24} color={colors.primary} />
         </TouchableOpacity>
         
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
@@ -318,9 +305,9 @@ export default function NumberHuntGame() {
 
       {/* Level Info */}
       <View style={[styles.levelContainer, { backgroundColor: colors.primaryLight + '30' }]}>
-        <Text style={[styles.levelName, { color: colors.text }]}>{level.name}</Text>
+        <Text style={[styles.levelName, { color: colors.text }]}>{t(level.nameKey)}</Text>
         <Text style={[styles.levelProgress, { color: colors.textLight }]}>
-          Question {currentQuestionIndex + 1} of {level.questions.length}
+          {t('question')} {currentQuestionIndex + 1} {t('of')} {level.questions.length}
         </Text>
       </View>
 
@@ -349,7 +336,7 @@ export default function NumberHuntGame() {
         onPress={showHintMessage}
       >
         <MaterialIcons name="lightbulb" size={20} color={colors.primary} />
-        <Text style={[styles.hintButtonText, { color: colors.primary }]}>Need a Hint?</Text>
+        <Text style={[styles.hintButtonText, { color: colors.primary }]}>{t('numberHunt.hintButton')}</Text>
       </TouchableOpacity>
 
       {/* Options */}
@@ -386,19 +373,19 @@ export default function NumberHuntGame() {
       {/* Hint Popup */}
       {showHint && (
         <Animated.View style={[styles.hintPopup, { backgroundColor: colors.surface }]}>
-          <MaterialIcons name="lightbulb" size={24} color={colors.accentYellow} />
+          <MaterialIcons name="lightbulb" size={24} color={colors.accentYellow || '#FFD700'} />
           <Text style={[styles.hintPopupText, { color: colors.text }]}>
-            Count carefully! The answer is {currentQuestion.targetNumber}
+            {t('numberHunt.hintMessage', { number: currentQuestion.targetNumber })}
           </Text>
         </Animated.View>
       )}
 
-      {/* Feedback */}
+      {/* Feedback for wrong answer */}
       {selectedAnswer && !isCorrect && (
         <View style={[styles.feedbackContainer, { backgroundColor: colors.error + '20' }]}>
           <MaterialIcons name="tips-and-updates" size={20} color={colors.error} />
           <Text style={[styles.feedbackText, { color: colors.error }]}>
-            Try again! Count carefully. The correct answer is {currentQuestion.targetNumber}
+            {t('numberHunt.feedbackWrong', { number: currentQuestion.targetNumber })}
           </Text>
         </View>
       )}
@@ -424,19 +411,19 @@ export default function NumberHuntGame() {
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <Text style={styles.modalEmoji}>🎉</Text>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Great Counting!</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('numberHunt.reward.title')}</Text>
               <Text style={[styles.modalMessage, { color: colors.textLight }]}>
-                You completed {level.name}!
+                {t('numberHunt.reward.message', { levelName: t(level.nameKey) })}
               </Text>
               <Text style={[styles.modalScore, { color: colors.primary }]}>
-                Score: {score} points
+                {t('score')}: {score} {t('points')}
               </Text>
               {getStarRating(stars)}
               <TouchableOpacity
                 style={[styles.modalButton, { backgroundColor: colors.primary }]}
                 onPress={nextLevel}
               >
-                <Text style={styles.modalButtonText}>Next Level →</Text>
+                <Text style={styles.modalButtonText}>{t('numberHunt.nextLevel')} →</Text>
               </TouchableOpacity>
             </Animated.View>
           </View>
@@ -449,12 +436,12 @@ export default function NumberHuntGame() {
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <Text style={styles.modalEmoji}>🏆</Text>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Number Champion!</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('numberHunt.complete.title')}</Text>
               <Text style={[styles.modalMessage, { color: colors.textLight }]}>
-                You mastered all numbers!
+                {t('numberHunt.complete.message')}
               </Text>
               <Text style={[styles.modalScore, { color: colors.primary }]}>
-                Total Score: {score} points
+                {t('totalScore')}: {score} {t('points')}
               </Text>
               {getStarRating(3)}
               <View style={styles.modalButtons}>
@@ -462,13 +449,13 @@ export default function NumberHuntGame() {
                   style={[styles.modalButton, { backgroundColor: colors.primary }]}
                   onPress={resetGame}
                 >
-                  <Text style={styles.modalButtonText}>Play Again</Text>
+                  <Text style={styles.modalButtonText}>{t('playAgain')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.modalButton, { backgroundColor: colors.secondary }]}
                   onPress={() => router.back()}
                 >
-                  <Text style={styles.modalButtonText}>Back to Menu</Text>
+                  <Text style={styles.modalButtonText}>{t('backToMenu')}</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -539,9 +526,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   objectEmoji: { fontSize: 50 },
-  wordContainer: {
-    alignItems: 'center',
-  },
+  wordContainer: { alignItems: 'center' },
   wordText: { fontSize: 36, fontWeight: 'bold', letterSpacing: 5 },
   hintButton: {
     flexDirection: 'row',

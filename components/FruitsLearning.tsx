@@ -1,17 +1,18 @@
-// components/learning/FruitsLearning.tsx (with Sounds)
+// components/learning/FruitsLearning.tsx (with Full i18n)
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { BorderRadius, Spacing } from '../constants/theme';
+import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSound } from '../hooks/useSound';
 
@@ -19,28 +20,29 @@ const { width } = Dimensions.get('window');
 
 interface FruitLesson {
   id: string;
-  name: string;
   emoji: string;
   color: string;
-  taste: string;
-  benefit: string;
+  nameKey: string;      // translation key for fruit name
+  tasteKey: string;     // translation key for taste description
+  benefitKey: string;   // translation key for benefit message
 }
 
 const fruitsData: FruitLesson[] = [
-  { id: 'apple', name: 'Apple', emoji: '🍎', color: '#FF3B30', taste: 'Sweet and crispy', benefit: '🍎 An apple a day keeps the doctor away!' },
-  { id: 'banana', name: 'Banana', emoji: '🍌', color: '#FFCC00', taste: 'Soft and sweet', benefit: '⚡ Gives you energy to play all day!' },
-  { id: 'orange', name: 'Orange', emoji: '🍊', color: '#FF9500', taste: 'Juicy and tangy', benefit: '💪 Vitamin C makes you strong!' },
-  { id: 'strawberry', name: 'Strawberry', emoji: '🍓', color: '#FF3B30', taste: 'Sweet and juicy', benefit: '❤️ Good for your heart!' },
-  { id: 'grape', name: 'Grape', emoji: '🍇', color: '#5856D6', taste: 'Sweet and fun to eat', benefit: '🧠 Helps you remember things better!' },
-  { id: 'watermelon', name: 'Watermelon', emoji: '🍉', color: '#34C759', taste: 'Refreshing and sweet', benefit: '💧 Keeps you hydrated on sunny days!' },
-  { id: 'pineapple', name: 'Pineapple', emoji: '🍍', color: '#FF9500', taste: 'Sweet and tropical', benefit: '🦷 Helps your digestion!' },
-  { id: 'mango', name: 'Mango', emoji: '🥭', color: '#FF9500', taste: 'Sweet and creamy', benefit: '👀 Good for your eyesight!' },
-  { id: 'peach', name: 'Peach', emoji: '🍑', color: '#FF6B6B', taste: 'Soft and sweet', benefit: '✨ Makes your skin healthy and glow!' },
-  { id: 'cherry', name: 'Cherry', emoji: '🍒', color: '#FF3B30', taste: 'Sweet and tart', benefit: '😴 Helps you sleep well at night!' },
+  { id: 'apple', emoji: '🍎', color: '#FF3B30', nameKey: 'fruit.apple', tasteKey: 'fruit.apple.taste', benefitKey: 'fruit.apple.benefit' },
+  { id: 'banana', emoji: '🍌', color: '#FFCC00', nameKey: 'fruit.banana', tasteKey: 'fruit.banana.taste', benefitKey: 'fruit.banana.benefit' },
+  { id: 'orange', emoji: '🍊', color: '#FF9500', nameKey: 'fruit.orange', tasteKey: 'fruit.orange.taste', benefitKey: 'fruit.orange.benefit' },
+  { id: 'strawberry', emoji: '🍓', color: '#FF3B30', nameKey: 'fruit.strawberry', tasteKey: 'fruit.strawberry.taste', benefitKey: 'fruit.strawberry.benefit' },
+  { id: 'grape', emoji: '🍇', color: '#5856D6', nameKey: 'fruit.grape', tasteKey: 'fruit.grape.taste', benefitKey: 'fruit.grape.benefit' },
+  { id: 'watermelon', emoji: '🍉', color: '#34C759', nameKey: 'fruit.watermelon', tasteKey: 'fruit.watermelon.taste', benefitKey: 'fruit.watermelon.benefit' },
+  { id: 'pineapple', emoji: '🍍', color: '#FF9500', nameKey: 'fruit.pineapple', tasteKey: 'fruit.pineapple.taste', benefitKey: 'fruit.pineapple.benefit' },
+  { id: 'mango', emoji: '🥭', color: '#FF9500', nameKey: 'fruit.mango', tasteKey: 'fruit.mango.taste', benefitKey: 'fruit.mango.benefit' },
+  { id: 'peach', emoji: '🍑', color: '#FF6B6B', nameKey: 'fruit.peach', tasteKey: 'fruit.peach.taste', benefitKey: 'fruit.peach.benefit' },
+  { id: 'cherry', emoji: '🍒', color: '#FF3B30', nameKey: 'fruit.cherry', tasteKey: 'fruit.cherry.taste', benefitKey: 'fruit.cherry.benefit' },
 ];
 
 export default function FruitsLearning({ onBack, onProgress }: any) {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const { 
     playSound, 
     playCelebration, 
@@ -61,32 +63,31 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
 
   const currentFruit = fruitsData[currentIndex];
 
-  const getRandomRewardMessage = () => {
-    const messages = [
-      '🌟 Yummy! 🌟',
-      '🎉 Fruit Master! 🎉',
-      '⭐ Sweet Job! ⭐',
-      '🎈 Delicious! 🎈',
-      '🏆 Berry Good! 🏆',
+  // Reward messages – use translation keys
+  const getRandomRewardMessageKey = () => {
+    const messageKeys = [
+      'reward.yummy',
+      'reward.fruitMaster',
+      'reward.sweetJob',
+      'reward.delicious',
+      'reward.berryGood',
     ];
-    return messages[Math.floor(Math.random() * messages.length)];
+    return messageKeys[Math.floor(Math.random() * messageKeys.length)];
   };
 
   const handleAnswer = async (answer: string) => {
     setSelectedAnswer(answer);
-    const correct = answer === currentFruit.name;
+    const correct = answer === t(currentFruit.nameKey);
     setIsCorrect(correct);
 
     if (correct) {
-      // Play correct answer sound
       await playCorrectAnswer();
       
       const newScore = score + 10;
       setScore(newScore);
-      setRewardMessage(getRandomRewardMessage());
+      setRewardMessage(t(getRandomRewardMessageKey()));
       setShowRewardModal(true);
       
-      // Play star sounds for extra delight
       await playStarEarned();
 
       Animated.sequence([
@@ -106,7 +107,7 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
         } else {
           await playCelebration();
           setShowRewardModal(true);
-          setRewardMessage('🎉 Complete! You mastered all fruits! 🎉');
+          setRewardMessage(t('reward.completeAllFruits'));
         }
       }, 2000);
     } else {
@@ -120,9 +121,14 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
   };
 
   const getOptions = () => {
-    const options = [currentFruit.name];
-    const otherFruits = fruitsData.filter(f => f.name !== currentFruit.name).map(f => f.name).slice(0, 3);
-    options.push(...otherFruits);
+    const currentName = t(currentFruit.nameKey);
+    const options = [currentName];
+    const otherNames = fruitsData
+      .filter(f => f.id !== currentFruit.id)
+      .map(f => t(f.nameKey))
+      .slice(0, 3);
+    options.push(...otherNames);
+    // Shuffle
     for (let i = options.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [options[i], options[j]] = [options[j], options[i]];
@@ -153,7 +159,6 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         
-        {/* Sound Toggle Button */}
         <TouchableOpacity 
           style={styles.soundButton}
           onPress={handleToggleSound}
@@ -177,7 +182,7 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
           <View style={[styles.progressFill, { width: `${((currentIndex + 1) / fruitsData.length) * 100}%`, backgroundColor: colors.primary }]} />
         </View>
         <Text style={[styles.progressText, { color: colors.textLight }]}>
-          {currentIndex + 1} of {fruitsData.length} Fruits
+          {t('progress.of', { current: currentIndex + 1, total: fruitsData.length, item: t('fruits') })}
         </Text>
       </View>
 
@@ -194,13 +199,13 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
           >
             <View style={[styles.fruitCard, { backgroundColor: currentFruit.color + '20' }]}>
               <Text style={styles.fruitEmoji}>{currentFruit.emoji}</Text>
-              <Text style={[styles.fruitName, { color: colors.text }]}>{currentFruit.name}</Text>
+              <Text style={[styles.fruitName, { color: colors.text }]}>{t(currentFruit.nameKey)}</Text>
               <TouchableOpacity 
                 style={[styles.tasteBadge, { backgroundColor: currentFruit.color }]}
                 onPress={showNutritionBenefit}
               >
                 <MaterialIcons name="info" size={16} color="#FFF" />
-                <Text style={styles.tasteText}>{currentFruit.taste}</Text>
+                <Text style={styles.tasteText}>{t(currentFruit.tasteKey)}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -209,7 +214,7 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
           <View style={[styles.benefitContainer, { backgroundColor: colors.surface }]}>
             <MaterialIcons name="favorite" size={24} color={colors.success} />
             <Text style={[styles.benefitText, { color: colors.text }]}>
-              {currentFruit.benefit}
+              {t(currentFruit.benefitKey)}
             </Text>
           </View>
 
@@ -217,56 +222,59 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
           <View style={[styles.nutritionContainer, { backgroundColor: colors.primaryLight + '30' }]}>
             <MaterialIcons name="restaurant" size={20} color={currentFruit.color} />
             <Text style={[styles.nutritionText, { color: colors.text }]}>
-              {currentFruit.name}s are {currentFruit.taste.toLowerCase()}!
+              {t('fruit.nutritionFact', { fruit: t(currentFruit.nameKey), taste: t(currentFruit.tasteKey).toLowerCase() })}
             </Text>
           </View>
 
           {/* Question */}
           <View style={styles.questionContainer}>
             <Text style={[styles.questionText, { color: colors.text }]}>
-              🤔 What fruit is this? 🤔
+              🤔 {t('fruit.whatFruitIsThis')} 🤔
             </Text>
           </View>
 
           {/* Options */}
           <View style={styles.optionsContainer}>
-            {getOptions().map((option, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={[
-                  styles.optionButton,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: selectedAnswer === option
-                      ? (isCorrect ? colors.success : colors.error)
-                      : colors.primaryLight,
-                    borderWidth: 3,
-                  }
-                ]}
-                onPress={() => handleAnswer(option)}
-                disabled={selectedAnswer !== null}
-              >
-                <Text style={styles.optionEmoji}>
-                  {fruitsData.find(f => f.name === option)?.emoji || '🍎'}
-                </Text>
-                <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
-                {selectedAnswer === option && (
-                  <MaterialIcons
-                    name={isCorrect ? "check-circle" : "cancel"}
-                    size={28}
-                    color={isCorrect ? colors.success : colors.error}
-                  />
-                )}
-              </TouchableOpacity>
-            ))}
+            {getOptions().map((option, idx) => {
+              const fruitEntry = fruitsData.find(f => t(f.nameKey) === option);
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[
+                    styles.optionButton,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: selectedAnswer === option
+                        ? (isCorrect ? colors.success : colors.error)
+                        : colors.primaryLight,
+                      borderWidth: 3,
+                    }
+                  ]}
+                  onPress={() => handleAnswer(option)}
+                  disabled={selectedAnswer !== null}
+                >
+                  <Text style={styles.optionEmoji}>
+                    {fruitEntry?.emoji || '🍎'}
+                  </Text>
+                  <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
+                  {selectedAnswer === option && (
+                    <MaterialIcons
+                      name={isCorrect ? "check-circle" : "cancel"}
+                      size={28}
+                      color={isCorrect ? colors.success : colors.error}
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {/* Feedback */}
+          {/* Feedback for wrong answer */}
           {selectedAnswer && !isCorrect && (
             <View style={[styles.feedbackContainer, { backgroundColor: colors.error + '20' }]}>
               <MaterialIcons name="sentiment-dissatisfied" size={24} color={colors.error} />
               <Text style={[styles.feedbackText, { color: colors.error }]}>
-                ✗ Try again! The correct fruit is {currentFruit.name}! ✗
+                {t('fruit.tryAgainCorrectIs', { fruit: t(currentFruit.nameKey) })}
               </Text>
             </View>
           )}
@@ -276,7 +284,7 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
             <View style={[styles.encouragementContainer, { backgroundColor: colors.success + '20' }]}>
               <MaterialIcons name="emoji-events" size={24} color={colors.success} />
               <Text style={[styles.encouragementText, { color: colors.success }]}>
-                🎉 Great progress! You're becoming a fruit expert! 🎉
+                🎉 {t('reward.greatProgressFruit')} 🎉
               </Text>
             </View>
           )}
@@ -288,7 +296,7 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
         <Animated.View style={[styles.tipNotification, { backgroundColor: currentFruit.color }]}>
           <MaterialIcons name="favorite" size={20} color="#FFF" />
           <Text style={styles.tipNotificationText}>
-            {currentFruit.benefit}
+            {t(currentFruit.benefitKey)}
           </Text>
         </Animated.View>
       )}
@@ -305,9 +313,9 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <Text style={styles.rewardEmoji}>🍎</Text>
               <Text style={styles.rewardTitle}>{rewardMessage}</Text>
-              {rewardMessage.includes('Complete') ? (
+              {rewardMessage === t('reward.completeAllFruits') ? (
                 <>
-                  <Text style={styles.rewardMessage}>🎉 You're a fruit expert! 🎉</Text>
+                  <Text style={styles.rewardMessage}>{t('reward.youAreFruitExpert')}</Text>
                   <TouchableOpacity 
                     style={[styles.rewardButton, { backgroundColor: colors.primary }]}
                     onPress={async () => {
@@ -316,12 +324,14 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
                       if (onBack) onBack();
                     }}
                   >
-                    <Text style={styles.rewardButtonText}>Back to Menu</Text>
+                    <Text style={styles.rewardButtonText}>{t('common.backToMenu')}</Text>
                   </TouchableOpacity>
                 </>
               ) : (
                 <>
-                  <Text style={styles.rewardMessage}>+10 points for {currentFruit.name}!</Text>
+                  <Text style={styles.rewardMessage}>
+                    {t('reward.pointsForFruit', { points: 10, fruit: t(currentFruit.nameKey) })}
+                  </Text>
                   <View style={styles.starContainer}>
                     {[...Array(3)].map((_, i) => (
                       <Text key={i} style={styles.star}>⭐</Text>
@@ -331,7 +341,7 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
                     style={[styles.continueButton, { backgroundColor: colors.primary }]}
                     onPress={() => setShowRewardModal(false)}
                   >
-                    <Text style={styles.continueButtonText}>Continue →</Text>
+                    <Text style={styles.continueButtonText}>{t('common.continue')} →</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -368,7 +378,7 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', borderRadius: 4 },
   progressText: { fontSize: 12, textAlign: 'center', marginTop: Spacing.xs },
   scrollView: { flex: 1 },
-  scrollContent: { paddingBottom: Spacing.xxl },
+  scrollContent: { paddingBottom: Spacing.xxl || 40 },
   content: { alignItems: 'center', padding: Spacing.lg },
   fruitCard: { 
     width: width - 80, 

@@ -1,18 +1,19 @@
-// app/(games)/EmotionMatchGame.tsx (with Sounds & Haptics)
+// app/(games)/EmotionMatchGame.tsx (with Sounds & Full Translations)
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSound } from '../../hooks/useSound';
 
@@ -21,68 +22,70 @@ const { width } = Dimensions.get('window');
 interface Emotion {
   id: string;
   emoji: string;
-  name: string;
-  description: string;
+  nameKey: string;      // translation key for emotion name
+  descKey: string;      // translation key for description
   color: string;
 }
 
 interface Level {
   id: number;
-  name: string;
+  nameKey: string;      // translation key for level name
   emotions: Emotion[];
 }
 
+// Level definitions using translation keys
 const levels: Level[] = [
   {
     id: 1,
-    name: 'Basic Emotions',
+    nameKey: 'emotion.level.basic',
     emotions: [
-      { id: 'happy', emoji: '😊', name: 'Happy', description: 'Feeling good and smiling', color: '#FFD700' },
-      { id: 'sad', emoji: '😢', name: 'Sad', description: 'Feeling down with tears', color: '#6B8EFF' },
-      { id: 'angry', emoji: '😠', name: 'Angry', description: 'Feeling upset and frustrated', color: '#FF6B6B' },
-      { id: 'surprised', emoji: '😲', name: 'Surprised', description: 'Unexpected surprise!', color: '#FFB347' },
+      { id: 'happy', emoji: '😊', nameKey: 'emotion.happy', descKey: 'emotion.desc.happy', color: '#FFD700' },
+      { id: 'sad', emoji: '😢', nameKey: 'emotion.sad', descKey: 'emotion.desc.sad', color: '#6B8EFF' },
+      { id: 'angry', emoji: '😠', nameKey: 'emotion.angry', descKey: 'emotion.desc.angry', color: '#FF6B6B' },
+      { id: 'surprised', emoji: '😲', nameKey: 'emotion.surprised', descKey: 'emotion.desc.surprised', color: '#FFB347' },
     ],
   },
   {
     id: 2,
-    name: 'More Feelings',
+    nameKey: 'emotion.level.more',
     emotions: [
-      { id: 'loved', emoji: '🥰', name: 'Loved', description: 'Feeling cared for', color: '#FF69B4' },
-      { id: 'scared', emoji: '😨', name: 'Scared', description: 'Feeling afraid', color: '#9370DB' },
-      { id: 'tired', emoji: '😴', name: 'Tired', description: 'Need to rest', color: '#A9A9A9' },
-      { id: 'excited', emoji: '🤩', name: 'Excited', description: 'Can\'t wait!', color: '#FF4500' },
+      { id: 'loved', emoji: '🥰', nameKey: 'emotion.loved', descKey: 'emotion.desc.loved', color: '#FF69B4' },
+      { id: 'scared', emoji: '😨', nameKey: 'emotion.scared', descKey: 'emotion.desc.scared', color: '#9370DB' },
+      { id: 'tired', emoji: '😴', nameKey: 'emotion.tired', descKey: 'emotion.desc.tired', color: '#A9A9A9' },
+      { id: 'excited', emoji: '🤩', nameKey: 'emotion.excited', descKey: 'emotion.desc.excited', color: '#FF4500' },
     ],
   },
   {
     id: 3,
-    name: 'Advanced Emotions',
+    nameKey: 'emotion.level.advanced',
     emotions: [
-      { id: 'calm', emoji: '😌', name: 'Calm', description: 'Peaceful and relaxed', color: '#90EE90' },
-      { id: 'silly', emoji: '😜', name: 'Silly', description: 'Playful and funny', color: '#FFA500' },
-      { id: 'proud', emoji: '🦸', name: 'Proud', description: 'Happy with achievement', color: '#FFD700' },
-      { id: 'lonely', emoji: '🥺', name: 'Lonely', description: 'Wanting company', color: '#B0C4DE' },
+      { id: 'calm', emoji: '😌', nameKey: 'emotion.calm', descKey: 'emotion.desc.calm', color: '#90EE90' },
+      { id: 'silly', emoji: '😜', nameKey: 'emotion.silly', descKey: 'emotion.desc.silly', color: '#FFA500' },
+      { id: 'proud', emoji: '🦸', nameKey: 'emotion.proud', descKey: 'emotion.desc.proud', color: '#FFD700' },
+      { id: 'lonely', emoji: '🥺', nameKey: 'emotion.lonely', descKey: 'emotion.desc.lonely', color: '#B0C4DE' },
     ],
   },
 ];
 
-// Emotion coping strategy suggestions
-const copingStrategies: { [key: string]: string } = {
-  happy: 'Share your happiness with someone! 😊',
-  sad: 'It\'s okay to cry. Talk to someone you trust. 🤗',
-  angry: 'Take deep breaths. Count to 10. 🧘',
-  surprised: 'Embrace the surprise! It\'s okay to be amazed. ✨',
-  loved: 'You are loved! Give someone a hug. 💕',
-  scared: 'You are safe. Ask for help if you need it. 🛡️',
-  tired: 'Rest is important. Take a break. 😴',
-  excited: 'Enjoy the excitement! Share it with others. 🎉',
-  calm: 'Peaceful moments are wonderful. 🕊️',
-  silly: 'Being silly is fun and healthy! 🤪',
-  proud: 'Celebrate your achievements! You deserve it. 🏆',
-  lonely: 'You are not alone. Reach out to someone. 💌',
+// Coping strategies – mapped using translation keys for dynamic lookup
+const copingStrategyKeys: { [key: string]: string } = {
+  happy: 'coping.shareHappiness',
+  sad: 'coping.cryAndTalk',
+  angry: 'coping.deepBreaths',
+  surprised: 'coping.embraceSurprise',
+  loved: 'coping.youAreLoved',
+  scared: 'coping.youAreSafe',
+  tired: 'coping.restImportant',
+  excited: 'coping.enjoyExcitement',
+  calm: 'coping.peacefulMoments',
+  silly: 'coping.sillyFun',
+  proud: 'coping.celebrateAchievements',
+  lonely: 'coping.notAlone',
 };
 
 export default function EmotionMatchGame() {
   const { colors } = useTheme();
+  const { t, language } = useLanguage();  // Use translation function and language for re-render
   const { 
     playSound, 
     playCelebration, 
@@ -107,7 +110,6 @@ export default function EmotionMatchGame() {
   const [copingMessage, setCopingMessage] = useState('');
   const scaleAnim = useState(new Animated.Value(1))[0];
   const shakeAnim = useState(new Animated.Value(0))[0];
-  const bounceAnim = useState(new Animated.Value(1))[0];
 
   const level = levels[currentLevel];
 
@@ -166,7 +168,8 @@ export default function EmotionMatchGame() {
   };
 
   const showCopingStrategy = (emotionId: string) => {
-    const strategy = copingStrategies[emotionId] || 'Take a moment to understand your feelings. 💭';
+    const key = copingStrategyKeys[emotionId] || 'coping.default';
+    const strategy = t(key);
     setCopingMessage(strategy);
     setShowCopingTip(true);
     setTimeout(() => setShowCopingTip(false), 4000);
@@ -180,16 +183,10 @@ export default function EmotionMatchGame() {
     setIsCorrect(correct);
 
     if (correct) {
-      // Play correct answer sound
       await playCorrectAnswer();
-      
       const newScore = score + 10;
       setScore(newScore);
-      
-      // Show coping strategy for the emotion
       showCopingStrategy(selected.id);
-      
-      // Play star sounds for extra delight
       await playStarEarned();
 
       Animated.sequence([
@@ -274,18 +271,10 @@ export default function EmotionMatchGame() {
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         
-        <Text style={[styles.title, { color: colors.text }]}>Emotion Match</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('game.emotionMatch.title')}</Text>
         
-        {/* Sound Toggle Button */}
-        <TouchableOpacity 
-          style={styles.soundButton}
-          onPress={handleToggleSound}
-        >
-          <MaterialIcons 
-            name={soundEnabled ? "volume-up" : "volume-off"} 
-            size={24} 
-            color={colors.primary} 
-          />
+        <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
+          <MaterialIcons name={soundEnabled ? "volume-up" : "volume-off"} size={24} color={colors.primary} />
         </TouchableOpacity>
         
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
@@ -296,9 +285,9 @@ export default function EmotionMatchGame() {
 
       {/* Level Info */}
       <View style={[styles.levelContainer, { backgroundColor: colors.primaryLight + '30' }]}>
-        <Text style={[styles.levelName, { color: colors.text }]}>{level.name}</Text>
+        <Text style={[styles.levelName, { color: colors.text }]}>{t(level.nameKey)}</Text>
         <Text style={[styles.levelProgress, { color: colors.textLight }]}>
-          Question {questionCount + 1} of {level.emotions.length}
+          {t('question')} {questionCount + 1} {t('of')} {level.emotions.length}
         </Text>
       </View>
 
@@ -314,14 +303,14 @@ export default function EmotionMatchGame() {
       >
         <Text style={styles.emotionEmoji}>{currentEmotion.emoji}</Text>
         <Text style={[styles.emotionDescription, { color: colors.text }]}>
-          {currentEmotion.description}
+          {t(currentEmotion.descKey)}
         </Text>
       </Animated.View>
 
       {/* Question */}
       <View style={styles.questionContainer}>
         <Text style={[styles.questionText, { color: colors.text }]}>
-          How is this person feeling?
+          {t('game.emotionMatch.question')}
         </Text>
       </View>
 
@@ -345,9 +334,9 @@ export default function EmotionMatchGame() {
           >
             <Text style={styles.optionEmoji}>{option.emoji}</Text>
             <View style={styles.optionTextContainer}>
-              <Text style={[styles.optionName, { color: colors.text }]}>{option.name}</Text>
+              <Text style={[styles.optionName, { color: colors.text }]}>{t(option.nameKey)}</Text>
               <Text style={[styles.optionDescription, { color: colors.textLight }]}>
-                {option.description}
+                {t(option.descKey)}
               </Text>
             </View>
             {selectedAnswer === option.id && (
@@ -380,7 +369,7 @@ export default function EmotionMatchGame() {
       <View style={[styles.tipContainer, { backgroundColor: colors.primaryLight + '20' }]}>
         <MaterialIcons name="emoji-emotions" size={20} color={colors.primary} />
         <Text style={[styles.tipText, { color: colors.textLight }]}>
-          Tip: Look at the face and think about how they feel!
+          {t('game.emotionMatch.tip')}
         </Text>
       </View>
 
@@ -398,19 +387,19 @@ export default function EmotionMatchGame() {
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <Text style={styles.modalEmoji}>🎉</Text>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Great Job!</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('game.emotionMatch.greatJob')}</Text>
               <Text style={[styles.modalMessage, { color: colors.textLight }]}>
-                You understand {level.name} well!
+                {t('game.emotionMatch.understandLevel', { levelName: t(level.nameKey) })}
               </Text>
               <Text style={[styles.modalScore, { color: colors.primary }]}>
-                Score: {score} points
+                {t('game.emotionMatch.scorePoints', { score })}
               </Text>
               {getStarRating(stars)}
               <TouchableOpacity
                 style={[styles.modalButton, { backgroundColor: colors.primary }]}
                 onPress={nextLevel}
               >
-                <Text style={styles.modalButtonText}>Next Level →</Text>
+                <Text style={styles.modalButtonText}>{t('game.emotionMatch.nextLevel')}</Text>
               </TouchableOpacity>
             </Animated.View>
           </View>
@@ -423,12 +412,12 @@ export default function EmotionMatchGame() {
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <Text style={styles.modalEmoji}>🏆</Text>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Emotion Master!</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('game.emotionMatch.emotionMaster')}</Text>
               <Text style={[styles.modalMessage, { color: colors.textLight }]}>
-                You understand all emotions!
+                {t('game.emotionMatch.understandAll')}
               </Text>
               <Text style={[styles.modalScore, { color: colors.primary }]}>
-                Total Score: {score} points
+                {t('game.emotionMatch.totalScore', { score })}
               </Text>
               {getStarRating(3)}
               <View style={styles.modalButtons}>
@@ -436,13 +425,13 @@ export default function EmotionMatchGame() {
                   style={[styles.modalButton, { backgroundColor: colors.primary }]}
                   onPress={resetGame}
                 >
-                  <Text style={styles.modalButtonText}>Play Again</Text>
+                  <Text style={styles.modalButtonText}>{t('game.emotionMatch.playAgain')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.modalButton, { backgroundColor: colors.secondary }]}
                   onPress={() => router.back()}
                 >
-                  <Text style={styles.modalButtonText}>Back to Menu</Text>
+                  <Text style={styles.modalButtonText}>{t('game.emotionMatch.backToMenu')}</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
