@@ -1,5 +1,4 @@
-// LetterTracingPage.tsx – Stricter & neater scoring
-
+// LetterTracingPage.tsx – Stricter & neater scoring with sounds
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -16,6 +15,7 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '../context/ThemeContext';
+import { useSound } from '../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 const CANVAS_SIZE = width - 40;
@@ -514,6 +514,18 @@ interface ScoreOverlayProps {
 }
 function ScoreOverlay({ score, grade, onNext, onRetry, isLast }: ScoreOverlayProps) {
   const { colors } = useTheme();
+  const { playSound } = useSound();
+  
+  const handleNextWithSound = () => {
+    playSound('click', false);
+    onNext();
+  };
+  
+  const handleRetryWithSound = () => {
+    playSound('click', false);
+    onRetry();
+  };
+  
   return (
     <View style={[styles.overlay, { backgroundColor: colors.background + 'F5' }]}>
       <View style={styles.overlayContent}>
@@ -522,10 +534,10 @@ function ScoreOverlay({ score, grade, onNext, onRetry, isLast }: ScoreOverlayPro
         <Text style={[styles.overlaySub, { color: colors.textLight }]}>{grade.sub}</Text>
         <Text style={[styles.overlaySymbol, { color: colors.primary }]}>{grade.symbol}</Text>
         <View style={styles.overlayButtons}>
-          <TouchableOpacity onPress={onRetry} style={[styles.overlayButton, styles.retryButton, { borderColor: colors.primaryLight, backgroundColor: colors.surface }]}>
+          <TouchableOpacity onPress={handleRetryWithSound} style={[styles.overlayButton, styles.retryButton, { borderColor: colors.primaryLight, backgroundColor: colors.surface }]}>
             <Text style={[styles.retryButtonText, { color: colors.primary }]}>Clear &amp; Retry</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onNext} style={[styles.overlayButton, styles.nextButton, { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+          <TouchableOpacity onPress={handleNextWithSound} style={[styles.overlayButton, styles.nextButton, { backgroundColor: colors.primary, borderColor: colors.primary }]}>
             <Text style={[styles.nextButtonText, { color: colors.background }]}>{isLast ? 'Finish' : 'Next →'}</Text>
           </TouchableOpacity>
         </View>
@@ -539,6 +551,7 @@ interface LetterTracingPageProps { lang?: 'en'; }
 
 export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProps) {
   const { colors } = useTheme();
+  const { playSound, playStarEarned, playCorrectAnswer, playCelebration, isEnabled: soundEnabled } = useSound();
   
   const [allLetters] = useState<Letter[]>(() => ALL_LETTERS);
   const [currentIdx, setCurrentIdx] = useState<number>(0);
@@ -555,7 +568,7 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
 
   // ─── TRACING STATE ────────────────────────────────────────────
-  const [allTracePoints, setAllTracePoints] = useState<{ x: number; y: number }[]>([]);
+  const [strokes, setStrokes] = useState<{ x: number; y: number }[][]>([]);
   const [validTracePoints, setValidTracePoints] = useState<{ x: number; y: number }[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [isTracing, setIsTracing] = useState(false);
@@ -597,7 +610,7 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
         });
       });
       let percentage = (covered.size / keyPoints.length) * 100;
-      percentage = Math.min(100, percentage + validTracePoints.length * 0.02); // reduced bonus
+      percentage = Math.min(100, percentage + validTracePoints.length * 0.02);
       setTraceProgress(percentage);
       Animated.timing(progressAnim, {
         toValue: percentage,
@@ -620,18 +633,46 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
         }
         return false;
       },
-      onPanResponderGrant: (evt) => {
+      onPanResponderGrant: async (evt) => {
         scrollEnabled.current = false;
         const { locationX, locationY } = evt.nativeEvent;
         const x = (locationX / CANVAS_SIZE) * 400;
         const y = (locationY / TRACE_AREA_SIZE) * 400;
-        processPoint(x, y, true);
+        const newPoint = { x, y };
+
+        setStrokes(prev => [...prev, [newPoint]]);
+        setHasDrawn(true);
+        setIsTracing(true);
+        
+        // Play click sound on start tracing
+        await playSound('click', false);
+
+        if (isPointNearKeyPoint(newPoint)) {
+          setValidTracePoints(prev => [...prev, newPoint]);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          // Play star sound when hitting a key point
+          await playSound('star', false);
+        }
       },
-      onPanResponderMove: (evt) => {
+      onPanResponderMove: async (evt) => {
         const { locationX, locationY } = evt.nativeEvent;
         const x = (locationX / CANVAS_SIZE) * 400;
         const y = (locationY / TRACE_AREA_SIZE) * 400;
-        processPoint(x, y, false);
+        const newPoint = { x, y };
+
+        setStrokes(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = [...updated[updated.length - 1], newPoint];
+          return updated;
+        });
+
+        if (isPointNearKeyPoint(newPoint)) {
+          setValidTracePoints(prev => [...prev, newPoint]);
+          if (validTracePoints.length % 10 === 0) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            await playSound('star', false);
+          }
+        }
       },
       onPanResponderRelease: () => {
         scrollEnabled.current = true;
@@ -640,63 +681,50 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
     }),
   ).current;
 
-  const processPoint = (x: number, y: number, isFirst: boolean) => {
-    const newPoint = { x, y };
-    if (isFirst) {
-      setAllTracePoints((prev) => [...prev, newPoint]);
-      setHasDrawn(true);
-      setIsTracing(true);
-      if (isPointNearKeyPoint(newPoint)) {
-        setValidTracePoints((prev) => [...prev, newPoint]);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-    } else {
-      setAllTracePoints((prev) => [...prev, newPoint]);
-      if (isPointNearKeyPoint(newPoint)) {
-        setValidTracePoints((prev) => [...prev, newPoint]);
-        if (validTracePoints.length % 10 === 0) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-      }
-    }
-  };
-
-  const handleCorrect = () => {
+  const handleCorrect = async () => {
     if (isComplete) return;
     setIsComplete(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await playCorrectAnswer();  // Correct answer sound
+    await playStarEarned();     // Additional star sparkles
+    
     Animated.sequence([
       Animated.timing(scaleAnim, { toValue: 1.1, duration: 200, useNativeDriver: true }),
       Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start();
+    
     setPoints((prev) => prev + 10);
-    setTimeout(() => {
+    
+    setTimeout(async () => {
       setIsComplete(false);
-      setAllTracePoints([]);
+      setStrokes([]);
       setValidTracePoints([]);
       setTraceProgress(0);
       if (currentIdx < allLetters.length - 1) {
         setCurrentIdx(currentIdx + 1);
+        await playSound('click', false);
       } else {
+        // All letters completed – celebration
+        await playCelebration();
         setCurrentIdx(0);
       }
     }, 1500);
   };
 
-  const handleClear = () => {
-    setAllTracePoints([]);
+  const handleClear = async () => {
+    setStrokes([]);
     setValidTracePoints([]);
     setHasDrawn(false);
     setScoreResult(null);
     setIsComplete(false);
     setTraceProgress(0);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await playSound('click', false);
   };
 
-  const handleCheck = () => {
+  const handleCheck = async () => {
     if (!hasDrawn || isComplete) return;
     
-    // Count how many valid points are near each keypoint
     const hitsPerKeypoint = new Array(keyPoints.length).fill(0);
     validTracePoints.forEach((tp) => {
       keyPoints.forEach((kp, idx) => {
@@ -706,20 +734,23 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
       });
     });
 
-    // A keypoint is considered "well traced" only if it has at least 3 hits
     const wellTraced = hitsPerKeypoint.filter(hits => hits >= 3).length;
     const raw = (wellTraced / keyPoints.length) * 100;
     
     const grade = getGrade(raw);
     setScoreResult({ score: Math.round(raw), grade });
     setPoints((p) => p + Math.round(raw / 8));
+    
     if (current) {
       setProgressMap((pm) => ({ ...pm, [current.letter]: Math.max(pm[current.letter] ?? 0, raw) }));
       setHistory((h) =>
         [{ letter: current.letter, score: Math.round(raw), cat: cat?.nameEn || '', ts: Date.now() }, ...h].slice(0, 50),
       );
     }
+    
     if (raw >= 80) {
+      // Play celebration for high score
+      await playCelebration();
       setCelebrating(true);
       setTimeout(() => setCelebrating(false), 1600);
       if (!masteredSet.has(current.letter)) {
@@ -728,19 +759,56 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
         if (nm.size % 5 === 0) {
           setMilestoneCount(nm.size);
           setMilestone(true);
+          await playSound('reward', false);
           setTimeout(() => setMilestone(false), 3500);
         }
       }
+    } else {
+      // Play gentle error sound
+      await playSound('error', false);
     }
   };
 
-  const handleNext = () => { handleClear(); setCurrentIdx((i) => (i < total - 1 ? i + 1 : 0)); };
-  const handlePrev = () => { if (currentIdx > 0) { handleClear(); setCurrentIdx((i) => i - 1); } };
-  const handleRetry = () => { handleClear(); setScoreResult(null); };
-  const handleSelectLetter = (letter: Letter) => {
+  const handleNext = async () => {
+    await playSound('click', false);
+    handleClear();
+    setCurrentIdx((i) => (i < total - 1 ? i + 1 : 0));
+  };
+  
+  const handlePrev = async () => {
+    if (currentIdx > 0) {
+      await playSound('click', false);
+      handleClear();
+      setCurrentIdx((i) => i - 1);
+    }
+  };
+  
+  const handleRetry = async () => {
+    await playSound('click', false);
+    handleClear();
+    setScoreResult(null);
+  };
+  
+  const handleSelectLetter = async (letter: Letter) => {
     const idx = allLetters.findIndex((l) => l.letter === letter.letter);
-    if (idx !== -1) { handleClear(); setCurrentIdx(idx); }
+    if (idx !== -1) {
+      await playSound('click', false);
+      handleClear();
+      setCurrentIdx(idx);
+    }
     setSidebarOpen(false);
+  };
+
+  const handleToggleGuide = async () => {
+    await playSound('click', false);
+    setShowGuide(!showGuide);
+  };
+
+  const handleBrushColorChange = async (color: string) => {
+    if (brushColor !== color) {
+      await playSound('click', false);
+      setBrushColor(color);
+    }
   };
 
   const progressStats = [
@@ -748,12 +816,6 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
     { label: 'Mastered', value: masteredSet.size },
     { label: 'Accuracy', value: accuracy },
   ];
-
-  const tracedSvgPath =
-    allTracePoints.length > 1
-      ? `M ${allTracePoints[0].x} ${allTracePoints[0].y} ` +
-        allTracePoints.slice(1).map((p) => `L ${p.x} ${p.y}`).join(' ')
-      : '';
 
   if (!current) {
     return (
@@ -828,7 +890,7 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
                 Best: <Text style={[styles.bestScoreValue, { color: colors.primary }]}>{bestScore}%</Text>
               </Text>
             )}
-            <TouchableOpacity onPress={() => setShowGuide(!showGuide)} style={[styles.guideToggle, { borderColor: colors.primaryLight, backgroundColor: showGuide ? colors.primary : colors.surface }]}>
+            <TouchableOpacity onPress={handleToggleGuide} style={[styles.guideToggle, { borderColor: colors.primaryLight, backgroundColor: showGuide ? colors.primary : colors.surface }]}>
               <Text style={[styles.guideToggleText, { color: showGuide ? colors.background : colors.textLight }]}>
                 {showGuide ? 'Guide on' : 'Guide off'}
               </Text>
@@ -873,9 +935,24 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
               );
             })}
 
-            {tracedSvgPath.length > 0 && (
-              <Path d={tracedSvgPath} stroke={brushColor} strokeWidth={brushSize} strokeLinecap="round" strokeLinejoin="round" fill="none" opacity={0.7} />
-            )}
+            {/* Render each stroke as a separate Path – no connecting lines */}
+            {strokes.map((stroke, i) => {
+              if (stroke.length < 2) return null;
+              const d = `M ${stroke[0].x} ${stroke[0].y} ` +
+                stroke.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+              return (
+                <Path
+                  key={i}
+                  d={d}
+                  stroke={brushColor}
+                  strokeWidth={brushSize}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                  opacity={0.7}
+                />
+              );
+            })}
           </Svg>
 
           <View {...panResponder.panHandlers} style={styles.touchArea} />
@@ -939,7 +1016,7 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
           </View>
           <View style={styles.colorGrid}>
             {BRUSH_COLORS.map((b) => (
-              <TouchableOpacity key={b.color} onPress={() => setBrushColor(b.color)}
+              <TouchableOpacity key={b.color} onPress={() => handleBrushColorChange(b.color)}
                 style={[styles.colorButton, { backgroundColor: b.color }, brushColor === b.color && styles.colorButtonActive]}
               />
             ))}
@@ -981,7 +1058,7 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
   );
 }
 
-// ─── STYLES ──────────────────────────────────────────────────────
+// ─── STYLES (unchanged) ──────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },

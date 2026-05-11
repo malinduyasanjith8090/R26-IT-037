@@ -1,4 +1,4 @@
-// components/learning/WordsLearning.tsx (Neatly Arranged with Fixed Filter Buttons)
+// components/learning/WordsLearning.tsx (Bilingual Mode with Sounds & Haptics)
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
 import {
@@ -11,10 +11,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSound } from '..//hooks/useSound';
 import { BorderRadius, Spacing } from '../constants/theme';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { useSound } from '../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
@@ -104,10 +104,12 @@ const wordsData: WordLesson[] = [
 const CATEGORIES = ['All', 'Family', 'Routines', 'Emotions', 'Food', 'Nature', 'Actions', 'Places'];
 const REWARD_MESSAGES = ['🌟 Word Master! 🌟', '🎉 Amazing! 🎉', '⭐ Vocabulary Star! ⭐', '🎈 Fantastic! 🎈', '🏆 You\'re a Natural! 🏆', '💪 Keep Going! 💪', '📚 Language Learner! 📚'];
 
+type StudyMode = 'engToSin' | 'sinToEng' | 'emojiToWord';
+
 // ==================== MAIN COMPONENT ====================
 export default function WordsLearning({ onBack, onProgress, category }: WordsLearningProps) {
   const { colors } = useTheme();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage(); // language for UI only, not for word direction
   const { playSound, playCelebration, playStarEarned, playCorrectAnswer, toggleSound, isEnabled: soundEnabled } = useSound();
   
   // State
@@ -119,6 +121,7 @@ export default function WordsLearning({ onBack, onProgress, category }: WordsLea
   const [rewardMessage, setRewardMessage] = useState('');
   const [currentCategory, setCurrentCategory] = useState(category || 'All');
   const [showPronunciationTip, setShowPronunciationTip] = useState(false);
+  const [studyMode, setStudyMode] = useState<StudyMode>('engToSin'); // New: learn mode
   
   // Animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -129,16 +132,41 @@ export default function WordsLearning({ onBack, onProgress, category }: WordsLea
 
   // ==================== HELPERS ====================
   const getRandomRewardMessage = () => REWARD_MESSAGES[Math.floor(Math.random() * REWARD_MESSAGES.length)];
-  const getQuestionText = () => language === 'en' ? `What is the English word for ${currentWord.emoji}?` : `${currentWord.emoji} සඳහා සිංහල වචනය කුමක්ද?`;
+  
+  // Get the question text based on study mode
+  const getQuestionText = () => {
+    if (studyMode === 'engToSin') {
+      return `What is the Sinhala word for ${currentWord.englishWord}?`;
+    } else if (studyMode === 'sinToEng') {
+      return `${currentWord.sinhalaWord} හි ඉංග්‍රීසි වචනය කුමක්ද?`;
+    } else {
+      return `What is this? ${currentWord.emoji}`;
+    }
+  };
+
+  // Get the correct answer based on mode
+  const getCorrectAnswer = (): string => {
+    if (studyMode === 'engToSin') return currentWord.sinhalaWord;
+    if (studyMode === 'sinToEng') return currentWord.englishWord;
+    return currentWord.englishWord; // emoji mode shows English word
+  };
 
   const getOptions = () => {
-    const correctAnswer = language === 'en' ? currentWord.englishWord : currentWord.sinhalaWord;
+    const correctAnswer = getCorrectAnswer();
     const options = [correctAnswer];
+    
+    // Get other words from the same filtered list
     const otherWords = filteredWords
-      .filter(w => (language === 'en' ? w.englishWord : w.sinhalaWord) !== correctAnswer)
-      .map(w => language === 'en' ? w.englishWord : w.sinhalaWord)
+      .filter(w => {
+        if (studyMode === 'engToSin') return w.sinhalaWord !== correctAnswer;
+        if (studyMode === 'sinToEng') return w.englishWord !== correctAnswer;
+        return w.englishWord !== correctAnswer;
+      })
+      .map(w => studyMode === 'engToSin' ? w.sinhalaWord : (studyMode === 'sinToEng' ? w.englishWord : w.englishWord))
       .slice(0, 3);
+    
     options.push(...otherWords);
+    // Shuffle options
     for (let i = options.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [options[i], options[j]] = [options[j], options[i]];
@@ -174,7 +202,7 @@ export default function WordsLearning({ onBack, onProgress, category }: WordsLea
 
   const handleAnswer = async (answer: string) => {
     setSelectedAnswer(answer);
-    const correct = answer === (language === 'en' ? currentWord.englishWord : currentWord.sinhalaWord);
+    const correct = answer === getCorrectAnswer();
     setIsCorrect(correct);
 
     if (correct) {
@@ -218,6 +246,16 @@ export default function WordsLearning({ onBack, onProgress, category }: WordsLea
     await playSound('click', false);
   };
 
+  const handleModeChange = async (mode: StudyMode) => {
+    if (mode === studyMode) return;
+    await playSound('click', false);
+    setStudyMode(mode);
+    setCurrentIndex(0);
+    setScore(0);
+    setSelectedAnswer(null);
+    setIsCorrect(false);
+  };
+
   // ==================== RENDER ====================
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -235,6 +273,34 @@ export default function WordsLearning({ onBack, onProgress, category }: WordsLea
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.primary }]}>{score}</Text>
         </View>
+      </View>
+
+      {/* Study Mode Selector */}
+      <View style={styles.modeContainer}>
+        <TouchableOpacity
+          style={[styles.modeButton, studyMode === 'engToSin' && { backgroundColor: colors.primary }]}
+          onPress={() => handleModeChange('engToSin')}
+        >
+          <Text style={[styles.modeButtonText, { color: studyMode === 'engToSin' ? '#FFF' : colors.text }]}>
+            English → සිංහල
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modeButton, studyMode === 'sinToEng' && { backgroundColor: colors.primary }]}
+          onPress={() => handleModeChange('sinToEng')}
+        >
+          <Text style={[styles.modeButtonText, { color: studyMode === 'sinToEng' ? '#FFF' : colors.text }]}>
+            සිංහල → English
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modeButton, studyMode === 'emojiToWord' && { backgroundColor: colors.primary }]}
+          onPress={() => handleModeChange('emojiToWord')}
+        >
+          <Text style={[styles.modeButtonText, { color: studyMode === 'emojiToWord' ? '#FFF' : colors.text }]}>
+            🎯 Picture Match
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Categories - Fixed Width Buttons */}
@@ -274,7 +340,12 @@ export default function WordsLearning({ onBack, onProgress, category }: WordsLea
           {/* Word Card */}
           <TouchableOpacity activeOpacity={0.9} onPress={handleCardPress}>
             <View style={[styles.wordCard, { backgroundColor: currentWord.color + '20' }]}>
-              <Text style={styles.wordEmoji}>{currentWord.emoji}</Text>
+              {studyMode === 'emojiToWord' && <Text style={styles.wordEmoji}>{currentWord.emoji}</Text>}
+              {studyMode !== 'emojiToWord' && (
+                <Text style={styles.studyWord}>
+                  {studyMode === 'engToSin' ? currentWord.englishWord : currentWord.sinhalaWord}
+                </Text>
+              )}
               <TouchableOpacity style={[styles.wordInfo, { backgroundColor: currentWord.color }]} onPress={showPronunciation}>
                 <Text style={styles.englishWord}>{currentWord.englishWord}</Text>
                 <Text style={styles.sinhalaWord}>{currentWord.sinhalaWord}</Text>
@@ -282,12 +353,6 @@ export default function WordsLearning({ onBack, onProgress, category }: WordsLea
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
-
-          {/* Visual Hint */}
-          <View style={[styles.hintContainer, { backgroundColor: colors.surface }]}>
-            <MaterialIcons name="lightbulb" size={24} color={colors.accentYellow} />
-            <Text style={[styles.hintText, { color: colors.text }]}>Hint: {currentWord.visualHint}</Text>
-          </View>
 
           {/* Example Sentence */}
           <View style={[styles.sentenceContainer, { backgroundColor: colors.surface }]}>
@@ -336,7 +401,7 @@ export default function WordsLearning({ onBack, onProgress, category }: WordsLea
             <View style={[styles.feedbackContainer, { backgroundColor: colors.error + '20' }]}>
               <MaterialIcons name="sentiment-dissatisfied" size={20} color={colors.error} />
               <Text style={[styles.feedbackText, { color: colors.error }]}>
-                Try again! The correct word is {language === 'en' ? currentWord.englishWord : currentWord.sinhalaWord}
+                Try again! The correct answer is: {getCorrectAnswer()}
               </Text>
             </View>
           )}
@@ -355,7 +420,9 @@ export default function WordsLearning({ onBack, onProgress, category }: WordsLea
       {showPronunciationTip && (
         <View style={[styles.tipNotification, { backgroundColor: currentWord.color }]}>
           <MaterialIcons name="record-voice-over" size={20} color="#FFF" />
-          <Text style={styles.tipNotificationText}>Say: {language === 'en' ? currentWord.englishWord : currentWord.sinhalaWord}</Text>
+          <Text style={styles.tipNotificationText}>
+            Say: {studyMode === 'engToSin' ? currentWord.sinhalaWord : currentWord.englishWord}
+          </Text>
         </View>
       )}
 
@@ -407,18 +474,15 @@ const styles = StyleSheet.create({
   scoreBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.round, gap: 6 },
   scoreText: { fontWeight: 'bold', fontSize: 18 },
   
-  // Categories - FIXED: Smaller buttons with proper sizing
+  // Mode Selector
+  modeContainer: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md, marginBottom: Spacing.md },
+  modeButton: { flex: 1, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md, alignItems: 'center', backgroundColor: '#E0E0E0' },
+  modeButtonText: { fontSize: 12, fontWeight: '600' },
+  
+  // Categories
   categoryContainer: { paddingHorizontal: Spacing.md, marginBottom: Spacing.md, flexGrow: 0 },
-  categoryButton: { 
-    paddingHorizontal: Spacing.md, 
-    paddingVertical: 1, 
-    borderRadius: BorderRadius.round, 
-    marginRight: Spacing.sm, 
-    borderWidth: 1,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  categoryText: { fontSize: 13, fontWeight: '600' },
+  categoryButton: { paddingHorizontal: Spacing.md, paddingVertical: 10, borderRadius: BorderRadius.round, marginRight: Spacing.sm, borderWidth: 1, minWidth: 70, alignItems: 'center' },
+  categoryText: { fontSize: 12, fontWeight: '600' },
   
   // Progress
   progressContainer: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
@@ -433,6 +497,7 @@ const styles = StyleSheet.create({
   // Word Card
   wordCard: { width: width - 80, alignItems: 'center', padding: Spacing.xl, borderRadius: BorderRadius.lg, marginBottom: Spacing.md },
   wordEmoji: { fontSize: 70, marginBottom: Spacing.md },
+  studyWord: { fontSize: 40, fontWeight: 'bold', marginBottom: Spacing.md, textAlign: 'center' },
   wordInfo: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: BorderRadius.round, alignItems: 'center', flexDirection: 'row', gap: 8 },
   englishWord: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
   sinhalaWord: { color: '#FFF', fontSize: 16 },

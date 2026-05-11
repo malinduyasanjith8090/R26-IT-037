@@ -1,22 +1,23 @@
-// components/TracingCanvas.tsx (English Alphabet Letters)
+// components/TracingCanvas.tsx (with Sounds & Haptics)
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    PanResponder,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  PanResponder,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '../context/ThemeContext';
+import { useSound } from '../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 const CANVAS_SIZE = width - 80;
-const TRACE_AREA_SIZE = CANVAS_SIZE;
+const TRACE_AREA_SIZE = CANVAS_SIZE * 0.75;
 
 interface TracingPoint {
   x: number;
@@ -29,7 +30,7 @@ interface TracingGameProps {
   onProgress?: (progress: number) => void;
 }
 
-// ENGLISH Letter paths - Properly shaped alphabet letters
+// ENGLISH Letter paths – optimized for viewBox 0 0 400 300
 const letterPaths: { [key: string]: string } = {
   'A': 'M 200 60 L 140 250 L 170 250 L 185 200 L 215 200 L 230 250 L 260 250 Z M 190 170 L 210 170',
   'B': 'M 150 60 L 210 60 C 240 60, 250 80, 250 100 C 250 120, 240 140, 210 150 L 150 150 L 150 60 M 150 150 L 220 150 C 250 150, 260 170, 260 200 C 260 230, 250 250, 220 250 L 150 250 L 150 150',
@@ -69,7 +70,7 @@ const letterPaths: { [key: string]: string } = {
   '0': 'M 200 60 C 150 60, 140 100, 140 210 C 140 250, 260 250, 260 100 C 260 60, 250 60, 200 60'
 };
 
-// Define key points for each letter to check trace accuracy
+// Key points for accuracy checking (within 400x300 viewBox)
 const getKeyPointsForLetter = (char: string): { x: number; y: number }[] => {
   const points: { x: number; y: number }[] = [];
   
@@ -159,18 +160,11 @@ const getKeyPointsForLetter = (char: string): { x: number; y: number }[] => {
   return points;
 };
 
-// Function to check if a point is near any key point of the letter (on dotted line)
-const isPointNearLetter = (point: { x: number; y: number }, char: string, tolerance: number = 25): boolean => {
+const isPointNearLetter = (point: { x: number; y: number }, char: string, tolerance = 25): boolean => {
   const keyPoints = getKeyPointsForLetter(char);
-  for (const keyPoint of keyPoints) {
-    const distance = Math.sqrt(
-      Math.pow(point.x - keyPoint.x, 2) + Math.pow(point.y - keyPoint.y, 2)
-    );
-    if (distance <= tolerance) {
-      return true;
-    }
-  }
-  return false;
+  return keyPoints.some(kp => 
+    Math.sqrt(Math.pow(point.x - kp.x, 2) + Math.pow(point.y - kp.y, 2)) <= tolerance
+  );
 };
 
 const numbersList = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
@@ -178,8 +172,16 @@ const lettersList = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
 
 export default function TracingGame({ type, onComplete, onProgress }: TracingGameProps) {
   const { colors } = useTheme();
+  const { 
+    playSound, 
+    playStarEarned, 
+    playCorrectAnswer,
+    toggleSound,
+    isEnabled: soundEnabled 
+  } = useSound();
+  
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [allTracePoints, setAllTracePoints] = useState<TracingPoint[]>([]);
+  const [strokes, setStrokes] = useState<TracingPoint[][]>([]);
   const [validTracePoints, setValidTracePoints] = useState<TracingPoint[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -194,7 +196,14 @@ export default function TracingGame({ type, onComplete, onProgress }: TracingGam
   const targetPath = letterPaths[currentChar];
   const keyPoints = getKeyPointsForLetter(currentChar);
 
-  // Calculate trace completion percentage based ONLY on valid points (on dotted line)
+  // Play sound on successful trace completion
+  useEffect(() => {
+    if (isComplete) {
+      playCorrectAnswer();
+    }
+  }, [isComplete]);
+
+  // Recalculate progress whenever valid points change
   useEffect(() => {
     if (validTracePoints.length > 0 && !isComplete) {
       const coveredKeyPoints = new Set<number>();
@@ -228,35 +237,98 @@ export default function TracingGame({ type, onComplete, onProgress }: TracingGam
     }
   }, [validTracePoints]);
 
-  // Smooth PanResponder for touch tracing
+  const handleCorrect = () => {
+    if (isComplete) return;
+    
+    setIsComplete(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    
+    Animated.sequence([
+      Animated.timing(scaleAnim, { toValue: 1.1, duration: 200, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+    
+    const newScore = score + 10;
+    setScore(newScore);
+    playStarEarned(); // additional star sound
+    
+    const progress = ((currentIndex + 1) / items.length) * 100;
+    if (onProgress) onProgress(progress);
+    
+    setTimeout(() => {
+      setIsComplete(false);
+      setStrokes([]);
+      setValidTracePoints([]);
+      setTraceProgress(0);
+      
+      if (currentIndex < items.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+        playSound('click', false);
+      } else {
+        if (onComplete) onComplete();
+        playSound('complete', false);
+      }
+    }, 1500);
+  };
+
+  const resetTrace = async () => {
+    setStrokes([]);
+    setValidTracePoints([]);
+    setIsComplete(false);
+    setShowHint(false);
+    setTraceProgress(0);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await playSound('click', false);
+  };
+
+  const showHintHandler = async () => {
+    setShowHint(true);
+    await playSound('click', false);
+    setTimeout(() => setShowHint(false), 3000);
+  };
+
+  const handleToggleSound = async () => {
+    await playSound('click', false);
+    toggleSound();
+  };
+
+  // PanResponder for touch tracing
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => {
+      onPanResponderGrant: async (evt) => {
         const { locationX, locationY } = evt.nativeEvent;
-        const newPoint = { x: locationX, y: locationY };
+        const svgX = (locationX / CANVAS_SIZE) * 400;
+        const svgY = (locationY / TRACE_AREA_SIZE) * 300;
+        const newPoint = { x: svgX, y: svgY };
         
-        setAllTracePoints([newPoint]);
+        setStrokes(prev => [...prev, [newPoint]]);
         
         if (isPointNearLetter(newPoint, currentChar, 30)) {
-          setValidTracePoints([newPoint]);
+          setValidTracePoints(prev => [...prev, newPoint]);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        } else {
-          setValidTracePoints([]);
+          await playSound('click', false);
         }
         setIsTracing(true);
       },
-      onPanResponderMove: (evt) => {
+      onPanResponderMove: async (evt) => {
         const { locationX, locationY } = evt.nativeEvent;
-        const newPoint = { x: locationX, y: locationY };
+        const svgX = (locationX / CANVAS_SIZE) * 400;
+        const svgY = (locationY / TRACE_AREA_SIZE) * 300;
+        const newPoint = { x: svgX, y: svgY };
         
-        setAllTracePoints(prev => [...prev, newPoint]);
+        setStrokes(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = [...updated[updated.length - 1], newPoint];
+          return updated;
+        });
         
         if (isPointNearLetter(newPoint, currentChar, 30)) {
           setValidTracePoints(prev => [...prev, newPoint]);
           if (validTracePoints.length % 10 === 0) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            await playSound('star', false);
           }
         }
       },
@@ -266,66 +338,13 @@ export default function TracingGame({ type, onComplete, onProgress }: TracingGam
         if (validTracePoints.length < 20 && validTracePoints.length > 0 && !isComplete && traceProgress < 30) {
           setShowHint(true);
           setTimeout(() => setShowHint(false), 2000);
-        } else if (validTracePoints.length === 0 && allTracePoints.length > 10) {
+        } else if (validTracePoints.length === 0 && strokes.length > 0 && strokes.reduce((sum, s) => sum + s.length, 0) > 10) {
           setShowHint(true);
           setTimeout(() => setShowHint(false), 2000);
         }
       },
     })
   ).current;
-
-  const handleCorrect = () => {
-    if (isComplete) return;
-    
-    setIsComplete(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 1.1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    
-    const newScore = score + 10;
-    setScore(newScore);
-    
-    const progress = ((currentIndex + 1) / items.length) * 100;
-    if (onProgress) onProgress(progress);
-    
-    setTimeout(() => {
-      setIsComplete(false);
-      setAllTracePoints([]);
-      setValidTracePoints([]);
-      setTraceProgress(0);
-      
-      if (currentIndex < items.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-      } else {
-        if (onComplete) onComplete();
-      }
-    }, 1500);
-  };
-
-  const resetTrace = () => {
-    setAllTracePoints([]);
-    setValidTracePoints([]);
-    setIsComplete(false);
-    setShowHint(false);
-    setTraceProgress(0);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const tracedSvgPath = allTracePoints.length > 1
-    ? `M ${allTracePoints[0].x} ${allTracePoints[0].y} ` + 
-      allTracePoints.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
-    : '';
 
   const isKeyPointCovered = (point: { x: number; y: number }): boolean => {
     return validTracePoints.some(tp => 
@@ -340,6 +359,16 @@ export default function TracingGame({ type, onComplete, onProgress }: TracingGam
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.primary }]}>{score}</Text>
         </View>
+        
+        {/* Sound Toggle Button */}
+        <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
+          <MaterialIcons 
+            name={soundEnabled ? "volume-up" : "volume-off"} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
+        
         <View style={styles.progressContainer}>
           <View style={[styles.progressBar, { backgroundColor: colors.primaryLight }]}>
             <View 
@@ -407,6 +436,7 @@ export default function TracingGame({ type, onComplete, onProgress }: TracingGam
           viewBox="0 0 400 300"
           style={styles.svgContainer}
         >
+          {/* Dotted guide letter */}
           <Path
             d={targetPath}
             stroke={colors.primaryLight}
@@ -416,18 +446,26 @@ export default function TracingGame({ type, onComplete, onProgress }: TracingGam
             fill="none"
           />
           
-          {tracedSvgPath && (
-            <Path
-              d={tracedSvgPath}
-              stroke={colors.primary}
-              strokeWidth={20}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-              opacity={0.7}
-            />
-          )}
+          {/* Render each stroke as a separate Path */}
+          {strokes.map((stroke, strokeIndex) => {
+            if (stroke.length < 2) return null;
+            const pathData = `M ${stroke[0].x} ${stroke[0].y} ` +
+              stroke.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+            return (
+              <Path
+                key={strokeIndex}
+                d={pathData}
+                stroke={colors.primary}
+                strokeWidth={20}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+                opacity={0.7}
+              />
+            );
+          })}
           
+          {/* Key points (circles) */}
           {keyPoints.map((point, idx) => {
             const isCovered = isKeyPointCovered(point);
             return (
@@ -490,7 +528,7 @@ export default function TracingGame({ type, onComplete, onProgress }: TracingGam
         
         <TouchableOpacity 
           style={[styles.controlButton, { backgroundColor: colors.primaryLight }]}
-          onPress={() => setShowHint(true)}
+          onPress={showHintHandler}
         >
           <MaterialIcons name="lightbulb" size={20} color={colors.primary} />
           <Text style={[styles.controlText, { color: colors.primary }]}>Show Hint</Text>
@@ -521,6 +559,9 @@ const styles = StyleSheet.create({
   scoreText: {
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  soundButton: {
+    paddingHorizontal: 12,
   },
   progressContainer: {
     flex: 1,
