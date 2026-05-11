@@ -1,4 +1,4 @@
-// app/(tabs)/routine.tsx (Daily Calming Activity + all previous features)
+// app/(tabs)/routine.tsx (Calming corner with custom time selection)
 
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
@@ -43,30 +43,29 @@ const AVAILABLE_COLORS = [
   '#2196F3', '#7B1FA2', '#795548', '#607D8B', '#F44336'
 ];
 
+// ---------- Calming activities (rotated by day) ----------
+const CALMING_ACTIVITIES = [
+  { title: 'Deep Breathing', desc: 'Take 5 slow deep breaths – in through your nose, out through your mouth', icon: 'air', color: '#81D4FA' },
+  { title: 'Stretching', desc: 'Reach for the sky, then touch your toes. Hold for 5 seconds', icon: 'accessibility-new', color: '#A5D6A7' },
+  { title: 'Sensory Play', desc: 'Play with playdough, kinetic sand, or a fidget toy for 5 minutes', icon: 'toys', color: '#FFCC80' },
+  { title: 'Calm Music', desc: 'Listen to a calming song or nature sounds for 5 minutes', icon: 'music-note', color: '#CE93D8' },
+  { title: 'Gentle Movement', desc: 'Do 10 slow arm circles and 5 gentle head rolls', icon: 'directions-run', color: '#FFAB91' },
+  { title: 'Mindful Coloring', desc: 'Spend 5 minutes coloring a simple picture', icon: 'brush', color: '#80DEEA' },
+  { title: 'Body Scan', desc: 'Close your eyes and notice how each part of your body feels', icon: 'visibility-off', color: '#B0BEC5' },
+  { title: 'Blowing Bubbles', desc: 'Blow bubbles slowly and watch them float away', icon: 'bubble-chart', color: '#90CAF9' },
+  { title: 'Silly Faces', desc: 'Look in a mirror and make 5 happy or silly faces', icon: 'face', color: '#F48FB1' },
+  { title: 'Listening to Wind', desc: 'Sit quietly and listen to the wind or soft sounds around you', icon: 'hearing', color: '#AED581' },
+  { title: 'Rocking', desc: 'Gently rock back and forth or side to side for 2 minutes', icon: 'child-care', color: '#FFD54F' },
+  { title: 'Smelling Flowers', desc: 'Smell a flower or a gentle scent, taking 4 slow breaths', icon: 'spa', color: '#EF9A9A' },
+  { title: 'Water Play', desc: 'Splash your hands in cool water for 3 minutes', icon: 'water-drop', color: '#81D4FA' },
+  { title: 'Hug Your Favorite Toy', desc: 'Give your favorite stuffed animal a long, gentle hug', icon: 'pets', color: '#B39DDB' },
+];
+
 // Helper to format time string from hour, minute, period
 const formatTimeString = (h: number, m: number, period: 'AM' | 'PM') => {
   const hour = h.toString().padStart(2, '0');
   const minute = m.toString().padStart(2, '0');
   return `${hour}:${minute} ${period}`;
-};
-
-// ---------- Calming activities of the day ----------
-const CALMING_ACTIVITIES = [
-  { key: 'deepBreathing',   icon: 'air',          color: '#4FC3F7' },
-  { key: 'sensoryPlay',     icon: 'touch-app',    color: '#BA68C8' },
-  { key: 'listenMusic',     icon: 'headset',       color: '#4DB6AC' },
-  { key: 'coloring',        icon: 'brush',         color: '#FFB74D' },
-  { key: 'stretching',      icon: 'accessibility', color: '#AED581' },
-  { key: 'weightedBlanket', icon: 'checkroom',     color: '#90A4AE' },
-  { key: 'bubblePlay',      icon: 'bubble-chart',  color: '#64B5F6' },
-];
-
-const getDailyCalmingActivity = () => {
-  const today = new Date();
-  const startOfYear = new Date(today.getFullYear(), 0, 0);
-  const diff = today.getTime() - startOfYear.getTime();
-  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
-  return CALMING_ACTIVITIES[dayOfYear % CALMING_ACTIVITIES.length];
 };
 
 export default function RoutineScreen() {
@@ -82,22 +81,46 @@ export default function RoutineScreen() {
   const [timerInput, setTimerInput] = useState('15');
   const [modalVisible, setModalVisible] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  // Time picker state
+  // Time picker state for custom routine
   const [selectedHour, setSelectedHour] = useState(9);
   const [selectedMinute, setSelectedMinute] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState<'AM' | 'PM'>('AM');
   const [selectedIcon, setSelectedIcon] = useState('accessibility-new');
   const [selectedColor, setSelectedColor] = useState('#2196F3');
 
-  // Daily calming activity (changes each day)
-  const dailyCalming = getDailyCalmingActivity();
+  // Calming activity of the day state
+  const [calmingCompleted, setCalmingCompleted] = useState(false);
+  const [lastCalmingDate, setLastCalmingDate] = useState<string | null>(null);
+
+  // Calming corner schedule
+  const [calmingSchedule, setCalmingSchedule] = useState<
+    { id: string; activity: typeof CALMING_ACTIVITIES[0]; time: string; completed: boolean }[]
+  >([]);
+  const [calmingModalVisible, setCalmingModalVisible] = useState(false);
+  const [selectedCalmingActivity, setSelectedCalmingActivity] = useState(0);
+  const [calmingHour, setCalmingHour] = useState(9);
+  const [calmingMinute, setCalmingMinute] = useState(0);
+  const [calmingPeriod, setCalmingPeriod] = useState<'AM' | 'PM'>('AM');
+
+  const todayIndex = new Date().getDate() % CALMING_ACTIVITIES.length;
+  const dailyCalmingActivity = CALMING_ACTIVITIES[todayIndex];
+
+  // Reset daily calming activity when the date changes
+  useEffect(() => {
+    const today = new Date().toDateString();
+    if (today !== lastCalmingDate) {
+      setCalmingCompleted(false);
+      setLastCalmingDate(today);
+    }
+  }, [lastCalmingDate]);
 
   // Animated values for circular timer
   const timerProgress = useRef(new Animated.Value(1)).current;
 
   // ---------- Derived data ----------
-  const completedCount = routines.filter(r => r.completed).length;
-  const progressPercent = (completedCount / routines.length) * 100;
+  const completedCount = routines.filter(r => r.completed).length + calmingSchedule.filter(c => c.completed).length;
+  const totalTasks = routines.length + calmingSchedule.length;
+  const progressPercent = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
   const activeRoutine = routines.find(r => r.id === activeRoutineId) || routines[0];
 
   // ---------- Timer logic ----------
@@ -143,9 +166,7 @@ export default function RoutineScreen() {
   // ---------- Routine completion ----------
   const handleMarkComplete = (id: string) => {
     setRoutines(prev =>
-      prev.map(r =>
-        r.id === id ? { ...r, completed: !r.completed } : r
-      )
+      prev.map(r => (r.id === id ? { ...r, completed: !r.completed } : r))
     );
     setStars(prev => {
       const routine = routines.find(r => r.id === id);
@@ -153,10 +174,28 @@ export default function RoutineScreen() {
     });
   };
 
+  // ---------- Calming schedule completion ----------
+  const handleCalmingScheduleComplete = (id: string) => {
+    setCalmingSchedule(prev =>
+      prev.map(c => (c.id === id ? { ...c, completed: !c.completed } : c))
+    );
+    setStars(prev => {
+      const item = calmingSchedule.find(c => c.id === id);
+      return item && !item.completed ? prev + 1 : prev;
+    });
+  };
+
+  // ---------- Calming activity of the day completion ----------
+  const handleCalmingComplete = () => {
+    if (!calmingCompleted) {
+      setCalmingCompleted(true);
+      setStars(prev => prev + 1);
+    }
+  };
+
   // ---------- Add custom routine ----------
   const handleAddCustomRoutine = () => {
     if (!newTitle.trim()) return;
-
     const newTime = formatTimeString(selectedHour, selectedMinute, selectedPeriod);
     const newRoutine = {
       id: Date.now().toString(),
@@ -166,10 +205,8 @@ export default function RoutineScreen() {
       color: selectedColor,
       completed: false,
     };
-
     setRoutines(prev => [...prev, newRoutine]);
     setModalVisible(false);
-    // Reset form
     setNewTitle('');
     setSelectedHour(9);
     setSelectedMinute(0);
@@ -178,12 +215,39 @@ export default function RoutineScreen() {
     setSelectedColor('#2196F3');
   };
 
+  // ---------- Add calming activity to schedule ----------
+  const handleAddCalmingActivity = () => {
+    if (calmingSchedule.length >= 5) return; // Maximum 5
+    const activity = CALMING_ACTIVITIES[selectedCalmingActivity];
+    const time = formatTimeString(calmingHour, calmingMinute, calmingPeriod);
+    const newItem = {
+      id: Date.now().toString(),
+      activity,
+      time,
+      completed: false,
+    };
+    setCalmingSchedule(prev => [...prev, newItem]);
+    setCalmingModalVisible(false);
+    // Reset picker
+    setSelectedCalmingActivity(0);
+    setCalmingHour(9);
+    setCalmingMinute(0);
+    setCalmingPeriod('AM');
+  };
+
   // ---------- Time picker helpers ----------
   const incrementHour = () => setSelectedHour(prev => (prev % 12) + 1);
-  const decrementHour = () => setSelectedHour(prev => prev === 1 ? 12 : prev - 1);
+  const decrementHour = () => setSelectedHour(prev => (prev === 1 ? 12 : prev - 1));
   const incrementMinute = () => setSelectedMinute(prev => (prev + 5) % 60);
-  const decrementMinute = () => setSelectedMinute(prev => prev === 0 ? 55 : prev - 5);
+  const decrementMinute = () => setSelectedMinute(prev => (prev === 0 ? 55 : prev - 5));
   const togglePeriod = () => setSelectedPeriod(prev => (prev === 'AM' ? 'PM' : 'AM'));
+
+  // Calming time picker helpers
+  const incrementCalmingHour = () => setCalmingHour(prev => (prev % 12) + 1);
+  const decrementCalmingHour = () => setCalmingHour(prev => (prev === 1 ? 12 : prev - 1));
+  const incrementCalmingMinute = () => setCalmingMinute(prev => (prev + 5) % 60);
+  const decrementCalmingMinute = () => setCalmingMinute(prev => (prev === 0 ? 55 : prev - 5));
+  const toggleCalmingPeriod = () => setCalmingPeriod(prev => (prev === 'AM' ? 'PM' : 'AM'));
 
   // ---------- Render routine item ----------
   const renderRoutineItem = ({ item }: any) => (
@@ -223,6 +287,57 @@ export default function RoutineScreen() {
     </TouchableOpacity>
   );
 
+  // ---------- Render calming schedule item ----------
+  const renderCalmingScheduleItem = (item: typeof calmingSchedule[0]) => (
+    <View
+      key={item.id}
+      style={[
+        styles.routineItem,
+        {
+          backgroundColor: colors.surface,
+          borderColor: item.activity.color,
+        },
+      ]}
+    >
+      <View style={styles.timeContainer}>
+        <Text style={[styles.timeText, { color: colors.text }]}>{item.time}</Text>
+      </View>
+      <View style={styles.routineContent}>
+        <View style={[styles.iconContainer, { backgroundColor: item.activity.color + '30' }]}>
+          <MaterialIcons name={item.activity.icon as any} size={24} color={item.activity.color} />
+        </View>
+        <View style={styles.textContainer}>
+          <Text style={[styles.routineTitle, { color: colors.text }]}>
+            {item.activity.title}
+          </Text>
+          <Text style={[styles.routineStatus, { color: colors.textLight }]}>
+            {item.completed ? t('completed') : t('upcoming')}
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => {
+              // Start timer for this calming activity
+              setActiveRoutineId('calming_' + item.id); // Dummy active
+              startTimer();
+            }}
+            style={styles.timerMiniButton}
+            disabled={isTimerRunning}
+          >
+            <MaterialIcons name="play-arrow" size={18} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleCalmingScheduleComplete(item.id)} style={styles.checkButton}>
+            <MaterialIcons
+              name={item.completed ? 'check-circle' : 'radio-button-unchecked'}
+              size={28}
+              color={item.completed ? colors.success : colors.textLight}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
   // ---------- Timer display ----------
   const minutes = Math.floor(timerSeconds / 60);
   const secondsRemaining = timerSeconds % 60;
@@ -257,7 +372,41 @@ export default function RoutineScreen() {
           </Text>
         </View>
 
-        {/* Current Activity (dynamic based on selected routine) */}
+        {/* Calming Activity of the Day */}
+        <Card
+          title={t('calmingActivityOfDay') || 'Calming Activity of the Day'}
+          backgroundColor={dailyCalmingActivity.color + '30'}
+        >
+          <View style={styles.calmingContainer}>
+            <View style={[styles.calmingIcon, { backgroundColor: dailyCalmingActivity.color + '50' }]}>
+              <MaterialIcons name={dailyCalmingActivity.icon as any} size={36} color={dailyCalmingActivity.color} />
+            </View>
+            <View style={styles.calmingText}>
+              <Text style={[styles.calmingTitle, { color: colors.text }]}>
+                {dailyCalmingActivity.title}
+              </Text>
+              <Text style={[styles.calmingDesc, { color: colors.textLight }]}>
+                {dailyCalmingActivity.desc}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            onPress={handleCalmingComplete}
+            style={[styles.calmingButton, { backgroundColor: calmingCompleted ? colors.success : dailyCalmingActivity.color }]}
+            disabled={calmingCompleted}
+          >
+            <MaterialIcons
+              name={calmingCompleted ? 'check-circle' : 'play-arrow'}
+              size={24}
+              color="#FFFFFF"
+            />
+            <Text style={styles.calmingButtonText}>
+              {calmingCompleted ? t('completed') : t('startCalming') || 'Start Activity'}
+            </Text>
+          </TouchableOpacity>
+        </Card>
+
+        {/* Current Activity (dynamic) */}
         <Card title={t('currentActivity')} backgroundColor={colors.softGreen}>
           <View style={styles.currentActivityRow}>
             <View style={[styles.currentIcon, { backgroundColor: activeRoutine.color + '30' }]}>
@@ -338,11 +487,11 @@ export default function RoutineScreen() {
             <View style={[styles.progressFill, { width: `${progressPercent}%`, backgroundColor: colors.primary }]} />
           </View>
           <Text style={[styles.progressText, { color: colors.textLight }]}>
-            {completedCount}/{routines.length} {t('tasksCompleted')}
+            {completedCount}/{totalTasks} {t('tasksCompleted')}
           </Text>
         </View>
 
-        {/* Today's Schedule (interactive) */}
+        {/* Today's Schedule */}
         <Card
           title={t('todaysSchedule')}
           icon="schedule"
@@ -356,6 +505,32 @@ export default function RoutineScreen() {
           />
         </Card>
 
+        {/* Calming Corner */}
+        <Card
+          title={t('calmingCorner') || 'Calming Corner'}
+          icon="self-care"
+          iconColor={colors.accentPurple}
+        >
+          {calmingSchedule.length > 0 ? (
+            calmingSchedule.map(item => renderCalmingScheduleItem(item))
+          ) : (
+            <Text style={[styles.calmingPlaceholder, { color: colors.textLight }]}>
+              {t('noCalmingActivities') || 'No calming activities yet. Add up to 5!'}
+            </Text>
+          )}
+          {calmingSchedule.length < 5 && (
+            <TouchableOpacity
+              style={[styles.calmingAddButton, { borderColor: colors.primary }]}
+              onPress={() => setCalmingModalVisible(true)}
+            >
+              <MaterialIcons name="add" size={24} color={colors.primary} />
+              <Text style={[styles.calmingAddButtonText, { color: colors.primary }]}>
+                {t('addCalmingActivity') || 'Add Calming Activity'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </Card>
+
         {/* Add Custom Routine Button */}
         <TouchableOpacity
           style={[styles.addButton, { backgroundColor: colors.surface, borderColor: colors.primaryLight }]}
@@ -366,24 +541,6 @@ export default function RoutineScreen() {
             {t('addCustomActivity')}
           </Text>
         </TouchableOpacity>
-
-        {/* Calming Activity of the Day */}
-        <Card
-          title={t('calmingActivity') || 'Calming Activity'}
-          icon={dailyCalming.icon}
-          iconColor={dailyCalming.color}
-          backgroundColor={dailyCalming.color + '15'}
-        >
-          <View style={styles.calmingContainer}>
-            <MaterialIcons name={dailyCalming.icon as any} size={48} color={dailyCalming.color} />
-            <Text style={[styles.calmingText, { color: colors.text }]}>
-              {t(dailyCalming.key) || dailyCalming.key.replace(/([A-Z])/g, ' $1').trim()}
-            </Text>
-            <Text style={[styles.calmingSubtext, { color: colors.textLight }]}>
-              {t('calmingActivityHint') || 'Try this today to feel calm and focused.'}
-            </Text>
-          </View>
-        </Card>
 
         {/* Routine Tips */}
         <Card
@@ -402,7 +559,7 @@ export default function RoutineScreen() {
         </Card>
       </ScrollView>
 
-      {/* Modal for Adding Custom Routine */}
+      {/* Modal for Adding Custom Routine (unchanged) */}
       <Modal
         visible={modalVisible}
         transparent={true}
@@ -415,7 +572,6 @@ export default function RoutineScreen() {
               {t('addCustomActivity')}
             </Text>
 
-            {/* Title Input */}
             <TextInput
               style={[styles.input, { color: colors.text, borderColor: colors.primaryLight, backgroundColor: colors.surface }]}
               placeholder={t('activityName') || 'Activity name'}
@@ -424,12 +580,10 @@ export default function RoutineScreen() {
               onChangeText={setNewTitle}
             />
 
-            {/* Visual Time Picker */}
             <Text style={[styles.pickerLabel, { color: colors.text, marginBottom: Spacing.sm }]}>
               {t('time') || 'Time'}
             </Text>
             <View style={styles.timePickerContainer}>
-              {/* Hour Picker */}
               <View style={styles.timeColumn}>
                 <TouchableOpacity onPress={incrementHour} style={styles.timeArrowButton}>
                   <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
@@ -443,7 +597,6 @@ export default function RoutineScreen() {
                 <Text style={styles.timeUnit}>Hour</Text>
               </View>
 
-              {/* Minute Picker */}
               <View style={styles.timeColumn}>
                 <TouchableOpacity onPress={incrementMinute} style={styles.timeArrowButton}>
                   <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
@@ -457,28 +610,22 @@ export default function RoutineScreen() {
                 <Text style={styles.timeUnit}>Min</Text>
               </View>
 
-              {/* AM/PM Toggle */}
               <View style={styles.timeColumn}>
                 <TouchableOpacity
                   onPress={togglePeriod}
                   style={[styles.periodButton, { backgroundColor: selectedPeriod === 'AM' ? colors.primary : colors.primaryLight }]}
                 >
-                  <Text style={[styles.periodText, { color: selectedPeriod === 'AM' ? '#FFFFFF' : colors.text }]}>
-                    AM
-                  </Text>
+                  <Text style={[styles.periodText, { color: selectedPeriod === 'AM' ? '#FFFFFF' : colors.text }]}>AM</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={togglePeriod}
                   style={[styles.periodButton, { backgroundColor: selectedPeriod === 'PM' ? colors.primary : colors.primaryLight, marginTop: 8 }]}
                 >
-                  <Text style={[styles.periodText, { color: selectedPeriod === 'PM' ? '#FFFFFF' : colors.text }]}>
-                    PM
-                  </Text>
+                  <Text style={[styles.periodText, { color: selectedPeriod === 'PM' ? '#FFFFFF' : colors.text }]}>PM</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Icon Picker */}
             <Text style={[styles.pickerLabel, { color: colors.text, marginTop: Spacing.md }]}>
               {t('chooseIcon') || 'Choose icon'}
             </Text>
@@ -500,7 +647,6 @@ export default function RoutineScreen() {
               ))}
             </ScrollView>
 
-            {/* Color Picker */}
             <Text style={[styles.pickerLabel, { color: colors.text, marginTop: Spacing.md }]}>
               {t('chooseColor') || 'Choose color'}
             </Text>
@@ -517,7 +663,6 @@ export default function RoutineScreen() {
               ))}
             </View>
 
-            {/* Action Buttons */}
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalButton, { backgroundColor: colors.primaryLight }]}
@@ -535,10 +680,111 @@ export default function RoutineScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal for Adding Calming Activity to Schedule */}
+      <Modal
+        visible={calmingModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setCalmingModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {t('selectCalmingActivity') || 'Select Calming Activity'}
+            </Text>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.calmingList}>
+              {CALMING_ACTIVITIES.map((activity, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => setSelectedCalmingActivity(index)}
+                  style={[
+                    styles.calmingOption,
+                    {
+                      borderColor: selectedCalmingActivity === index ? activity.color : 'transparent',
+                      backgroundColor: selectedCalmingActivity === index ? activity.color + '20' : colors.surface,
+                    },
+                  ]}
+                >
+                  <View style={[styles.calmingOptionIcon, { backgroundColor: activity.color + '40' }]}>
+                    <MaterialIcons name={activity.icon as any} size={30} color={activity.color} />
+                  </View>
+                  <Text style={[styles.calmingOptionTitle, { color: colors.text }]} numberOfLines={2}>
+                    {activity.title}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={[styles.pickerLabel, { color: colors.text, marginTop: Spacing.md }]}>
+              {t('time') || 'Time'}
+            </Text>
+            <View style={styles.timePickerContainer}>
+              <View style={styles.timeColumn}>
+                <TouchableOpacity onPress={incrementCalmingHour} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.timeValue, { color: colors.text }]}>
+                  {calmingHour.toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity onPress={decrementCalmingHour} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={styles.timeUnit}>Hour</Text>
+              </View>
+
+              <View style={styles.timeColumn}>
+                <TouchableOpacity onPress={incrementCalmingMinute} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.timeValue, { color: colors.text }]}>
+                  {calmingMinute.toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity onPress={decrementCalmingMinute} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={styles.timeUnit}>Min</Text>
+              </View>
+
+              <View style={styles.timeColumn}>
+                <TouchableOpacity
+                  onPress={toggleCalmingPeriod}
+                  style={[styles.periodButton, { backgroundColor: calmingPeriod === 'AM' ? colors.primary : colors.primaryLight }]}
+                >
+                  <Text style={[styles.periodText, { color: calmingPeriod === 'AM' ? '#FFFFFF' : colors.text }]}>AM</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={toggleCalmingPeriod}
+                  style={[styles.periodButton, { backgroundColor: calmingPeriod === 'PM' ? colors.primary : colors.primaryLight, marginTop: 8 }]}
+                >
+                  <Text style={[styles.periodText, { color: calmingPeriod === 'PM' ? '#FFFFFF' : colors.text }]}>PM</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primaryLight }]}
+                onPress={() => setCalmingModalVisible(false)}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.primary }]}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                onPress={handleAddCalmingActivity}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.background }]}>{t('add')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
 
+// ─── STYLES ──────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, padding: Spacing.md },
   header: { marginBottom: Spacing.lg },
@@ -555,13 +801,41 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   starText: { fontWeight: 'bold', fontSize: Typography.fontSize.lg },
+  calmingContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md },
+  calmingIcon: {
+    width: 60, height: 60, borderRadius: 30,
+    justifyContent: 'center', alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  calmingText: { flex: 1 },
+  calmingTitle: { fontWeight: 'bold', fontSize: Typography.fontSize.lg, marginBottom: 4 },
+  calmingDesc: { fontSize: Typography.fontSize.sm, lineHeight: 20 },
+  calmingButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 12, borderRadius: 12, gap: 8,
+  },
+  calmingButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: Typography.fontSize.md },
+  calmingPlaceholder: { textAlign: 'center', paddingVertical: Spacing.md },
+  calmingAddButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: Spacing.sm, borderRadius: 8, borderWidth: 2, borderStyle: 'dashed',
+    marginTop: Spacing.sm,
+  },
+  calmingAddButtonText: { fontWeight: 'bold', marginLeft: 8 },
+  calmingList: { marginBottom: Spacing.sm, flexDirection: 'row' },
+  calmingOption: {
+    width: 120, padding: Spacing.sm, borderRadius: 12, borderWidth: 2,
+    marginRight: Spacing.sm, alignItems: 'center',
+  },
+  calmingOptionIcon: {
+    width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  calmingOptionTitle: { fontWeight: '600', fontSize: Typography.fontSize.sm, textAlign: 'center' },
   currentActivityRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md },
   currentIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 60, height: 60, borderRadius: 30,
+    justifyContent: 'center', alignItems: 'center',
     marginRight: Spacing.md,
   },
   currentInfo: { flex: 1 },
@@ -570,280 +844,104 @@ const styles = StyleSheet.create({
   currentDesc: { fontSize: Typography.fontSize.sm },
   timerSection: { marginTop: Spacing.md },
   timerInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginBottom: Spacing.sm,
   },
   timerLabel: { fontSize: Typography.fontSize.md, fontWeight: '600' },
-  timerInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
+  timerInputContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   timerAdjustButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 36, height: 36, borderRadius: 18, backgroundColor: '#f0f0f0',
+    justifyContent: 'center', alignItems: 'center',
   },
   timerInputText: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: 'bold',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderRadius: 8,
+    fontSize: Typography.fontSize.md, fontWeight: 'bold',
+    paddingHorizontal: 12, paddingVertical: 4,
+    borderWidth: 1, borderRadius: 8,
   },
-  timerCircleWrapper: {
-    alignItems: 'center',
-    marginTop: Spacing.sm,
-  },
-  timerCircleOuter: {
-    width: 160,
-    height: 160,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  timerCircleWrapper: { alignItems: 'center', marginTop: Spacing.sm },
+  timerCircleOuter: { width: 160, height: 160, justifyContent: 'center', alignItems: 'center' },
   timerCircle: {
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    borderWidth: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    width: 130, height: 130, borderRadius: 65, borderWidth: 10,
+    justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF',
   },
-  timerText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  timerControls: {
-    flexDirection: 'row',
-    gap: 20,
-    marginTop: Spacing.md,
-  },
+  timerText: { fontSize: 32, fontWeight: 'bold' },
+  timerControls: { flexDirection: 'row', gap: 20, marginTop: Spacing.md },
   timerControlButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 60, height: 60, borderRadius: 30,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  timerMiniButton: {
+    marginRight: 8, padding: 4, borderRadius: 12, backgroundColor: '#f0f0f0',
   },
   progressContainer: {
-    borderRadius: 12,
-    padding: Spacing.lg,
+    borderRadius: 12, padding: Spacing.lg,
     marginVertical: Spacing.lg,
   },
-  progressTitle: {
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.lg,
-    marginBottom: Spacing.sm,
-  },
-  progressBar: {
-    height: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
-    marginVertical: Spacing.sm,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 5,
-  },
-  progressText: {
-    fontSize: Typography.fontSize.sm,
-    textAlign: 'center',
-  },
+  progressTitle: { fontWeight: 'bold', fontSize: Typography.fontSize.lg, marginBottom: Spacing.sm },
+  progressBar: { height: 10, borderRadius: 5, overflow: 'hidden', marginVertical: Spacing.sm },
+  progressFill: { height: '100%', borderRadius: 5 },
+  progressText: { fontSize: Typography.fontSize.sm, textAlign: 'center' },
   routineItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    marginBottom: Spacing.sm,
-    borderWidth: 2,
-    borderRadius: 10,
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: Spacing.sm, marginBottom: Spacing.sm,
+    borderWidth: 2, borderRadius: 10,
     paddingHorizontal: Spacing.md,
   },
-  timeContainer: {
-    width: 70,
-    alignItems: 'center',
-  },
-  timeText: {
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.sm,
-  },
-  routineContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  timeContainer: { width: 70, alignItems: 'center' },
+  timeText: { fontWeight: 'bold', fontSize: Typography.fontSize.sm },
+  routineContent: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center',
     marginRight: Spacing.md,
   },
-  textContainer: {
-    flex: 1,
-  },
-  routineTitle: {
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.md,
-  },
-  routineStatus: {
-    fontSize: Typography.fontSize.sm,
-    marginTop: Spacing.xs,
-  },
-  checkButton: {
-    padding: 4,
-    marginLeft: Spacing.sm,
-  },
+  textContainer: { flex: 1 },
+  routineTitle: { fontWeight: 'bold', fontSize: Typography.fontSize.md },
+  routineStatus: { fontSize: Typography.fontSize.sm, marginTop: Spacing.xs },
+  checkButton: { padding: 4, marginLeft: Spacing.sm },
   addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.lg,
-    borderRadius: 12,
-    marginVertical: Spacing.lg,
-    borderWidth: 2,
-    borderStyle: 'dashed',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    padding: Spacing.lg, borderRadius: 12, marginVertical: Spacing.lg,
+    borderWidth: 2, borderStyle: 'dashed',
   },
-  addButtonText: {
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.md,
-    marginLeft: Spacing.md,
-  },
-  tipsContainer: {
-    marginTop: Spacing.sm,
-  },
-  tipText: {
-    fontSize: Typography.fontSize.md,
-    marginBottom: Spacing.sm,
-    lineHeight: 24,
-  },
-  // Calming activity styles
-  calmingContainer: {
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-  },
-  calmingText: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: 'bold',
-    marginTop: Spacing.sm,
-    textAlign: 'center',
-  },
-  calmingSubtext: {
-    fontSize: Typography.fontSize.sm,
-    marginTop: Spacing.xs,
-    textAlign: 'center',
-  },
+  addButtonText: { fontWeight: 'bold', fontSize: Typography.fontSize.md, marginLeft: Spacing.md },
+  tipsContainer: { marginTop: Spacing.sm },
+  tipText: { fontSize: Typography.fontSize.md, marginBottom: Spacing.sm, lineHeight: 24 },
   // Modal styles
   modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    flex: 1, justifyContent: 'center', alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  modalContent: {
-    width: '90%',
-    maxHeight: '90%',
-    borderRadius: 20,
-    padding: Spacing.xl,
-  },
-  modalTitle: {
-    fontSize: Typography.fontSize.xl,
-    fontWeight: 'bold',
-    marginBottom: Spacing.lg,
-  },
+  modalContent: { width: '90%', maxHeight: '90%', borderRadius: 20, padding: Spacing.xl },
+  modalTitle: { fontSize: Typography.fontSize.xl, fontWeight: 'bold', marginBottom: Spacing.lg },
   input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: Spacing.md,
-    fontSize: Typography.fontSize.md,
-    marginBottom: Spacing.md,
+    borderWidth: 1, borderRadius: 10, padding: Spacing.md,
+    fontSize: Typography.fontSize.md, marginBottom: Spacing.md,
   },
-  pickerLabel: {
-    fontWeight: '600',
-    fontSize: Typography.fontSize.md,
-    marginBottom: Spacing.xs,
-  },
+  pickerLabel: { fontWeight: '600', fontSize: Typography.fontSize.md, marginBottom: Spacing.xs },
   timePickerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-    paddingVertical: Spacing.md,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 12,
+    flexDirection: 'row', justifyContent: 'space-around',
+    alignItems: 'center', marginBottom: Spacing.md,
+    paddingVertical: Spacing.md, backgroundColor: '#f9f9f9', borderRadius: 12,
   },
-  timeColumn: {
-    alignItems: 'center',
-    width: 80,
-  },
-  timeArrowButton: {
-    padding: 4,
-  },
-  timeValue: {
-    fontSize: 32,
-    fontWeight: '800',
-    marginVertical: 4,
-  },
-  timeUnit: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 4,
-  },
+  timeColumn: { alignItems: 'center', width: 80 },
+  timeArrowButton: { padding: 4 },
+  timeValue: { fontSize: 32, fontWeight: '800', marginVertical: 4 },
+  timeUnit: { fontSize: 12, color: '#888', marginTop: 4 },
   periodButton: {
-    width: 70,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 70, height: 36, borderRadius: 18,
+    justifyContent: 'center', alignItems: 'center',
   },
-  periodText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  iconRow: {
-    flexDirection: 'row',
-    marginBottom: Spacing.md,
-  },
+  periodText: { fontSize: 16, fontWeight: '700' },
+  iconRow: { flexDirection: 'row', marginBottom: Spacing.md },
   iconOption: {
-    width: 50,
-    height: 50,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-    borderWidth: 2,
+    width: 50, height: 50, borderRadius: 10,
+    justifyContent: 'center', alignItems: 'center',
+    marginRight: 10, borderWidth: 2,
   },
-  colorRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  colorOption: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: Spacing.xl,
-    gap: 10,
-  },
-  modalButton: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderRadius: 10,
-  },
-  modalButtonText: {
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.md,
-  },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  colorOption: { width: 40, height: 40, borderRadius: 20, borderWidth: 2 },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: Spacing.xl, gap: 10 },
+  modalButton: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: 10 },
+  modalButtonText: { fontWeight: 'bold', fontSize: Typography.fontSize.md },
 });
