@@ -1,6 +1,7 @@
-// components/learning/ColorsLearning.tsx (with Full i18n)
+// components/learning/ColorsLearning.tsx (voice‑enabled, robust TTS)
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -20,13 +21,12 @@ const { width } = Dimensions.get('window');
 
 interface ColorLesson {
   id: string;
-  nameKey: string;        // translation key for color name
+  nameKey: string;
   colorCode: string;
   icon: string;
-  objectKeys: string[];   // translation keys for example objects
+  objectKeys: string[];
 }
 
-// Color data using translation keys – names and objects will be translated
 const colorsData: ColorLesson[] = [
   { id: 'red', nameKey: 'color.red', colorCode: '#FF0000', icon: '🔴', objectKeys: ['object.apple', 'object.rose', 'object.ball'] },
   { id: 'blue', nameKey: 'color.blue', colorCode: '#0000FF', icon: '🔵', objectKeys: ['object.sky', 'object.ocean', 'object.blueberry'] },
@@ -42,16 +42,16 @@ const colorsData: ColorLesson[] = [
 
 export default function ColorsLearning({ onBack, onProgress }: any) {
   const { colors } = useTheme();
-  const { t } = useLanguage();   // <-- use translation function
-  const { 
-    playSound, 
-    playCelebration, 
-    playStarEarned, 
+  const { t, language } = useLanguage();
+  const {
+    playSound,
+    playCelebration,
+    playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled 
+    isEnabled: soundEnabled,
   } = useSound();
-  
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [showRewardModal, setShowRewardModal] = useState(false);
@@ -59,10 +59,56 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
   const [isCorrect, setIsCorrect] = useState(false);
   const [rewardMessage, setRewardMessage] = useState('');
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const isFirstRender = useRef(true);
 
   const currentColor = colorsData[currentIndex];
 
-  // Rewards messages with translation keys
+  // ─── Enhanced Text‑to‑Speech ─────────────────────────────────
+  const speak = (text: string) => {
+    if (!soundEnabled) return;
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: 1.0,
+        rate: 0.9,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          // Fallback to English if Sinhala voice unavailable
+          if (language === 'si') {
+            Speech.speak(text, {
+              language: 'en-US',
+              pitch: 1.0,
+              rate: 0.9,
+            });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech when unmounting
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Speak instruction on mount, then pronounce first color
+  // Speak color name on every change
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instruction = language === 'si'
+        ? t('color.instruction_si') || 'පහත දැක්වෙන වර්ණය තෝරන්න'
+        : t('color.instruction') || 'Choose the color shown below';
+      speak(instruction);
+      const timer = setTimeout(() => speak(t(currentColor.nameKey)), 2000);
+      return () => clearTimeout(timer);
+    }
+    speak(t(currentColor.nameKey));
+  }, [currentIndex, language]);
+
   const getRandomRewardMessageKey = () => {
     const messageKeys = [
       'reward.amazing',
@@ -83,12 +129,12 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
 
     if (correct) {
       await playCorrectAnswer();
-      
+
       const newScore = score + 10;
       setScore(newScore);
       setRewardMessage(t(getRandomRewardMessageKey()));
       setShowRewardModal(true);
-      
+
       await playStarEarned();
 
       Animated.sequence([
@@ -113,7 +159,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
       }, 2000);
     } else {
       await playSound('error', true);
-      
+
       setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -122,16 +168,13 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
   };
 
   const getOptions = () => {
-    // Get the translated current color name
     const currentName = t(currentColor.nameKey);
     const options = [currentName];
-    // Get translated names of other colors (excluding current)
     const otherNames = colorsData
       .filter(c => c.id !== currentColor.id)
       .map(c => t(c.nameKey))
       .slice(0, 3);
     options.push(...otherNames);
-    // Shuffle
     for (let i = options.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [options[i], options[j]] = [options[j], options[i]];
@@ -155,18 +198,15 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.soundButton}
-          onPress={handleToggleSound}
-        >
-          <MaterialIcons 
-            name={soundEnabled ? "volume-up" : "volume-off"} 
-            size={24} 
-            color={colors.primary} 
+
+        <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
+          <MaterialIcons
+            name={soundEnabled ? "volume-up" : "volume-off"}
+            size={24}
+            color={colors.primary}
           />
         </TouchableOpacity>
-        
+
         <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.primary }]}>{score}</Text>
@@ -183,17 +223,14 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
         </Text>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
           {/* Color Display Card */}
-          <TouchableOpacity 
-            activeOpacity={0.9}
-            onPress={handleColorPress}
-          >
+          <TouchableOpacity activeOpacity={0.9} onPress={handleColorPress}>
             <View style={[styles.colorCard, { backgroundColor: currentColor.colorCode }]}>
               <View style={styles.colorIconContainer}>
                 <Text style={styles.colorIcon}>{currentColor.icon}</Text>
@@ -226,7 +263,6 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
           {/* Options */}
           <View style={styles.optionsContainer}>
             {getOptions().map((option, idx) => {
-              // Find color code for this option (by matching translated name to color id)
               const colorEntry = colorsData.find(c => t(c.nameKey) === option);
               const optionColorCode = colorEntry?.colorCode || colors.primary;
               return (
@@ -296,7 +332,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
               {rewardMessage === t('reward.completeAllColors') ? (
                 <>
                   <Text style={styles.rewardMessage}>{t('reward.youAreColorMaster')}</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.rewardButton, { backgroundColor: colors.primary }]}
                     onPress={async () => {
                       setShowRewardModal(false);
@@ -317,7 +353,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
                       <Text key={i} style={styles.star}>⭐</Text>
                     ))}
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.continueButton, { backgroundColor: colors.primary }]}
                     onPress={() => setShowRewardModal(false)}
                   >
@@ -335,22 +371,22 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: Spacing.md, 
-    paddingTop: Spacing.xl 
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.md,
+    paddingTop: Spacing.xl
   },
   backButton: { padding: Spacing.sm },
   soundButton: { padding: Spacing.sm },
-  scoreBadge: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingHorizontal: Spacing.md, 
-    paddingVertical: Spacing.sm, 
-    borderRadius: BorderRadius.round, 
-    gap: Spacing.xs 
+  scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.round,
+    gap: Spacing.xs
   },
   scoreText: { fontWeight: 'bold', fontSize: 18 },
   progressContainer: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
@@ -360,42 +396,42 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: Spacing.xxl || 40 },
   content: { alignItems: 'center', padding: Spacing.lg },
-  colorCard: { 
-    width: width - 80, 
-    height: 180, 
-    borderRadius: BorderRadius.xl, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginBottom: Spacing.lg, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.2, 
-    shadowRadius: 8, 
-    elevation: 5 
+  colorCard: {
+    width: width - 80,
+    height: 180,
+    borderRadius: BorderRadius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5
   },
-  colorIconContainer: { 
-    width: 80, 
-    height: 80, 
-    borderRadius: 40, 
-    backgroundColor: 'rgba(255,255,255,0.3)', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginBottom: Spacing.md 
+  colorIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md
   },
   colorIcon: { fontSize: 48 },
-  colorName: { 
-    fontSize: 32, 
-    fontWeight: 'bold', 
-    color: '#FFF', 
-    textShadowColor: 'rgba(0,0,0,0.3)', 
-    textShadowOffset: { width: 1, height: 1 }, 
-    textShadowRadius: 3 
+  colorName: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFF',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3
   },
-  objectsContainer: { 
-    width: '100%', 
-    padding: Spacing.md, 
-    borderRadius: BorderRadius.lg, 
-    marginBottom: Spacing.lg 
+  objectsContainer: {
+    width: '100%',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg
   },
   objectsTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: Spacing.sm },
   objectsList: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
@@ -404,20 +440,20 @@ const styles = StyleSheet.create({
   questionContainer: { marginVertical: Spacing.md },
   questionText: { fontSize: 22, fontWeight: 'bold', textAlign: 'center' },
   optionsContainer: { width: '100%', gap: Spacing.md, marginBottom: Spacing.md },
-  optionButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    padding: Spacing.lg, 
-    borderRadius: BorderRadius.md, 
-    gap: Spacing.md 
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.md
   },
   optionColor: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: '#DDD' },
   optionText: { flex: 1, fontSize: 18, fontWeight: '600' },
-  feedbackContainer: { 
-    marginTop: Spacing.md, 
-    alignItems: 'center', 
-    padding: Spacing.md, 
-    borderRadius: BorderRadius.md, 
+  feedbackContainer: {
+    marginTop: Spacing.md,
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
     width: '100%',
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -435,38 +471,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   encouragementText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
-  modalOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.85)', 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  rewardContent: { 
-    alignItems: 'center', 
-    padding: Spacing.xl, 
-    borderRadius: BorderRadius.lg, 
-    minWidth: 280 
+  rewardContent: {
+    alignItems: 'center',
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    minWidth: 280
   },
-  rewardTitle: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    color: '#FFD700', 
-    marginTop: Spacing.md, 
-    textAlign: 'center' 
+  rewardTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginTop: Spacing.md,
+    textAlign: 'center'
   },
-  rewardMessage: { 
-    fontSize: 18, 
-    color: '#333', 
-    marginTop: Spacing.sm, 
-    textAlign: 'center' 
+  rewardMessage: {
+    fontSize: 18,
+    color: '#333',
+    marginTop: Spacing.sm,
+    textAlign: 'center'
   },
   starContainer: { flexDirection: 'row', marginTop: Spacing.md, gap: Spacing.sm },
   star: { fontSize: 30 },
-  rewardButton: { 
-    marginTop: Spacing.lg, 
-    paddingHorizontal: Spacing.lg, 
-    paddingVertical: Spacing.md, 
-    borderRadius: BorderRadius.md 
+  rewardButton: {
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md
   },
   rewardButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
   continueButton: {
