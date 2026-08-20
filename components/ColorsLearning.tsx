@@ -1,5 +1,6 @@
-// components/learning/ColorsLearning.tsx (voice‑enabled, robust TTS)
+// components/learning/ColorsLearning.tsx (fixed overlap: instruction fully plays first)
 import { MaterialIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -40,6 +41,21 @@ const colorsData: ColorLesson[] = [
   { id: 'white', nameKey: 'color.white', colorCode: '#FFFFFF', icon: '⚪', objectKeys: ['object.cloud', 'object.snow', 'object.milk'] },
 ];
 
+// ─── Sinhala external audio mapping ─────────────────────────────
+const sinhalaAudioMap: { [key: string]: any } = {
+  instruction: require('../assets/sounds/sinhala/instruction.mp3'),
+  red: require('../assets/sounds/sinhala/red.mp3'),
+  blue: require('../assets/sounds/sinhala/blue.mp3'),
+  green: require('../assets/sounds/sinhala/green.mp3'),
+  yellow: require('../assets/sounds/sinhala/yellow.mp3'),
+  orange: require('../assets/sounds/sinhala/orange.mp3'),
+  purple: require('../assets/sounds/sinhala/purple.mp3'),
+  pink: require('../assets/sounds/sinhala/pink.mp3'),
+  brown: require('../assets/sounds/sinhala/brown.mp3'),
+  black: require('../assets/sounds/sinhala/black.mp3'),
+  white: require('../assets/sounds/sinhala/white.mp3'),
+};
+
 export default function ColorsLearning({ onBack, onProgress }: any) {
   const { colors } = useTheme();
   const { t, language } = useLanguage();
@@ -58,29 +74,70 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState(false);
   const [rewardMessage, setRewardMessage] = useState('');
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const isFirstRender = useRef(true);
+  const pendingInstruction = useRef(false);
+
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
 
   const currentColor = colorsData[currentIndex];
 
-  // ─── Enhanced Text‑to‑Speech ─────────────────────────────────
-  const speak = (text: string) => {
+  // Load all Sinhala audio files and set soundsLoaded
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+
+    loadSounds();
+
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak or play external audio
+  const speak = async (text: string, audioKey?: string) => {
     if (!soundEnabled) return;
+
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+
     try {
       Speech.stop();
       Speech.speak(text, {
         language: language === 'si' ? 'si-LK' : 'en-US',
-        pitch: 1.0,
-        rate: 0.9,
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
         onError: (error) => {
           console.warn('TTS error:', error);
-          // Fallback to English if Sinhala voice unavailable
           if (language === 'si') {
-            Speech.speak(text, {
-              language: 'en-US',
-              pitch: 1.0,
-              rate: 0.9,
-            });
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
           }
         },
       });
@@ -89,35 +146,56 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
     }
   };
 
-  // Stop speech when unmounting
+  // Stop speech on unmount
   useEffect(() => {
     return () => Speech.stop();
   }, []);
 
-  // Speak instruction on mount, then pronounce first color
-  // Speak color name on every change
+  // ✅ MAIN INSTRUCTION EFFECT – 4-second delay prevents overlap
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      const instruction = language === 'si'
-        ? t('color.instruction_si') || 'පහත දැක්වෙන වර්ණය තෝරන්න'
-        : t('color.instruction') || 'Choose the color shown below';
-      speak(instruction);
-      const timer = setTimeout(() => speak(t(currentColor.nameKey)), 2000);
+
+      const instructionText = language === 'si'
+        ? t('color.instruction') || 'ආයුබෝවන්! අපි අද වර්ණ ගැන ඉගෙන ගමු. පහතින් පෙන්නන වර්ණය තෝරන්න.'
+        : t('color.instruction') || 'Hello! Let\'s learn about colors today. Choose the color shown below.';
+
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+
+      speak(instructionText, 'instruction');
+      const timer = setTimeout(() => {
+        speak(t(currentColor.nameKey), currentColor.id);
+      }, 4000);  // ⏱️ Increased from 2500 to 4000
       return () => clearTimeout(timer);
     }
-    speak(t(currentColor.nameKey));
+
+    // On colour change (not first render)
+    speak(t(currentColor.nameKey), currentColor.id);
   }, [currentIndex, language]);
 
+  // ✅ PENDING INSTRUCTION EFFECT – same 4-second delay
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? t('color.instruction') || 'ආයුබෝවන්! අපි අද වර්ණ ගැන ඉගෙන ගමු. පහතින් පෙන්නන වර්ණය තෝරන්න.'
+        : t('color.instruction') || 'Hello! Let\'s learn about colors today. Choose the color shown below.';
+      speak(instructionText, 'instruction');
+      const timer = setTimeout(() => {
+        speak(t(currentColor.nameKey), currentColor.id);
+      }, 6500);  // ⏱️ Increased from 2500 to 4000
+      return () => clearTimeout(timer);
+    }
+  }, [soundsLoaded]);
+
+  // rest of component unchanged...
   const getRandomRewardMessageKey = () => {
     const messageKeys = [
-      'reward.amazing',
-      'reward.greatJob',
-      'reward.youreAStar',
-      'reward.fantastic',
-      'reward.excellent',
-      'reward.keepGoing',
-      'reward.beautiful',
+      'reward.amazing', 'reward.greatJob', 'reward.youreAStar',
+      'reward.fantastic', 'reward.excellent', 'reward.keepGoing', 'reward.beautiful',
     ];
     return messageKeys[Math.floor(Math.random() * messageKeys.length)];
   };
@@ -129,12 +207,10 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
 
     if (correct) {
       await playCorrectAnswer();
-
       const newScore = score + 10;
       setScore(newScore);
       setRewardMessage(t(getRandomRewardMessageKey()));
       setShowRewardModal(true);
-
       await playStarEarned();
 
       Animated.sequence([
@@ -159,7 +235,6 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
       }, 2000);
     } else {
       await playSound('error', true);
-
       setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -198,15 +273,9 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-
         <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
-          <MaterialIcons
-            name={soundEnabled ? "volume-up" : "volume-off"}
-            size={24}
-            color={colors.primary}
-          />
+          <MaterialIcons name={soundEnabled ? "volume-up" : "volume-off"} size={24} color={colors.primary} />
         </TouchableOpacity>
-
         <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.primary }]}>{score}</Text>
@@ -223,11 +292,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
         </Text>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Animated.View style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
           {/* Color Display Card */}
           <TouchableOpacity activeOpacity={0.9} onPress={handleColorPress}>
@@ -284,11 +349,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
                   <View style={[styles.optionColor, { backgroundColor: optionColorCode }]} />
                   <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
                   {selectedAnswer === option && (
-                    <MaterialIcons
-                      name={isCorrect ? "check-circle" : "cancel"}
-                      size={28}
-                      color={isCorrect ? colors.success : colors.error}
-                    />
+                    <MaterialIcons name={isCorrect ? "check-circle" : "cancel"} size={28} color={isCorrect ? colors.success : colors.error} />
                   )}
                 </TouchableOpacity>
               );
@@ -318,12 +379,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
       </ScrollView>
 
       {/* Reward Modal */}
-      <Modal
-        visible={showRewardModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowRewardModal(false)}
-      >
+      <Modal visible={showRewardModal} transparent={true} animationType="fade" onRequestClose={() => setShowRewardModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.rewardContent, { backgroundColor: colors.surface }]}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -349,9 +405,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
                     {t('reward.pointsForColor', { points: 10, color: t(currentColor.nameKey) })}
                   </Text>
                   <View style={styles.starContainer}>
-                    {[...Array(3)].map((_, i) => (
-                      <Text key={i} style={styles.star}>⭐</Text>
-                    ))}
+                    {[...Array(3)].map((_, i) => <Text key={i} style={styles.star}>⭐</Text>)}
                   </View>
                   <TouchableOpacity
                     style={[styles.continueButton, { backgroundColor: colors.primary }]}
@@ -369,25 +423,13 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
   );
 }
 
+// ─── STYLES (unchanged) ─────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: Spacing.md,
-    paddingTop: Spacing.xl
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.md, paddingTop: Spacing.xl },
   backButton: { padding: Spacing.sm },
   soundButton: { padding: Spacing.sm },
-  scoreBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.round,
-    gap: Spacing.xs
-  },
+  scoreBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.round, gap: Spacing.xs },
   scoreText: { fontWeight: 'bold', fontSize: 18 },
   progressContainer: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
   progressBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
@@ -396,43 +438,11 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: Spacing.xxl || 40 },
   content: { alignItems: 'center', padding: Spacing.lg },
-  colorCard: {
-    width: width - 80,
-    height: 180,
-    borderRadius: BorderRadius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5
-  },
-  colorIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.md
-  },
+  colorCard: { width: width - 80, height: 180, borderRadius: BorderRadius.xl, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 },
+  colorIconContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md },
   colorIcon: { fontSize: 48 },
-  colorName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFF',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3
-  },
-  objectsContainer: {
-    width: '100%',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.lg
-  },
+  colorName: { fontSize: 32, fontWeight: 'bold', color: '#FFF', textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
+  objectsContainer: { width: '100%', padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.lg },
   objectsTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: Spacing.sm },
   objectsList: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   objectItem: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md },
@@ -440,78 +450,21 @@ const styles = StyleSheet.create({
   questionContainer: { marginVertical: Spacing.md },
   questionText: { fontSize: 22, fontWeight: 'bold', textAlign: 'center' },
   optionsContainer: { width: '100%', gap: Spacing.md, marginBottom: Spacing.md },
-  optionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    gap: Spacing.md
-  },
+  optionButton: { flexDirection: 'row', alignItems: 'center', padding: Spacing.lg, borderRadius: BorderRadius.md, gap: Spacing.md },
   optionColor: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: '#DDD' },
   optionText: { flex: 1, fontSize: 18, fontWeight: '600' },
-  feedbackContainer: {
-    marginTop: Spacing.md,
-    alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    width: '100%',
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    justifyContent: 'center'
-  },
+  feedbackContainer: { marginTop: Spacing.md, alignItems: 'center', padding: Spacing.md, borderRadius: BorderRadius.md, width: '100%', flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center' },
   feedbackText: { fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
-  encouragementContainer: {
-    marginTop: Spacing.md,
-    alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    width: '100%',
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    justifyContent: 'center'
-  },
+  encouragementContainer: { marginTop: Spacing.md, alignItems: 'center', padding: Spacing.md, borderRadius: BorderRadius.md, width: '100%', flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center' },
   encouragementText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  rewardContent: {
-    alignItems: 'center',
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.lg,
-    minWidth: 280
-  },
-  rewardTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    marginTop: Spacing.md,
-    textAlign: 'center'
-  },
-  rewardMessage: {
-    fontSize: 18,
-    color: '#333',
-    marginTop: Spacing.sm,
-    textAlign: 'center'
-  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' },
+  rewardContent: { alignItems: 'center', padding: Spacing.xl, borderRadius: BorderRadius.lg, minWidth: 280 },
+  rewardTitle: { fontSize: 28, fontWeight: 'bold', color: '#FFD700', marginTop: Spacing.md, textAlign: 'center' },
+  rewardMessage: { fontSize: 18, color: '#333', marginTop: Spacing.sm, textAlign: 'center' },
   starContainer: { flexDirection: 'row', marginTop: Spacing.md, gap: Spacing.sm },
   star: { fontSize: 30 },
-  rewardButton: {
-    marginTop: Spacing.lg,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md
-  },
+  rewardButton: { marginTop: Spacing.lg, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: BorderRadius.md },
   rewardButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
-  continueButton: {
-    marginTop: Spacing.lg,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
-    minWidth: 150,
-    alignItems: 'center',
-  },
+  continueButton: { marginTop: Spacing.lg, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: BorderRadius.md, minWidth: 150, alignItems: 'center' },
   continueButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 });
