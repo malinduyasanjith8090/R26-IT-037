@@ -1,6 +1,7 @@
-// components/learning/ShapesLearning.tsx (with Full i18n)
+// components/learning/ShapesLearning.tsx (with voice guidance)
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -21,76 +22,75 @@ const { width } = Dimensions.get('window');
 
 interface ShapeLesson {
   id: string;
-  nameKey: string;          // translation key for shape name
+  nameKey: string;
   shape: React.ReactNode;
   color: string;
-  descKey: string;          // translation key for description
-  exampleKeys: string[];    // translation keys for examples
+  descKey: string;
+  exampleKeys: string[];
   corners: number;
 }
 
-// Shape data using translation keys
 const shapesData: ShapeLesson[] = [
-  { 
-    id: 'circle', 
-    nameKey: 'shape.circle', 
-    shape: <Circle cx="100" cy="100" r="60" fill="#FF6B6B" />, 
+  {
+    id: 'circle',
+    nameKey: 'shape.circle',
+    shape: <Circle cx="100" cy="100" r="60" fill="#FF6B6B" />,
     color: '#FF6B6B',
-    descKey: 'shape.circle.desc', 
+    descKey: 'shape.circle.desc',
     exampleKeys: ['shape.circle.ex1', 'shape.circle.ex2', 'shape.circle.ex3', 'shape.circle.ex4'],
     corners: 0
   },
-  { 
-    id: 'square', 
-    nameKey: 'shape.square', 
-    shape: <Rect x="40" y="40" width="120" height="120" fill="#4ECDC4" />, 
+  {
+    id: 'square',
+    nameKey: 'shape.square',
+    shape: <Rect x="40" y="40" width="120" height="120" fill="#4ECDC4" />,
     color: '#4ECDC4',
-    descKey: 'shape.square.desc', 
+    descKey: 'shape.square.desc',
     exampleKeys: ['shape.square.ex1', 'shape.square.ex2', 'shape.square.ex3', 'shape.square.ex4'],
     corners: 4
   },
-  { 
-    id: 'triangle', 
-    nameKey: 'shape.triangle', 
-    shape: <Polygon points="100,30 30,170 170,170" fill="#FFD166" />, 
+  {
+    id: 'triangle',
+    nameKey: 'shape.triangle',
+    shape: <Polygon points="100,30 30,170 170,170" fill="#FFD166" />,
     color: '#FFD166',
-    descKey: 'shape.triangle.desc', 
+    descKey: 'shape.triangle.desc',
     exampleKeys: ['shape.triangle.ex1', 'shape.triangle.ex2', 'shape.triangle.ex3', 'shape.triangle.ex4'],
     corners: 3
   },
-  { 
-    id: 'rectangle', 
-    nameKey: 'shape.rectangle', 
-    shape: <Rect x="40" y="60" width="120" height="80" fill="#06D6A0" />, 
+  {
+    id: 'rectangle',
+    nameKey: 'shape.rectangle',
+    shape: <Rect x="40" y="60" width="120" height="80" fill="#06D6A0" />,
     color: '#06D6A0',
-    descKey: 'shape.rectangle.desc', 
+    descKey: 'shape.rectangle.desc',
     exampleKeys: ['shape.rectangle.ex1', 'shape.rectangle.ex2', 'shape.rectangle.ex3', 'shape.rectangle.ex4'],
     corners: 4
   },
-  { 
-    id: 'oval', 
-    nameKey: 'shape.oval', 
-    shape: <Ellipse cx="100" cy="100" rx="80" ry="40" fill="#118AB2" />, 
+  {
+    id: 'oval',
+    nameKey: 'shape.oval',
+    shape: <Ellipse cx="100" cy="100" rx="80" ry="40" fill="#118AB2" />,
     color: '#118AB2',
-    descKey: 'shape.oval.desc', 
+    descKey: 'shape.oval.desc',
     exampleKeys: ['shape.oval.ex1', 'shape.oval.ex2', 'shape.oval.ex3', 'shape.oval.ex4'],
     corners: 0
   },
-  { 
-    id: 'heart', 
-    nameKey: 'shape.heart', 
-    shape: <Path d="M 100 40 C 100 20, 60 20, 60 50 C 60 80, 100 120, 100 140 C 100 120, 140 80, 140 50 C 140 20, 100 20, 100 40 Z" fill="#EF476F" />, 
+  {
+    id: 'heart',
+    nameKey: 'shape.heart',
+    shape: <Path d="M 100 40 C 100 20, 60 20, 60 50 C 60 80, 100 120, 100 140 C 100 120, 140 80, 140 50 C 140 20, 100 20, 100 40 Z" fill="#EF476F" />,
     color: '#EF476F',
-    descKey: 'shape.heart.desc', 
+    descKey: 'shape.heart.desc',
     exampleKeys: ['shape.heart.ex1', 'shape.heart.ex2', 'shape.heart.ex3', 'shape.heart.ex4'],
     corners: 0
   },
-  { 
-    id: 'star', 
-    nameKey: 'shape.star', 
-    shape: <Path d="M 100 20 L 120 70 L 180 70 L 130 100 L 150 160 L 100 130 L 50 160 L 70 100 L 20 70 L 80 70 Z" fill="#FFD166" />, 
+  {
+    id: 'star',
+    nameKey: 'shape.star',
+    shape: <Path d="M 100 20 L 120 70 L 180 70 L 130 100 L 150 160 L 100 130 L 50 160 L 70 100 L 20 70 L 80 70 Z" fill="#FFD166" />,
     color: '#FFD166',
-    descKey: 'shape.star.desc', 
+    descKey: 'shape.star.desc',
     exampleKeys: ['shape.star.ex1', 'shape.star.ex2', 'shape.star.ex3', 'shape.star.ex4'],
     corners: 5
   },
@@ -98,16 +98,16 @@ const shapesData: ShapeLesson[] = [
 
 export default function ShapesLearning({ onBack, onProgress }: any) {
   const { colors } = useTheme();
-  const { t } = useLanguage();
-  const { 
-    playSound, 
-    playCelebration, 
-    playStarEarned, 
+  const { t, language } = useLanguage(); // <-- get language
+  const {
+    playSound,
+    playCelebration,
+    playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled 
+    isEnabled: soundEnabled,
   } = useSound();
-  
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [showRewardModal, setShowRewardModal] = useState(false);
@@ -116,10 +116,52 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
   const [rewardMessage, setRewardMessage] = useState('');
   const [showActivityPrompt, setShowActivityPrompt] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const isFirstRender = useRef(true);
 
   const currentShape = shapesData[currentIndex];
 
-  // Reward messages – use translation keys
+  // ─── Enhanced Text‑to‑Speech ─────────────────────────────────
+  const speak = (text: string) => {
+    if (!soundEnabled) return;
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: 1.0,
+        rate: language === 'si' ? 0.85 : 0.9,   // Slightly slower for clear Sinhala
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          // Fallback to English if Sinhala fails
+          if (language === 'si') {
+            Speech.speak(text, { language: 'en-US', pitch: 1.0, rate: 0.9 });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Speak instruction on mount, then pronounce first shape
+  // Speak shape name on every change
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instruction = language === 'si'
+        ? t('shape.instruction_si') || 'පහත දැක්වෙන හැඩය තෝරන්න'
+        : t('shape.instruction') || 'Choose the shape shown below';
+      speak(instruction);
+      const timer = setTimeout(() => speak(t(currentShape.nameKey)), 2000);
+      return () => clearTimeout(timer);
+    }
+    speak(t(currentShape.nameKey));
+  }, [currentIndex, language]);
+
   const getRandomRewardMessageKey = () => {
     const messageKeys = [
       'reward.shapeTastic',
@@ -138,12 +180,12 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
 
     if (correct) {
       await playCorrectAnswer();
-      
+
       const newScore = score + 10;
       setScore(newScore);
       setRewardMessage(t(getRandomRewardMessageKey()));
       setShowRewardModal(true);
-      
+
       await playStarEarned();
 
       Animated.sequence([
@@ -168,7 +210,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
       }, 2000);
     } else {
       await playSound('error', true);
-      
+
       setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -184,7 +226,6 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
       .map(s => t(s.nameKey))
       .slice(0, 3);
     options.push(...otherNames);
-    // Shuffle
     for (let i = options.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [options[i], options[j]] = [options[j], options[i]];
@@ -220,18 +261,15 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.soundButton}
-          onPress={handleToggleSound}
-        >
-          <MaterialIcons 
-            name={soundEnabled ? "volume-up" : "volume-off"} 
-            size={24} 
-            color={colors.primary} 
+
+        <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
+          <MaterialIcons
+            name={soundEnabled ? "volume-up" : "volume-off"}
+            size={24}
+            color={colors.primary}
           />
         </TouchableOpacity>
-        
+
         <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.primary }]}>{score}</Text>
@@ -248,17 +286,14 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
         </Text>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
           {/* Shape Card */}
-          <TouchableOpacity 
-            activeOpacity={0.9}
-            onPress={handleCardPress}
-          >
+          <TouchableOpacity activeOpacity={0.9} onPress={handleCardPress}>
             <View style={[styles.shapeCard, { backgroundColor: colors.surface }]}>
               <View style={[styles.shapeSvgContainer, { backgroundColor: currentShape.color + '20' }]}>
                 <Svg width={200} height={200} viewBox="0 0 200 200">
@@ -266,7 +301,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
                 </Svg>
               </View>
               <Text style={[styles.shapeName, { color: currentShape.color }]}>{t(currentShape.nameKey)}</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.cornerBadge, { backgroundColor: currentShape.color }]}
                 onPress={showFunActivity}
               >
@@ -340,7 +375,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
             })}
           </View>
 
-          {/* Feedback for wrong answer */}
+          {/* Feedback */}
           {selectedAnswer && !isCorrect && (
             <View style={[styles.feedbackContainer, { backgroundColor: colors.error + '20' }]}>
               <MaterialIcons name="sentiment-dissatisfied" size={24} color={colors.error} />
@@ -350,7 +385,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
             </View>
           )}
 
-          {/* Encouragement Message */}
+          {/* Encouragement */}
           {score > 0 && score % 50 === 0 && score !== 0 && (
             <View style={[styles.encouragementContainer, { backgroundColor: colors.success + '20' }]}>
               <MaterialIcons name="emoji-events" size={24} color={colors.success} />
@@ -387,7 +422,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
               {rewardMessage === t('reward.completeAllShapes') ? (
                 <>
                   <Text style={styles.rewardMessage}>{t('reward.youAreShapeExpert')}</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.rewardButton, { backgroundColor: colors.primary }]}
                     onPress={async () => {
                       setShowRewardModal(false);
@@ -408,7 +443,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
                       <Text key={i} style={styles.star}>⭐</Text>
                     ))}
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.continueButton, { backgroundColor: colors.primary }]}
                     onPress={() => setShowRewardModal(false)}
                   >
@@ -426,22 +461,22 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: Spacing.md, 
-    paddingTop: Spacing.xl 
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.md,
+    paddingTop: Spacing.xl
   },
   backButton: { padding: Spacing.sm },
   soundButton: { padding: Spacing.sm },
-  scoreBadge: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingHorizontal: Spacing.md, 
-    paddingVertical: Spacing.sm, 
-    borderRadius: BorderRadius.round, 
-    gap: Spacing.xs 
+  scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.round,
+    gap: Spacing.xs
   },
   scoreText: { fontWeight: 'bold', fontSize: 18 },
   progressContainer: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
@@ -451,45 +486,45 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: Spacing.xxl || 40 },
   content: { alignItems: 'center', padding: Spacing.lg },
-  shapeCard: { 
-    width: width - 80, 
-    alignItems: 'center', 
-    padding: Spacing.lg, 
-    borderRadius: BorderRadius.lg, 
-    marginBottom: Spacing.lg, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 8, 
-    elevation: 5 
+  shapeCard: {
+    width: width - 80,
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5
   },
   shapeSvgContainer: { padding: Spacing.lg, borderRadius: BorderRadius.lg, marginBottom: Spacing.md },
   shapeName: { fontSize: 32, fontWeight: 'bold', marginTop: Spacing.sm },
-  cornerBadge: { 
-    marginTop: Spacing.md, 
-    paddingHorizontal: Spacing.lg, 
-    paddingVertical: Spacing.xs, 
+  cornerBadge: {
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.round,
     flexDirection: 'row',
     gap: Spacing.xs,
     alignItems: 'center'
   },
   cornerText: { color: '#FFF', fontSize: 14, fontWeight: 'bold' },
-  descriptionContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    padding: Spacing.md, 
-    borderRadius: BorderRadius.lg, 
-    marginBottom: Spacing.lg, 
-    gap: Spacing.md, 
-    width: '100%' 
+  descriptionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+    gap: Spacing.md,
+    width: '100%'
   },
   descriptionText: { flex: 1, fontSize: 14, lineHeight: 20 },
-  examplesContainer: { 
-    width: '100%', 
-    padding: Spacing.md, 
-    borderRadius: BorderRadius.lg, 
-    marginBottom: Spacing.lg 
+  examplesContainer: {
+    width: '100%',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg
   },
   examplesTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: Spacing.sm },
   examplesList: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
@@ -498,20 +533,20 @@ const styles = StyleSheet.create({
   questionContainer: { marginVertical: Spacing.md },
   questionText: { fontSize: 22, fontWeight: 'bold', textAlign: 'center' },
   optionsContainer: { width: '100%', gap: Spacing.md, marginBottom: Spacing.md },
-  optionButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    padding: Spacing.lg, 
-    borderRadius: BorderRadius.md, 
-    gap: Spacing.md 
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.md
   },
   optionColor: { width: 40, height: 40, borderRadius: 20 },
   optionText: { flex: 1, fontSize: 18, fontWeight: '600' },
-  feedbackContainer: { 
-    marginTop: Spacing.md, 
-    alignItems: 'center', 
-    padding: Spacing.md, 
-    borderRadius: BorderRadius.md, 
+  feedbackContainer: {
+    marginTop: Spacing.md,
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
     width: '100%',
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -550,39 +585,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  modalOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.85)', 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  rewardContent: { 
-    alignItems: 'center', 
-    padding: Spacing.xl, 
-    borderRadius: BorderRadius.lg, 
-    minWidth: 280 
+  rewardContent: {
+    alignItems: 'center',
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    minWidth: 280
   },
   rewardEmoji: { fontSize: 60, textAlign: 'center' },
-  rewardTitle: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    color: '#FFD700', 
-    marginTop: Spacing.md, 
-    textAlign: 'center' 
+  rewardTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginTop: Spacing.md,
+    textAlign: 'center'
   },
-  rewardMessage: { 
-    fontSize: 18, 
-    color: '#333', 
-    marginTop: Spacing.sm, 
-    textAlign: 'center' 
+  rewardMessage: {
+    fontSize: 18,
+    color: '#333',
+    marginTop: Spacing.sm,
+    textAlign: 'center'
   },
   starContainer: { flexDirection: 'row', marginTop: Spacing.md, gap: Spacing.sm },
   star: { fontSize: 30 },
-  rewardButton: { 
-    marginTop: Spacing.lg, 
-    paddingHorizontal: Spacing.lg, 
-    paddingVertical: Spacing.md, 
-    borderRadius: BorderRadius.md 
+  rewardButton: {
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md
   },
   rewardButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
   continueButton: {

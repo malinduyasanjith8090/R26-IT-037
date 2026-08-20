@@ -1,17 +1,19 @@
-// components/learning/AnimalsLearning.tsx (with Sounds)
+// components/learning/AnimalsLearning.tsx (warm, clear voice)
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { BorderRadius, Spacing } from '../constants/theme';
+import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSound } from '../hooks/useSound';
 
@@ -20,6 +22,7 @@ const { width } = Dimensions.get('window');
 interface AnimalLesson {
   id: string;
   name: string;
+  nameKey: string;
   emoji: string;
   sound: string;
   funFact: string;
@@ -28,45 +31,84 @@ interface AnimalLesson {
 }
 
 const animalsData: AnimalLesson[] = [
-  { id: 'lion', name: 'Lion', emoji: '🦁', sound: 'Roar!', funFact: 'Lions live in groups called prides', color: '#FFB74D', habitat: 'Savanna' },
-  { id: 'elephant', name: 'Elephant', emoji: '🐘', sound: 'Trumpet!', funFact: 'Elephants are the largest land animals', color: '#90CAF9', habitat: 'Grasslands' },
-  { id: 'monkey', name: 'Monkey', emoji: '🐒', sound: 'Ooh ooh ah ah!', funFact: 'Monkeys love to swing on trees', color: '#A1887F', habitat: 'Jungle' },
-  { id: 'giraffe', name: 'Giraffe', emoji: '🦒', sound: 'Hum!', funFact: 'Giraffes have very long necks', color: '#FFCC80', habitat: 'Savanna' },
-  { id: 'panda', name: 'Panda', emoji: '🐼', sound: 'Squeak!', funFact: 'Pandas eat bamboo all day', color: '#BDBDBD', habitat: 'Bamboo Forest' },
-  { id: 'dolphin', name: 'Dolphin', emoji: '🐬', sound: 'Click click!', funFact: 'Dolphins are very smart swimmers', color: '#81D4FA', habitat: 'Ocean' },
+  { id: 'lion', name: 'Lion', nameKey: 'animal.lion', emoji: '🦁', sound: 'Roar!', funFact: 'Lions live in groups called prides', color: '#FFB74D', habitat: 'Savanna' },
+  { id: 'elephant', name: 'Elephant', nameKey: 'animal.elephant', emoji: '🐘', sound: 'Trumpet!', funFact: 'Elephants are the largest land animals', color: '#90CAF9', habitat: 'Grasslands' },
+  { id: 'monkey', name: 'Monkey', nameKey: 'animal.monkey', emoji: '🐒', sound: 'Ooh ooh ah ah!', funFact: 'Monkeys love to swing on trees', color: '#A1887F', habitat: 'Jungle' },
+  { id: 'giraffe', name: 'Giraffe', nameKey: 'animal.giraffe', emoji: '🦒', sound: 'Hum!', funFact: 'Giraffes have very long necks', color: '#FFCC80', habitat: 'Savanna' },
+  { id: 'panda', name: 'Panda', nameKey: 'animal.panda', emoji: '🐼', sound: 'Squeak!', funFact: 'Pandas eat bamboo all day', color: '#BDBDBD', habitat: 'Bamboo Forest' },
+  { id: 'dolphin', name: 'Dolphin', nameKey: 'animal.dolphin', emoji: '🐬', sound: 'Click click!', funFact: 'Dolphins are very smart swimmers', color: '#81D4FA', habitat: 'Ocean' },
 ];
-
-// Animal sound effects mapping
-const animalSoundEffects: { [key: string]: string } = {
-  'Lion': '🦁 Roar!',
-  'Elephant': '🐘 Trumpet!',
-  'Monkey': '🐒 Ooh ooh ah ah!',
-  'Giraffe': '🦒 Hum!',
-  'Panda': '🐼 Squeak!',
-  'Dolphin': '🐬 Click click!',
-};
 
 export default function AnimalsLearning({ onBack, onProgress }: any) {
   const { colors } = useTheme();
-  const { 
-    playSound, 
-    playCelebration, 
-    playStarEarned, 
+  const { t, language } = useLanguage();
+  const {
+    playSound,
+    playCelebration,
+    playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled 
+    isEnabled: soundEnabled
   } = useSound();
-  
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState(false);
   const [rewardMessage, setRewardMessage] = useState('');
-  const [showAnimalSound, setShowAnimalSound] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const isFirstRender = useRef(true);
 
   const currentAnimal = animalsData[currentIndex];
+
+  // ─── Warm, clear Text‑to‑Speech ──────────────────────────────
+  const speak = (text: string) => {
+    if (!soundEnabled) return;
+    try {
+      Speech.stop();
+      if (language === 'si') {
+        // Sinhala – slower, slightly higher pitch for warmth and clarity
+        Speech.speak(text, {
+          language: 'si-LK',
+          pitch: 1.15,
+          rate: 0.75,
+          onError: (error) => {
+            console.warn('Sinhala TTS error, falling back to English:', error);
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
+          },
+        });
+      } else {
+        // English – warm and clear
+        Speech.speak(text, {
+          language: 'en-US',
+          pitch: 1.05,
+          rate: 0.85,
+        });
+      }
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Speak warm instruction on mount, then pronounce first animal
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instruction = language === 'si'
+        ? (t('animal.instruction') || 'ආයුබෝවන්! අපි අද සතුන් ගැන ඉගෙන ගමු. පහතින් පෙන්නන සත්වයා තෝරන්න.')
+        : (t('animal.instruction') || 'Hello! Let\'s learn about animals today. Choose the animal shown below.');
+      speak(instruction);
+      const timer = setTimeout(() => speak(t(currentAnimal.nameKey)), 2200);
+      return () => clearTimeout(timer);
+    }
+    speak(t(currentAnimal.nameKey));
+  }, [currentIndex, language]);
 
   const getRandomRewardMessage = () => {
     const messages = [
@@ -79,28 +121,17 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
     return messages[Math.floor(Math.random() * messages.length)];
   };
 
-  // Play animal sound effect
-  const playAnimalSoundEffect = async () => {
-    setShowAnimalSound(true);
-    await playSound('click', false);
-    setTimeout(() => setShowAnimalSound(false), 2000);
-  };
-
   const handleAnswer = async (answer: string) => {
     setSelectedAnswer(answer);
-    const correct = answer === currentAnimal.name;
+    const correct = answer === t(currentAnimal.nameKey);
     setIsCorrect(correct);
 
     if (correct) {
-      // Play correct answer sound
       await playCorrectAnswer();
-      
       const newScore = score + 10;
       setScore(newScore);
       setRewardMessage(getRandomRewardMessage());
       setShowRewardModal(true);
-      
-      // Play star sounds for extra delight
       await playStarEarned();
 
       Animated.sequence([
@@ -125,7 +156,6 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
       }, 2000);
     } else {
       await playSound('error', true);
-      
       setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -134,9 +164,13 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
   };
 
   const getOptions = () => {
-    const options = [currentAnimal.name];
-    const otherAnimals = animalsData.filter(a => a.name !== currentAnimal.name).map(a => a.name).slice(0, 3);
-    options.push(...otherAnimals);
+    const currentName = t(currentAnimal.nameKey);
+    const options = [currentName];
+    const otherNames = animalsData
+      .filter(a => a.nameKey !== currentAnimal.nameKey)
+      .map(a => t(a.nameKey))
+      .slice(0, 3);
+    options.push(...otherNames);
     for (let i = options.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [options[i], options[j]] = [options[j], options[i]];
@@ -153,11 +187,9 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
     await playSound('click', false);
   };
 
-  // Play animal sound action
   const handlePlayAnimalSound = async () => {
     await playSound('click', false);
-    // You could add actual animal sound effects here
-    console.log(`Playing ${currentAnimal.name} sound: ${currentAnimal.sound}`);
+    speak(currentAnimal.sound);
   };
 
   return (
@@ -167,19 +199,15 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        
-        {/* Sound Toggle Button */}
-        <TouchableOpacity 
-          style={styles.soundButton}
-          onPress={handleToggleSound}
-        >
-          <MaterialIcons 
-            name={soundEnabled ? "volume-up" : "volume-off"} 
-            size={24} 
-            color={colors.primary} 
+
+        <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
+          <MaterialIcons
+            name={soundEnabled ? "volume-up" : "volume-off"}
+            size={24}
+            color={colors.primary}
           />
         </TouchableOpacity>
-        
+
         <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.primary }]}>{score}</Text>
@@ -196,21 +224,20 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
         </Text>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
           {/* Animal Card */}
-          <TouchableOpacity 
-            activeOpacity={0.9}
-            onPress={handleCardPress}
-          >
+          <TouchableOpacity activeOpacity={0.9} onPress={handleCardPress}>
             <View style={[styles.animalCard, { backgroundColor: currentAnimal.color + '20' }]}>
               <Text style={styles.animalEmoji}>{currentAnimal.emoji}</Text>
-              <Text style={[styles.animalName, { color: colors.text }]}>{currentAnimal.name}</Text>
-              <TouchableOpacity 
+              <Text style={[styles.animalName, { color: colors.text }]}>
+                {t(currentAnimal.nameKey)}
+              </Text>
+              <TouchableOpacity
                 style={[styles.soundBadge, { backgroundColor: currentAnimal.color }]}
                 onPress={handlePlayAnimalSound}
               >
@@ -253,35 +280,38 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
 
           {/* Options */}
           <View style={styles.optionsContainer}>
-            {getOptions().map((option, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={[
-                  styles.optionButton,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: selectedAnswer === option
-                      ? (isCorrect ? colors.success : colors.error)
-                      : colors.primaryLight,
-                    borderWidth: 3,
-                  }
-                ]}
-                onPress={() => handleAnswer(option)}
-                disabled={selectedAnswer !== null}
-              >
-                <Text style={styles.optionEmoji}>
-                  {animalsData.find(a => a.name === option)?.emoji || '🐾'}
-                </Text>
-                <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
-                {selectedAnswer === option && (
-                  <MaterialIcons
-                    name={isCorrect ? "check-circle" : "cancel"}
-                    size={28}
-                    color={isCorrect ? colors.success : colors.error}
-                  />
-                )}
-              </TouchableOpacity>
-            ))}
+            {getOptions().map((option, idx) => {
+              const animal = animalsData.find(a => t(a.nameKey) === option);
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[
+                    styles.optionButton,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: selectedAnswer === option
+                        ? (isCorrect ? colors.success : colors.error)
+                        : colors.primaryLight,
+                      borderWidth: 3,
+                    }
+                  ]}
+                  onPress={() => handleAnswer(option)}
+                  disabled={selectedAnswer !== null}
+                >
+                  <Text style={styles.optionEmoji}>
+                    {animal?.emoji || '🐾'}
+                  </Text>
+                  <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
+                  {selectedAnswer === option && (
+                    <MaterialIcons
+                      name={isCorrect ? "check-circle" : "cancel"}
+                      size={28}
+                      color={isCorrect ? colors.success : colors.error}
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {/* Feedback */}
@@ -289,7 +319,7 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
             <View style={[styles.feedbackContainer, { backgroundColor: colors.error + '20' }]}>
               <MaterialIcons name="sentiment-dissatisfied" size={24} color={colors.error} />
               <Text style={[styles.feedbackText, { color: colors.error }]}>
-                ✗ Try again! The correct animal is {currentAnimal.name}! ✗
+                ✗ Try again! The correct animal is {t(currentAnimal.nameKey)}! ✗
               </Text>
             </View>
           )}
@@ -306,15 +336,6 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
         </Animated.View>
       </ScrollView>
 
-      {/* Animal Sound Notification */}
-      {showAnimalSound && (
-        <Animated.View style={[styles.soundNotification, { backgroundColor: currentAnimal.color }]}>
-          <Text style={styles.soundNotificationText}>
-            🔊 {currentAnimal.sound} 🔊
-          </Text>
-        </Animated.View>
-      )}
-
       {/* Reward Modal */}
       <Modal
         visible={showRewardModal}
@@ -330,7 +351,7 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
               {rewardMessage.includes('Complete') ? (
                 <>
                   <Text style={styles.rewardMessage}>🎉 You're an animal expert! 🎉</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.rewardButton, { backgroundColor: colors.primary }]}
                     onPress={async () => {
                       setShowRewardModal(false);
@@ -343,13 +364,13 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
                 </>
               ) : (
                 <>
-                  <Text style={styles.rewardMessage}>+10 points for {currentAnimal.name}!</Text>
+                  <Text style={styles.rewardMessage}>+10 points for {t(currentAnimal.nameKey)}!</Text>
                   <View style={styles.starContainer}>
                     {[...Array(3)].map((_, i) => (
                       <Text key={i} style={styles.star}>⭐</Text>
                     ))}
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.continueButton, { backgroundColor: colors.primary }]}
                     onPress={() => setShowRewardModal(false)}
                   >
@@ -367,22 +388,22 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: Spacing.md, 
-    paddingTop: Spacing.xl 
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.md,
+    paddingTop: Spacing.xl
   },
   backButton: { padding: Spacing.sm },
   soundButton: { padding: Spacing.sm },
-  scoreBadge: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingHorizontal: Spacing.md, 
-    paddingVertical: Spacing.sm, 
-    borderRadius: BorderRadius.round, 
-    gap: Spacing.xs 
+  scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.round,
+    gap: Spacing.xs
   },
   scoreText: { fontWeight: 'bold', fontSize: 18 },
   progressContainer: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
@@ -392,33 +413,33 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: Spacing.xxl },
   content: { alignItems: 'center', padding: Spacing.lg },
-  animalCard: { 
-    width: width - 80, 
-    alignItems: 'center', 
-    padding: Spacing.xl, 
-    borderRadius: BorderRadius.lg, 
-    marginBottom: Spacing.lg 
+  animalCard: {
+    width: width - 80,
+    alignItems: 'center',
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg
   },
   animalEmoji: { fontSize: 80, marginBottom: Spacing.md },
   animalName: { fontSize: 28, fontWeight: 'bold' },
-  soundBadge: { 
-    marginTop: Spacing.md, 
-    paddingHorizontal: Spacing.lg, 
-    paddingVertical: Spacing.sm, 
+  soundBadge: {
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.round,
     flexDirection: 'row',
     gap: Spacing.xs,
     alignItems: 'center'
   },
   soundText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  factContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    padding: Spacing.md, 
-    borderRadius: BorderRadius.lg, 
-    marginBottom: Spacing.sm, 
-    gap: Spacing.md, 
-    width: '100%' 
+  factContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.sm,
+    gap: Spacing.md,
+    width: '100%'
   },
   factText: { flex: 1, fontSize: 14, lineHeight: 20 },
   habitatContainer: {
@@ -432,32 +453,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   habitatText: { fontSize: 14, fontWeight: '500' },
-  actionContainer: { 
-    width: '100%', 
-    padding: Spacing.md, 
-    borderRadius: BorderRadius.lg, 
-    marginBottom: Spacing.lg, 
-    alignItems: 'center' 
+  actionContainer: {
+    width: '100%',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+    alignItems: 'center'
   },
   actionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: Spacing.sm },
   actionText: { fontSize: 18, fontWeight: '600', textAlign: 'center' },
   questionContainer: { marginVertical: Spacing.md },
   questionText: { fontSize: 22, fontWeight: 'bold', textAlign: 'center' },
   optionsContainer: { width: '100%', gap: Spacing.md, marginBottom: Spacing.md },
-  optionButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    padding: Spacing.lg, 
-    borderRadius: BorderRadius.md, 
-    gap: Spacing.md 
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.md
   },
   optionEmoji: { fontSize: 32 },
   optionText: { flex: 1, fontSize: 18, fontWeight: '600' },
-  feedbackContainer: { 
-    marginTop: Spacing.md, 
-    alignItems: 'center', 
-    padding: Spacing.md, 
-    borderRadius: BorderRadius.md, 
+  feedbackContainer: {
+    marginTop: Spacing.md,
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
     width: '100%',
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -475,58 +496,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   encouragementText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
-  soundNotification: {
-    position: 'absolute',
-    bottom: 100,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.round,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  rewardContent: {
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  soundNotificationText: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  modalOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.85)', 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  rewardContent: { 
-    alignItems: 'center', 
-    padding: Spacing.xl, 
-    borderRadius: BorderRadius.lg, 
-    minWidth: 280 
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    minWidth: 280
   },
   rewardEmoji: { fontSize: 60, textAlign: 'center' },
-  rewardTitle: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    color: '#FFD700', 
-    marginTop: Spacing.md, 
-    textAlign: 'center' 
+  rewardTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginTop: Spacing.md,
+    textAlign: 'center'
   },
-  rewardMessage: { 
-    fontSize: 18, 
-    color: '#333', 
-    marginTop: Spacing.sm, 
-    textAlign: 'center' 
+  rewardMessage: {
+    fontSize: 18,
+    color: '#333',
+    marginTop: Spacing.sm,
+    textAlign: 'center'
   },
   starContainer: { flexDirection: 'row', marginTop: Spacing.md, gap: Spacing.sm },
   star: { fontSize: 30 },
-  rewardButton: { 
-    marginTop: Spacing.lg, 
-    paddingHorizontal: Spacing.lg, 
-    paddingVertical: Spacing.md, 
-    borderRadius: BorderRadius.md 
+  rewardButton: {
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md
   },
   rewardButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
   continueButton: {
