@@ -241,7 +241,7 @@ export default function ShapesLearning({ onBack, onProgress }: any) {
       speak(instructionText, 'instruction');
       const timer = setTimeout(() => {
         speak(t(currentShape.nameKey), currentShape.id);
-      }, 4000);
+      }, 6500);
       return () => clearTimeout(timer);
     }
   }, [soundsLoaded]);
