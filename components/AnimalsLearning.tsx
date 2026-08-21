@@ -1,5 +1,6 @@
-// components/learning/AnimalsLearning.tsx (warm, clear voice)
+// components/learning/AnimalsLearning.tsx (external Sinhala voice commands)
 import { MaterialIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -39,6 +40,18 @@ const animalsData: AnimalLesson[] = [
   { id: 'dolphin', name: 'Dolphin', nameKey: 'animal.dolphin', emoji: '🐬', sound: 'Click click!', funFact: 'Dolphins are very smart swimmers', color: '#81D4FA', habitat: 'Ocean' },
 ];
 
+// ─── Sinhala external audio mapping ─────────────────────────────
+// Add your own .mp3 files to assets/sounds/sinhala/
+const sinhalaAudioMap: { [key: string]: any } = {
+  instruction: require('../assets/sounds/sinhala/animalinstruction.mp3'),
+  lion: require('../assets/sounds/sinhala/lion.mp3'),
+  elephant: require('../assets/sounds/sinhala/elephant.mp3'),
+  monkey: require('../assets/sounds/sinhala/monkey.mp3'),
+  giraffe: require('../assets/sounds/sinhala/giraffe.mp3'),
+  panda: require('../assets/sounds/sinhala/panda.mp3'),
+  dolphin: require('../assets/sounds/sinhala/dolphin.mp3'),
+};
+
 export default function AnimalsLearning({ onBack, onProgress }: any) {
   const { colors } = useTheme();
   const { t, language } = useLanguage();
@@ -48,7 +61,7 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
     playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled
+    isEnabled: soundEnabled,
   } = useSound();
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -57,35 +70,73 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState(false);
   const [rewardMessage, setRewardMessage] = useState('');
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const isFirstRender = useRef(true);
+  const pendingInstruction = useRef(false);
+
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
 
   const currentAnimal = animalsData[currentIndex];
 
-  // ─── Warm, clear Text‑to‑Speech ──────────────────────────────
-  const speak = (text: string) => {
+  // Load all Sinhala audio files and set soundsLoaded
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+
+    loadSounds();
+
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak or play external audio
+  const speak = async (text: string, audioKey?: string) => {
     if (!soundEnabled) return;
+
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+
     try {
       Speech.stop();
-      if (language === 'si') {
-        // Sinhala – slower, slightly higher pitch for warmth and clarity
-        Speech.speak(text, {
-          language: 'si-LK',
-          pitch: 1.15,
-          rate: 0.75,
-          onError: (error) => {
-            console.warn('Sinhala TTS error, falling back to English:', error);
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          if (language === 'si') {
             Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
-          },
-        });
-      } else {
-        // English – warm and clear
-        Speech.speak(text, {
-          language: 'en-US',
-          pitch: 1.05,
-          rate: 0.85,
-        });
-      }
+          }
+        },
+      });
     } catch (error) {
       console.error('Speech error:', error);
     }
@@ -96,19 +147,45 @@ export default function AnimalsLearning({ onBack, onProgress }: any) {
     return () => Speech.stop();
   }, []);
 
-  // Speak warm instruction on mount, then pronounce first animal
+  // ✅ MAIN INSTRUCTION EFFECT – waits for soundsLoaded if needed
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      const instruction = language === 'si'
-        ? (t('animal.instruction') || 'ආයුබෝවන්! අපි අද සතුන් ගැන ඉගෙන ගමු. පහතින් පෙන්නන සත්වයා තෝරන්න.')
-        : (t('animal.instruction') || 'Hello! Let\'s learn about animals today. Choose the animal shown below.');
-      speak(instruction);
-      const timer = setTimeout(() => speak(t(currentAnimal.nameKey)), 2200);
+
+      const instructionText = language === 'si'
+        ? t('animal.instruction') || 'ආයුබෝවන්! අපි අද සතුන් ගැන ඉගෙන ගමු. පහතින් පෙන්නන සත්වයා තෝරන්න.'
+        : t('animal.instruction') || 'Hello! Let\'s learn about animals today. Choose the animal shown below.';
+
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+
+      speak(instructionText, 'instruction');
+      const timer = setTimeout(() => {
+        speak(t(currentAnimal.nameKey), currentAnimal.id);
+      }, 4000); // Wait for instruction to finish
       return () => clearTimeout(timer);
     }
-    speak(t(currentAnimal.nameKey));
+
+    // On animal change
+    speak(t(currentAnimal.nameKey), currentAnimal.id);
   }, [currentIndex, language]);
+
+  // ✅ PENDING INSTRUCTION EFFECT – fires when sounds become ready
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? t('animal.instruction') || 'ආයුබෝවන්! අපි අද සතුන් ගැන ඉගෙන ගමු. පහතින් පෙන්නන සත්වයා තෝරන්න.'
+        : t('animal.instruction') || 'Hello! Let\'s learn about animals today. Choose the animal shown below.';
+      speak(instructionText, 'instruction');
+      const timer = setTimeout(() => {
+        speak(t(currentAnimal.nameKey), currentAnimal.id);
+      }, 6500);
+      return () => clearTimeout(timer);
+    }
+  }, [soundsLoaded]);
 
   const getRandomRewardMessage = () => {
     const messages = [
