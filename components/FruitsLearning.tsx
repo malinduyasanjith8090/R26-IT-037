@@ -55,7 +55,6 @@ const sinhalaAudioMap: { [key: string]: any } = {
   pineapple: require('../assets/sounds/sinhala/pineapple.mp3'),
   mango: require('../assets/sounds/sinhala/mango.mp3'),
   peach: require('../assets/sounds/sinhala/peach.mp3'),
-  cherry: require('../assets/sounds/sinhala/cherry.mp3'),
 };
 
 export default function FruitsLearning({ onBack, onProgress }: any) {

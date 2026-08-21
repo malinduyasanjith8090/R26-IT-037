@@ -1,5 +1,7 @@
-// LetterTracingPage.tsx – Stricter & neater scoring with sounds
+// LetterTracingPage.tsx – Sinhala tracing with external voice commands
+import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
+import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -14,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
+import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSound } from '../hooks/useSound';
 
@@ -226,36 +229,18 @@ const getGrade = (score: number): GradeResult => {
 // ─── 14 KEYPOINTS PER LETTER ───────────────────────────────────
 const CUSTOM_KEYPOINTS: Record<string, { x: number; y: number }[]> = {
   'අ': [
-    { x: 130, y: 120 },
-    { x: 180, y: 100 }, 
-    { x: 215, y: 140 },
-    { x: 135, y: 160 }, 
-    { x: 155, y: 220 }, 
-    { x: 220, y: 230 },
-    { x: 270, y: 210 }, 
-    { x: 220, y: 260 }, 
-    { x: 220, y: 285 },
-    { x: 220, y: 310 }, 
-    { x: 220, y: 180 }, 
-    { x: 260, y: 100 },
-    { x: 255, y: 130 }, 
-    { x: 270, y: 160 },
+    { x: 130, y: 120 }, { x: 180, y: 100 }, { x: 215, y: 140 },
+    { x: 135, y: 160 }, { x: 155, y: 220 }, { x: 220, y: 230 },
+    { x: 270, y: 210 }, { x: 220, y: 260 }, { x: 220, y: 285 },
+    { x: 220, y: 310 }, { x: 220, y: 180 }, { x: 260, y: 100 },
+    { x: 255, y: 130 }, { x: 270, y: 160 },
   ],
   'ආ': [
-    { x: 95, y: 115 }, 
-    { x: 175, y: 135 }, 
-    { x: 95, y: 155 }, //3
-    { x: 110, y: 215 }, 
-    { x: 220, y: 210 }, 
-    { x: 175, y: 250 },
-    { x: 175, y: 280 }, 
-    { x: 175, y: 180 }, 
-    { x: 210, y: 110 },
-    { x: 230, y: 150 }, 
-    { x: 210, y: 170 }, 
-    { x: 275, y: 100 },
-    { x: 310, y: 160 }, 
-    { x: 275, y: 230 },
+    { x: 95, y: 115 }, { x: 175, y: 135 }, { x: 95, y: 155 },
+    { x: 110, y: 215 }, { x: 220, y: 210 }, { x: 175, y: 250 },
+    { x: 175, y: 280 }, { x: 175, y: 180 }, { x: 210, y: 110 },
+    { x: 230, y: 150 }, { x: 210, y: 170 }, { x: 275, y: 100 },
+    { x: 310, y: 160 }, { x: 275, y: 230 },
   ],
   'ඇ': [
     { x: 180, y: 100 }, { x: 140, y: 130 }, { x: 160, y: 170 },
@@ -300,36 +285,18 @@ const CUSTOM_KEYPOINTS: Record<string, { x: number; y: number }[]> = {
     { x: 230, y: 230 }, { x: 170, y: 240 },
   ],
   'ක': [
-    { x: 110, y: 120 }, 
-    { x: 160, y: 130 }, 
-    { x: 210, y: 140 },
-    { x: 240, y: 180 }, 
-    { x: 230, y: 220 }, 
-    { x: 190, y: 220 },
-    { x: 175, y: 190 }, 
-    { x: 160, y: 220 }, 
-    { x: 120, y: 220 },
-    { x: 125, y: 180 }, 
-    { x: 100, y: 170 }, 
-    { x: 220, y: 100 },
-    { x: 295, y: 160 }, 
-    { x: 260, y: 225 },
+    { x: 110, y: 120 }, { x: 160, y: 130 }, { x: 210, y: 140 },
+    { x: 240, y: 180 }, { x: 230, y: 220 }, { x: 190, y: 220 },
+    { x: 175, y: 190 }, { x: 160, y: 220 }, { x: 120, y: 220 },
+    { x: 125, y: 180 }, { x: 100, y: 170 }, { x: 220, y: 100 },
+    { x: 295, y: 160 }, { x: 260, y: 225 },
   ],
   'ග': [
-    { x: 170, y: 100 }, 
-    { x: 120, y: 140 }, 
-    { x: 125, y: 200 },
-    { x: 170, y: 230 }, 
-    { x: 215, y: 200 }, 
-    { x: 220, y: 160 },
-    { x: 200, y: 140 }, 
-    { x: 180, y: 160 }, 
-    { x: 200, y: 110 },
-    { x: 250, y: 110 }, 
-    { x: 275, y: 140 }, 
-    { x: 275, y: 180 },
-    { x: 260, y: 210 }, 
-    { x: 240, y: 225 },
+    { x: 170, y: 100 }, { x: 120, y: 140 }, { x: 125, y: 200 },
+    { x: 170, y: 230 }, { x: 215, y: 200 }, { x: 220, y: 160 },
+    { x: 200, y: 140 }, { x: 180, y: 160 }, { x: 200, y: 110 },
+    { x: 250, y: 110 }, { x: 275, y: 140 }, { x: 275, y: 180 },
+    { x: 260, y: 210 }, { x: 240, y: 225 },
   ],
   'ච': [
     { x: 280, y: 90 }, { x: 240, y: 100 }, { x: 200, y: 130 },
@@ -428,6 +395,15 @@ function generateKeyPointsForLetter(letter: string): { x: number; y: number }[] 
   return CUSTOM_KEYPOINTS[letter] || [];
 }
 
+// ─── Sinhala external audio mapping ─────────────────────────────
+const sinhalaAudioMap: { [key: string]: any } = {
+  instruction: require('../assets/sounds/sinhala/tracingsinhalainstruction.mp3'),
+  'අ': require('../assets/sounds/sinhala/අ.mp3'),
+  'ආ': require('../assets/sounds/sinhala//ආ.mp3'),
+  'ඊ': require('../assets/sounds/sinhala/ඊ.mp3'),
+
+};
+
 // ─── ANIMATED COUNTER ────────────────────────────────────────────
 interface AnimatedCounterProps { value: number; }
 function AnimatedCounter({ value }: AnimatedCounterProps) {
@@ -515,17 +491,17 @@ interface ScoreOverlayProps {
 function ScoreOverlay({ score, grade, onNext, onRetry, isLast }: ScoreOverlayProps) {
   const { colors } = useTheme();
   const { playSound } = useSound();
-  
+
   const handleNextWithSound = () => {
     playSound('click', false);
     onNext();
   };
-  
+
   const handleRetryWithSound = () => {
     playSound('click', false);
     onRetry();
   };
-  
+
   return (
     <View style={[styles.overlay, { backgroundColor: colors.background + 'F5' }]}>
       <View style={styles.overlayContent}>
@@ -551,8 +527,9 @@ interface LetterTracingPageProps { lang?: 'en'; }
 
 export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProps) {
   const { colors } = useTheme();
+  const { t, language } = useLanguage();
   const { playSound, playStarEarned, playCorrectAnswer, playCelebration, isEnabled: soundEnabled } = useSound();
-  
+
   const [allLetters] = useState<Letter[]>(() => ALL_LETTERS);
   const [currentIdx, setCurrentIdx] = useState<number>(0);
   const [showGuide, setShowGuide] = useState<boolean>(true);
@@ -581,6 +558,12 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
   const progressAnim = useRef(new Animated.Value(0)).current;
   const scrollEnabled = useRef(true);
 
+  // ─── AUDIO LOADING ────────────────────────────────────────────
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
+  const pendingInstruction = useRef(false);
+  const isFirstRender = useRef(true);
+
   const current = allLetters[currentIdx];
   const cat = current?.cat;
   const total = allLetters.length;
@@ -598,7 +581,106 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
     );
   };
 
-  // Live progress for the bar (lenient)
+  // Load all Sinhala audio files
+  useEffect(() => {
+    let isMounted = true;
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+    loadSounds();
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak function (external audio for Sinhala, TTS for English)
+  const speak = async (text: string, audioKey?: string) => {
+    if (!soundEnabled) return;
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          if (language === 'si') {
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Main instruction effect – plays long Sinhala instruction
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instructionText = language === 'si'
+        ? 'ආයුබෝවන්! අපි දැන් සිංහල අකුරු ලියන ආකාරය ඉගෙන ගමු. තිරයේ පෙන්වන අකුර දෙස බලා, ඔබේ ඇඟිල්ලෙන් එය මත අඳින්න. ලකුණු අනුගමනය කරමින් සෙමින් අඳින්න. සෑම අකුරක්ම සාර්ථකව ලිවීමට උත්සාහ කරන්න.'
+        : 'Hello! Let\'s learn how to trace Sinhala letters. Look at the letter shown on the screen and draw over it with your finger. Follow the dots and trace slowly. Try to write each letter successfully.';
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+      speak(instructionText, 'instruction');
+      const timer = setTimeout(() => {
+        speak(t(current.letter), current.letter);
+      }, 6000); // Give time for long instruction
+      return () => clearTimeout(timer);
+    }
+    // On letter change, speak the letter name
+    speak(t(current.letter), current.letter);
+  }, [currentIdx, language]);
+
+  // Pending instruction effect – fires when sounds become ready
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? 'ආයුබෝවන්! අපි දැන් සිංහල අකුරු ලියන ආකාරය ඉගෙන ගමු. තිරයේ පෙන්වන අකුර දෙස බලා, ඔබේ ඇඟිල්ලෙන් එය මත අඳින්න. ලකුණු අනුගමනය කරමින් සෙමින් අඳින්න. සෑම අකුරක්ම සාර්ථකව ලිවීමට උත්සාහ කරන්න.'
+        : 'Hello! Let\'s learn how to trace Sinhala letters. Look at the letter shown on the screen and draw over it with your finger. Follow the dots and trace slowly. Try to write each letter successfully.';
+      speak(instructionText, 'instruction');
+      const timer = setTimeout(() => {
+        speak(t(current.letter), current.letter);
+      }, 18000);
+      return () => clearTimeout(timer);
+    }
+  }, [soundsLoaded]);
+
+  // Live progress for the bar
   useEffect(() => {
     if (validTracePoints.length > 0 && !isComplete) {
       const covered = new Set<number>();
@@ -643,14 +725,12 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
         setStrokes(prev => [...prev, [newPoint]]);
         setHasDrawn(true);
         setIsTracing(true);
-        
-        // Play click sound on start tracing
+
         await playSound('click', false);
 
         if (isPointNearKeyPoint(newPoint)) {
           setValidTracePoints(prev => [...prev, newPoint]);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          // Play star sound when hitting a key point
           await playSound('star', false);
         }
       },
@@ -685,16 +765,16 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
     if (isComplete) return;
     setIsComplete(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await playCorrectAnswer();  // Correct answer sound
-    await playStarEarned();     // Additional star sparkles
-    
+    await playCorrectAnswer();
+    await playStarEarned();
+
     Animated.sequence([
       Animated.timing(scaleAnim, { toValue: 1.1, duration: 200, useNativeDriver: true }),
       Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start();
-    
+
     setPoints((prev) => prev + 10);
-    
+
     setTimeout(async () => {
       setIsComplete(false);
       setStrokes([]);
@@ -704,7 +784,6 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
         setCurrentIdx(currentIdx + 1);
         await playSound('click', false);
       } else {
-        // All letters completed – celebration
         await playCelebration();
         setCurrentIdx(0);
       }
@@ -724,7 +803,7 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
 
   const handleCheck = async () => {
     if (!hasDrawn || isComplete) return;
-    
+
     const hitsPerKeypoint = new Array(keyPoints.length).fill(0);
     validTracePoints.forEach((tp) => {
       keyPoints.forEach((kp, idx) => {
@@ -736,20 +815,19 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
 
     const wellTraced = hitsPerKeypoint.filter(hits => hits >= 3).length;
     const raw = (wellTraced / keyPoints.length) * 100;
-    
+
     const grade = getGrade(raw);
     setScoreResult({ score: Math.round(raw), grade });
     setPoints((p) => p + Math.round(raw / 8));
-    
+
     if (current) {
       setProgressMap((pm) => ({ ...pm, [current.letter]: Math.max(pm[current.letter] ?? 0, raw) }));
       setHistory((h) =>
         [{ letter: current.letter, score: Math.round(raw), cat: cat?.nameEn || '', ts: Date.now() }, ...h].slice(0, 50),
       );
     }
-    
+
     if (raw >= 80) {
-      // Play celebration for high score
       await playCelebration();
       setCelebrating(true);
       setTimeout(() => setCelebrating(false), 1600);
@@ -764,7 +842,6 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
         }
       }
     } else {
-      // Play gentle error sound
       await playSound('error', false);
     }
   };
@@ -774,7 +851,7 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
     handleClear();
     setCurrentIdx((i) => (i < total - 1 ? i + 1 : 0));
   };
-  
+
   const handlePrev = async () => {
     if (currentIdx > 0) {
       await playSound('click', false);
@@ -782,13 +859,13 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
       setCurrentIdx((i) => i - 1);
     }
   };
-  
+
   const handleRetry = async () => {
     await playSound('click', false);
     handleClear();
     setScoreResult(null);
   };
-  
+
   const handleSelectLetter = async (letter: Letter) => {
     const idx = allLetters.findIndex((l) => l.letter === letter.letter);
     if (idx !== -1) {
@@ -903,10 +980,10 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
           <Text style={[styles.traceProgressLabel, { color: colors.textLight }]}>Live Guide: {Math.floor(traceProgress)}%</Text>
           <View style={[styles.traceProgressBar, { backgroundColor: colors.primaryLight }]}>
             <Animated.View style={[styles.traceProgressFill,
-              {
-                width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
-                backgroundColor: traceProgress >= 95 ? colors.success : colors.primary,
-              }
+            {
+              width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
+              backgroundColor: traceProgress >= 95 ? colors.success : colors.primary,
+            }
             ]} />
           </View>
           {traceProgress >= 95 && !isComplete && (

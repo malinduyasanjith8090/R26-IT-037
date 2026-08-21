@@ -102,7 +102,6 @@ const shapesData: ShapeLesson[] = [
 const sinhalaAudioMap: { [key: string]: any } = {
   instruction: require('../assets/sounds/sinhala/shapesinstruction.mp3'),
   circle: require('../assets/sounds/sinhala/circle.mp3'),
-  square: require('../assets/sounds/sinhala/square.mp3'),
   triangle: require('../assets/sounds/sinhala/triangle.mp3'),
   rectangle: require('../assets/sounds/sinhala/rectangle.mp3'),
   oval: require('../assets/sounds/sinhala/oval.mp3'),
