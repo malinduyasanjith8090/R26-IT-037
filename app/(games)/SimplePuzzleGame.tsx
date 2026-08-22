@@ -1,17 +1,20 @@
-// app/(games)/SimplePuzzleGame.tsx (with Sounds & Haptics)
+// app/(games)/SimplePuzzleGame.tsx (with Sinhala voice instruction)
 import { MaterialIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSound } from '../../hooks/useSound';
 
@@ -95,17 +98,23 @@ const levels: Level[] = [
   },
 ];
 
+// ─── Sinhala external audio map ─────────────────────────────────
+const sinhalaAudioMap: { [key: string]: any } = {
+  instruction: require('../../assets/sounds/sinhala/games/simplePuzzle/instruction.mp3'),
+};
+
 export default function SimplePuzzleGame() {
   const { colors } = useTheme();
-  const { 
-    playSound, 
-    playCelebration, 
-    playStarEarned, 
+  const { t, language } = useLanguage(); // ← language
+  const {
+    playSound,
+    playCelebration,
+    playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled 
+    isEnabled: soundEnabled
   } = useSound();
-  
+
   const [currentLevel, setCurrentLevel] = useState(0);
   const [pieces, setPieces] = useState<PuzzlePiece[]>([]);
   const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
@@ -116,6 +125,12 @@ export default function SimplePuzzleGame() {
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
   const successAnim = useState(new Animated.Value(1))[0];
+
+  // ─── Sinhala voice state ──────────────────────────────────────
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
+  const pendingInstruction = useRef(false);
+  const isFirstRender = useRef(true);
 
   const level = levels[currentLevel];
 
@@ -136,6 +151,96 @@ export default function SimplePuzzleGame() {
     initializePuzzle();
   }, [currentLevel]);
 
+  // Load Sinhala instruction audio
+  useEffect(() => {
+    let isMounted = true;
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+    loadSounds();
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak function (external audio for Sinhala, TTS for English)
+  const speak = async (text: string, audioKey?: string) => {
+    if (!soundEnabled) return;
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          if (language === 'si') {
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Speak instruction when the game opens
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, අපි පෙන්වන රූපයට කෑලි නිවැරදි අනුපිළිවෙලට සකස් කරන්න. කෑල්ලක් තට්ටු කර, පසුව තවත් කෑල්ලක් තට්ටු කර ඒවා මාරු කරන්න.'
+        : 'In this game, arrange the pieces in the correct order to match the shown image. Tap a piece, then tap another piece to swap them.';
+
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+      speak(instructionText, 'instruction');
+    }
+  }, [language]);
+
+  // Pending instruction effect
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, අපි පෙන්වන රූපයට කෑලි නිවැරදි අනුපිළිවෙලට සකස් කරන්න. කෑල්ලක් තට්ටු කර, පසුව තවත් කෑල්ලක් තට්ටු කර ඒවා මාරු කරන්න.'
+        : 'In this game, arrange the pieces in the correct order to match the shown image. Tap a piece, then tap another piece to swap them.';
+      speak(instructionText, 'instruction');
+    }
+  }, [soundsLoaded]);
+
   const calculateStars = () => {
     const minMoves = level.pieces.length;
     if (moves <= minMoves + 2) return 3;
@@ -147,23 +252,22 @@ export default function SimplePuzzleGame() {
     const isComplete = pieces.every(
       (piece, index) => piece.id === pieces[index]?.id
     );
-    
+
     if (isComplete) {
       const earnedStars = calculateStars();
       setStars(earnedStars);
-      
-      // Play success sound and animation
+
       await playCorrectAnswer();
       await playStarEarned();
-      
+
       setShowSuccessAnimation(true);
       Animated.sequence([
         Animated.timing(successAnim, { toValue: 1.3, duration: 200, useNativeDriver: true }),
         Animated.timing(successAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
-      
+
       setTimeout(() => setShowSuccessAnimation(false), 1000);
-      
+
       if (currentLevel === levels.length - 1) {
         await playCelebration();
         setShowComplete(true);
@@ -183,19 +287,15 @@ export default function SimplePuzzleGame() {
       const temp = newPieces[selectedPiece];
       newPieces[selectedPiece] = newPieces[index];
       newPieces[index] = temp;
-      
+
       setPieces(newPieces);
       setMoves(moves + 1);
-      
-      // Play swap sound
+
       await playSound('click', true);
-      
+
       setSelectedPiece(null);
-      
-      // Check if puzzle is complete
       await checkComplete();
     } else {
-      // Deselect if tapping the same piece
       setSelectedPiece(null);
       await playSound('click', false);
     }
@@ -275,19 +375,18 @@ export default function SimplePuzzleGame() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        
-        {/* Sound Toggle Button */}
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.soundButton}
           onPress={handleToggleSound}
         >
-          <MaterialIcons 
-            name={soundEnabled ? "volume-up" : "volume-off"} 
-            size={24} 
-            color={colors.primary} 
+          <MaterialIcons
+            name={soundEnabled ? "volume-up" : "volume-off"}
+            size={24}
+            color={colors.primary}
           />
         </TouchableOpacity>
-        
+
         <Text style={[styles.title, { color: colors.text }]}>Simple Puzzle</Text>
         <View style={[styles.movesBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="swap-horiz" size={20} color={colors.primary} />

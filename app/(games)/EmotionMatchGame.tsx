@@ -1,7 +1,9 @@
-// app/(games)/EmotionMatchGame.tsx (with Sounds & Full Translations)
+// app/(games)/EmotionMatchGame.tsx (with Sinhala voice instruction)
 import { MaterialIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -22,14 +24,14 @@ const { width } = Dimensions.get('window');
 interface Emotion {
   id: string;
   emoji: string;
-  nameKey: string;      // translation key for emotion name
-  descKey: string;      // translation key for description
+  nameKey: string;
+  descKey: string;
   color: string;
 }
 
 interface Level {
   id: number;
-  nameKey: string;      // translation key for level name
+  nameKey: string;
   emotions: Emotion[];
 }
 
@@ -83,18 +85,23 @@ const copingStrategyKeys: { [key: string]: string } = {
   lonely: 'coping.notAlone',
 };
 
+// ─── Sinhala external audio map ─────────────────────────────────
+const sinhalaAudioMap: { [key: string]: any } = {
+  instruction: require('../../assets/sounds/sinhala/games/emotionMatchinstruction.mp3'),
+};
+
 export default function EmotionMatchGame() {
   const { colors } = useTheme();
-  const { t, language } = useLanguage();  // Use translation function and language for re-render
-  const { 
-    playSound, 
-    playCelebration, 
-    playStarEarned, 
+  const { t, language } = useLanguage();
+  const {
+    playSound,
+    playCelebration,
+    playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled 
+    isEnabled: soundEnabled
   } = useSound();
-  
+
   const [currentLevel, setCurrentLevel] = useState(0);
   const [currentEmotion, setCurrentEmotion] = useState<Emotion | null>(null);
   const [options, setOptions] = useState<Emotion[]>([]);
@@ -111,7 +118,103 @@ export default function EmotionMatchGame() {
   const scaleAnim = useState(new Animated.Value(1))[0];
   const shakeAnim = useState(new Animated.Value(0))[0];
 
+  // ─── Sinhala voice state ──────────────────────────────────────
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
+  const pendingInstruction = useRef(false);
+  const isFirstRender = useRef(true);
+
   const level = levels[currentLevel];
+
+  // Load Sinhala instruction audio
+  useEffect(() => {
+    let isMounted = true;
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+    loadSounds();
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak function (external audio for Sinhala, TTS for English)
+  const speak = async (text: string, audioKey?: string) => {
+    if (!soundEnabled) return;
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          if (language === 'si') {
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Speak instruction when the game opens
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, ඉහළින් පෙන්වන හැඟීමට ගැලපෙන මුහුණ තෝරන්න. එක් එක් ප්‍රශ්නයට නිවැරදි පිළිතුර තෝරාගෙන හැඟීම් හඳුනා ගැනීමට ඉගෙන ගන්න. වාසනාවන්!'
+        : 'In this game, choose the face that matches the emotion shown above. Learn to recognize emotions by selecting the correct answer for each question. Good luck!';
+
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+      speak(instructionText, 'instruction');
+    }
+  }, [language]);
+
+  // Pending instruction effect
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, ඉහළින් පෙන්වන හැඟීමට ගැලපෙන මුහුණ තෝරන්න. එක් එක් ප්‍රශ්නයට නිවැරදි පිළිතුර තෝරාගෙන හැඟීම් හඳුනා ගැනීමට ඉගෙන ගන්න. වාසනාවන්!'
+        : 'In this game, choose the face that matches the emotion shown above. Learn to recognize emotions by selecting the correct answer for each question. Good luck!';
+      speak(instructionText, 'instruction');
+    }
+  }, [soundsLoaded]);
 
   useEffect(() => {
     initializeLevel();
@@ -121,8 +224,7 @@ export default function EmotionMatchGame() {
     if (levelEmotions.length > 0 && questionCount < levelEmotions.length) {
       const current = levelEmotions[questionCount];
       setCurrentEmotion(current);
-      
-      // Generate options (current + 3 random others)
+
       const otherEmotions = level.emotions.filter(e => e.id !== current.id);
       const shuffledOthers = [...otherEmotions];
       for (let i = shuffledOthers.length - 1; i > 0; i--) {
@@ -177,7 +279,7 @@ export default function EmotionMatchGame() {
 
   const handleAnswer = async (selected: Emotion) => {
     if (selectedAnswer !== null) return;
-    
+
     setSelectedAnswer(selected.id);
     const correct = selected.id === currentEmotion?.id;
     setIsCorrect(correct);
@@ -198,7 +300,7 @@ export default function EmotionMatchGame() {
         if (questionCount + 1 >= level.emotions.length) {
           const earnedStars = calculateStars();
           setStars(earnedStars);
-          
+
           if (currentLevel === levels.length - 1) {
             playCelebration();
             setShowComplete(true);
@@ -214,7 +316,7 @@ export default function EmotionMatchGame() {
     } else {
       await playSound('error', true);
       shakeAnimation();
-      
+
       setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -270,13 +372,13 @@ export default function EmotionMatchGame() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        
+
         <Text style={[styles.title, { color: colors.text }]}>{t('game.emotionMatch.title')}</Text>
-        
+
         <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
           <MaterialIcons name={soundEnabled ? "volume-up" : "volume-off"} size={24} color={colors.primary} />
         </TouchableOpacity>
-        
+
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
@@ -292,10 +394,10 @@ export default function EmotionMatchGame() {
       </View>
 
       {/* Current Emotion Display */}
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.emotionCard, 
-          { 
+          styles.emotionCard,
+          {
             backgroundColor: currentEmotion.color + '20',
             transform: [{ translateX: shakeAnim }]
           }

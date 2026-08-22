@@ -1,7 +1,9 @@
-// app/(games)/NumberHuntGame.tsx (with Full i18n)
+// app/(games)/NumberHuntGame.tsx (with Sinhala voice instruction)
 import { MaterialIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -95,18 +97,23 @@ const levels: Level[] = [
   },
 ];
 
+// ─── Sinhala external audio map ─────────────────────────────────
+const sinhalaAudioMap: { [key: string]: any } = {
+  instruction: require('../../assets/sounds/sinhala/games/numberHuntinstruction.mp3'),
+};
+
 export default function NumberHuntGame() {
   const { colors } = useTheme();
-  const { t } = useLanguage();
-  const { 
-    playSound, 
-    playCelebration, 
-    playStarEarned, 
+  const { t, language } = useLanguage(); // ← language
+  const {
+    playSound,
+    playCelebration,
+    playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled 
+    isEnabled: soundEnabled
   } = useSound();
-  
+
   const [currentLevel, setCurrentLevel] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [options, setOptions] = useState<number[]>([]);
@@ -123,10 +130,106 @@ export default function NumberHuntGame() {
   const level = levels[currentLevel];
   const currentQuestion = level.questions[currentQuestionIndex];
 
+  // ─── Sinhala voice state ──────────────────────────────────────
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
+  const pendingInstruction = useRef(false);
+  const isFirstRender = useRef(true);
+
   useEffect(() => {
     generateOptions();
     playSound('click', false);
   }, [currentQuestionIndex]);
+
+  // Load Sinhala instruction audio
+  useEffect(() => {
+    let isMounted = true;
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+    loadSounds();
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak function (external audio for Sinhala, TTS for English)
+  const speak = async (text: string, audioKey?: string) => {
+    if (!soundEnabled) return;
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          if (language === 'si') {
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Speak instruction when the game opens
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, තිරයේ පෙන්වන ඉලක්කම් ගණන් කර, නිවැරදි පිළිතුර තෝරන්න. සෑම ප්‍රශ්නයකටම නිවැරදිව පිළිතුරු දී, ජයග්‍රහණය කිරීමට උත්සාහ කරන්න.'
+        : 'In this game, count the numbers shown on the screen and choose the correct answer. Try to answer every question correctly.';
+
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+      speak(instructionText, 'instruction');
+    }
+  }, [language]);
+
+  // Pending instruction effect
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, තිරයේ පෙන්වන ඉලක්කම් ගණන් කර, නිවැරදි පිළිතුර තෝරන්න. සෑම ප්‍රශ්නයකටම නිවැරදිව පිළිතුරු දී, ජයග්‍රහණය කිරීමට උත්සාහ කරන්න.'
+        : 'In this game, count the numbers shown on the screen and choose the correct answer. Try to answer every question correctly.';
+      speak(instructionText, 'instruction');
+    }
+  }, [soundsLoaded]);
 
   const generateOptions = () => {
     const numbers = [];
@@ -188,7 +291,7 @@ export default function NumberHuntGame() {
 
   const handleAnswer = async (answer: number) => {
     if (selectedAnswer !== null) return;
-    
+
     setSelectedAnswer(answer);
     const correct = answer === currentQuestion.targetNumber;
     setIsCorrect(correct);
@@ -208,7 +311,7 @@ export default function NumberHuntGame() {
         if (currentQuestionIndex + 1 >= level.questions.length) {
           const earnedStars = calculateStars();
           setStars(earnedStars);
-          
+
           if (currentLevel === levels.length - 1) {
             await playCelebration();
             setShowComplete(true);
@@ -226,12 +329,12 @@ export default function NumberHuntGame() {
       }, 1500);
     } else {
       await playSound('wrong', true);
-      
+
       Animated.sequence([
         Animated.timing(bounceAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
         Animated.timing(bounceAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
       ]).start();
-      
+
       setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -292,11 +395,11 @@ export default function NumberHuntGame() {
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>{t('numberHunt.title')}</Text>
-        
+
         <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
           <MaterialIcons name={soundEnabled ? "volume-up" : "volume-off"} size={24} color={colors.primary} />
         </TouchableOpacity>
-        
+
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
@@ -320,7 +423,7 @@ export default function NumberHuntGame() {
       </View>
 
       {/* Question Display */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.questionContainer,
           { backgroundColor: colors.surface },
@@ -331,7 +434,7 @@ export default function NumberHuntGame() {
       </Animated.View>
 
       {/* Hint Button */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.hintButton, { backgroundColor: colors.primaryLight }]}
         onPress={showHintMessage}
       >

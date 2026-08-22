@@ -1,18 +1,21 @@
-// app/(games)/MemoryMatchGame.tsx (with Sounds & Haptics)
+// app/(games)/MemoryMatchGame.tsx (with Sinhala voice instruction)
 import { MaterialIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSound } from '../../hooks/useSound';
 
@@ -109,17 +112,23 @@ const levels: Level[] = [
   },
 ];
 
+// ─── Sinhala external audio map ─────────────────────────────────
+const sinhalaAudioMap: { [key: string]: any } = {
+  instruction: require('../../assets/sounds/sinhala/games/memoryMatchinstruction.mp3'),
+};
+
 export default function MemoryMatchGame() {
   const { colors } = useTheme();
-  const { 
-    playSound, 
-    playCelebration, 
-    playStarEarned, 
+  const { t, language } = useLanguage(); // ← language
+  const {
+    playSound,
+    playCelebration,
+    playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled 
+    isEnabled: soundEnabled
   } = useSound();
-  
+
   const [currentLevel, setCurrentLevel] = useState(0);
   const [cards, setCards] = useState<Card[]>([]);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
@@ -128,15 +137,110 @@ export default function MemoryMatchGame() {
   const [showLevelComplete, setShowLevelComplete] = useState(false);
   const [showGameComplete, setShowGameComplete] = useState(false);
   const [stars, setStars] = useState(3);
-  const [flipSoundPlayed, setFlipSoundPlayed] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
   const [scaleAnim] = useState(new Animated.Value(1));
 
   const level = levels[currentLevel];
 
+  // ─── Sinhala voice state ──────────────────────────────────────
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
+  const pendingInstruction = useRef(false);
+  const isFirstRender = useRef(true);
+
   useEffect(() => {
     initializeGame();
   }, [currentLevel]);
+
+  // Load Sinhala instruction audio
+  useEffect(() => {
+    let isMounted = true;
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+    loadSounds();
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak function (external audio for Sinhala, TTS for English)
+  const speak = async (text: string, audioKey?: string) => {
+    if (!soundEnabled) return;
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          if (language === 'si') {
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Speak instruction when the game opens
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, කාඩ්පත් පෙරළා ගැලපෙන යුගල සොයා ගන්න. සෑම යුගලයක්ම සොයා ගැනීමට උත්සාහ කරන්න. අඩු චලනයන්ගෙන් ජයග්‍රහණය කිරීමට මතක තබා ගන්න.'
+        : 'In this game, flip the cards and find matching pairs. Try to find all pairs with as few moves as possible.';
+
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+      speak(instructionText, 'instruction');
+    }
+  }, [language]);
+
+  // Pending instruction effect
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, කාඩ්පත් පෙරළා ගැලපෙන යුගල සොයා ගන්න. සෑම යුගලයක්ම සොයා ගැනීමට උත්සාහ කරන්න. අඩු චලනයන්ගෙන් ජයග්‍රහණය කිරීමට මතක තබා ගන්න.'
+        : 'In this game, flip the cards and find matching pairs. Try to find all pairs with as few moves as possible.';
+      speak(instructionText, 'instruction');
+    }
+  }, [soundsLoaded]);
 
   const initializeGame = async () => {
     const levelCards = level.cards;
@@ -173,9 +277,8 @@ export default function MemoryMatchGame() {
   const handleCardPress = async (index: number) => {
     if (cards[index].isMatched || cards[index].isFlipped || selectedCard === index) return;
 
-    // Play card flip sound
     await playSound('click', false);
-    
+
     const newCards = [...cards];
     newCards[index].isFlipped = true;
     setCards(newCards);
@@ -184,30 +287,27 @@ export default function MemoryMatchGame() {
       setSelectedCard(index);
     } else {
       setMoves(moves + 1);
-      
+
       if (cards[selectedCard].emoji === cards[index].emoji) {
-        // Match found
         await playSound('correct', true);
-        
+
         newCards[selectedCard].isMatched = true;
         newCards[index].isMatched = true;
         setCards(newCards);
         setSelectedCard(null);
-        
+
         const newMatchedPairs = matchedPairs + 1;
         setMatchedPairs(newMatchedPairs);
         setMatchCount(matchCount + 1);
-        
-        // Play star sound for each match
+
         await playStarEarned();
 
         if (newMatchedPairs === level.pairs) {
           const earnedStars = calculateStars();
           setStars(earnedStars);
-          
-          // Play level complete celebration
+
           await playCelebration();
-          
+
           if (currentLevel === levels.length - 1) {
             setShowGameComplete(true);
           } else {
@@ -215,9 +315,8 @@ export default function MemoryMatchGame() {
           }
         }
       } else {
-        // No match
         await playSound('error', true);
-        
+
         setTimeout(async () => {
           const resetCards = [...cards];
           resetCards[selectedCard].isFlipped = false;
@@ -265,7 +364,7 @@ export default function MemoryMatchGame() {
 
   const renderCard = (card: Card, index: number) => {
     const cardWidth = (width - 60) / Math.sqrt(level.gridSize);
-    
+
     return (
       <TouchableOpacity
         key={card.id}
@@ -303,21 +402,20 @@ export default function MemoryMatchGame() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        
-        {/* Sound Toggle Button */}
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.soundButton}
           onPress={handleToggleSound}
         >
-          <MaterialIcons 
-            name={soundEnabled ? "volume-up" : "volume-off"} 
-            size={24} 
-            color={colors.primary} 
+          <MaterialIcons
+            name={soundEnabled ? "volume-up" : "volume-off"}
+            size={24}
+            color={colors.primary}
           />
         </TouchableOpacity>
-        
+
         <Text style={[styles.title, { color: colors.text }]}>Memory Match</Text>
-        
+
         <View style={[styles.statsContainer, { backgroundColor: colors.surface }]}>
           <Text style={[styles.statsText, { color: colors.text }]}>Moves: {moves}</Text>
           <Text style={[styles.statsText, { color: colors.text }]}>

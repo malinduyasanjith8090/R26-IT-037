@@ -1,6 +1,8 @@
-// app/(games)/ColorSortingGame.tsx (with Sounds, Haptics & Full i18n)
+// app/(games)/ColorSortingGame.tsx (with Sinhala voice instruction)
 import { MaterialIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { router } from 'expo-router';
+import * as Speech from 'expo-speech';
 import React, {
   useCallback,
   useEffect,
@@ -300,14 +302,14 @@ function DraggableItem({
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ColorSortingGame() {
   const { colors } = useTheme();
-  const { t } = useLanguage();
-  const { 
-    playSound, 
-    playCelebration, 
-    playStarEarned, 
+  const { t, language } = useLanguage();
+  const {
+    playSound,
+    playCelebration,
+    playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled 
+    isEnabled: soundEnabled
   } = useSound();
 
   const [levelIdx, setLevelIdx] = useState(0);
@@ -342,6 +344,106 @@ export default function ColorSortingGame() {
 
   const scoreRef = useRef(0);
   scoreRef.current = score;
+
+  // ─── Sinhala voice instruction state ────────────────────────────────────────
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
+  const pendingInstruction = useRef(false);
+  const isFirstRender = useRef(true);
+
+  const sinhalaAudioMap: { [key: string]: any } = {
+    instruction: require('../assets/sounds/sinhala/games/colorSortinginstruction.mp3'),
+  };
+
+  // Load Sinhala instruction audio
+  useEffect(() => {
+    let isMounted = true;
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+    loadSounds();
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak function
+  const speak = async (text: string, audioKey?: string) => {
+    if (!soundEnabled) return;
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          if (language === 'si') {
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Speak instruction when the game opens
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, වර්ණවත් රවුම් ඇදගෙන ගොස් ඒවායේ ගැලපෙන වර්ණ බඳුන්වලට දමන්න. සියලු රවුම් නිවැරදි බඳුන්වලට දැමීමෙන් ඔබ ජයග්‍රහණය කරයි. සෑම රවුමක්ම නිවැරදිව තැබීමට උත්සාහ කරන්න.'
+        : 'In this game, drag the colored circles and drop them into the matching colored bins. You win when all circles are correctly sorted. Try to place each circle correctly.';
+
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+      speak(instructionText, 'instruction');
+    }
+  }, [language]);
+
+  // Pending instruction effect
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, වර්ණවත් රවුම් ඇදගෙන ගොස් ඒවායේ ගැලපෙන වර්ණ බඳුන්වලට දමන්න. සියලු රවුම් නිවැරදි බඳුන්වලට දැමීමෙන් ඔබ ජයග්‍රහණය කරයි. සෑම රවුමක්ම නිවැරදිව තැබීමට උත්සාහ කරන්න.'
+        : 'In this game, drag the colored circles and drop them into the matching colored bins. You win when all circles are correctly sorted. Try to place each circle correctly.';
+      speak(instructionText, 'instruction');
+    }
+  }, [soundsLoaded]);
 
   // ── Init level ──────────────────────────────────────────────────────────────
   const initLevel = useCallback(async (idx: number) => {
@@ -385,7 +487,7 @@ export default function ColorSortingGame() {
     wrongFlashAnim.setValue(0);
     timerBarAnim.setValue(1);
     progressAnim.setValue(0);
-    
+
     await playSound('click', false);
   }, [overlayOpacity, overlayScale, wrongFlashAnim, timerBarAnim, progressAnim, playSound]);
 
@@ -527,7 +629,7 @@ export default function ColorSortingGame() {
     if (droppedColor && droppedColor === item.color) {
       await playCorrectAnswer();
       await playStarEarned();
-      
+
       const newScore = scoreRef.current + 1;
       animateMatch(item, () => {
         setItems(prev =>
@@ -715,31 +817,31 @@ export default function ColorSortingGame() {
       <Animated.View style={[styles.container, { transform: [{ translateX: shakeAnim }] }]}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={async () => {
               await playSound('click', false);
               router.back();
-            }} 
+            }}
             style={styles.backBtn}
           >
             <MaterialIcons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          
+
           {/* Sound Toggle Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.soundBtn}
             onPress={async () => {
               await playSound('click', false);
               toggleSound();
             }}
           >
-            <MaterialIcons 
-              name={soundEnabled ? "volume-up" : "volume-off"} 
-              size={22} 
-              color={colors.text} 
+            <MaterialIcons
+              name={soundEnabled ? "volume-up" : "volume-off"}
+              size={22}
+              color={colors.text}
             />
           </TouchableOpacity>
-          
+
           <View style={styles.levelInfo}>
             <Text style={[styles.levelLabel, { color: colors.textLight }]}>
               {t('game.level')} {level.level} / {LEVELS.length}
@@ -847,7 +949,7 @@ export default function ColorSortingGame() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles (unchanged) ───────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1 },
   container: {

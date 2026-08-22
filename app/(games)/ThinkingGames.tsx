@@ -1,7 +1,9 @@
-// app/(games)/ThinkingGames.tsx (with Full i18n)
+// app/(games)/ThinkingGames.tsx (with Sinhala voice instruction)
 import { MaterialIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -74,7 +76,6 @@ function OddOneOut({ colors, onComplete }: any) {
   const [showReward, setShowReward] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
 
-  // Questions use translation keys for items and explanation
   const questions = [
     { items: ['🍎', '🍌', '🍊', '🚗'], oddIndex: 3, explanationKey: 'thinkingGames.oddOneOut.explain.fruit' },
     { items: ['🐱', '🐶', '🐦', '✈️'], oddIndex: 3, explanationKey: 'thinkingGames.oddOneOut.explain.animal' },
@@ -193,7 +194,6 @@ function SequenceGame({ colors, onComplete }: any) {
   const [showReward, setShowReward] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
 
-  // Questions: sequences and options (items are emoji or numbers, no translation needed)
   const questions = [
     { sequence: ['🔴', '🔵', '🔴', '?'], options: ['🔴', '🔵', '🟢'], correct: '🔴' },
     { sequence: ['⭐', '❤️', '⭐', '?'], options: ['⭐', '❤️', '💙'], correct: '⭐' },
@@ -251,7 +251,7 @@ function SequenceGame({ colors, onComplete }: any) {
       <View style={styles.sequenceContainer}>
         {currentQuestion.sequence.map((item, idx) => (
           <View key={idx} style={[
-            styles.sequenceItem, 
+            styles.sequenceItem,
             { backgroundColor: colors.surface },
             idx === currentQuestion.sequence.length - 1 && styles.missingItem
           ]}>
@@ -311,12 +311,112 @@ function SequenceGame({ colors, onComplete }: any) {
 // Main Thinking Games Component
 export default function ThinkingGames() {
   const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();   // ← language
   const { playSound, toggleSound, isEnabled, playCelebration } = useSound();
   const [selectedGame, setSelectedGame] = useState<ThinkingGame | null>(null);
   const [gameScore, setGameScore] = useState(0);
   const [showGameComplete, setShowGameComplete] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
+
+  // ─── Sinhala voice state ──────────────────────────────────────
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
+  const pendingInstruction = useRef(false);
+  const isFirstRender = useRef(true);
+
+  const sinhalaAudioMap = {
+    instruction: require('../../assets/sounds/sinhala/games/thinkingGamesinstruction.mp3'),
+  };
+
+  // Load Sinhala instruction audio
+  useEffect(() => {
+    let isMounted = true;
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+    loadSounds();
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak function (external audio for Sinhala, TTS for English)
+  const speak = async (text: string, audioKey?: string) => {
+    if (!isEnabled) return;
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          if (language === 'si') {
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Speak instruction when the main screen opens
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම තිරයේ විවිධ චින්තන ක්‍රීඩා ඇත. ඔබට කැමති ක්‍රීඩාවක් තෝරා ගන්න. සෑම ක්‍රීඩාවක්ම ඔබේ මොළය පුහුණු කිරීමට උපකාරී වේ. ක්‍රීඩාවක් තෝරා එහි උපදෙස් අනුගමනය කරන්න.'
+        : 'Here are different thinking games. Choose a game you like. Each game helps train your brain. Select a game and follow the instructions.';
+
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+      speak(instructionText, 'instruction');
+    }
+  }, [language]);
+
+  // Pending instruction effect
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම තිරයේ විවිධ චින්තන ක්‍රීඩා ඇත. ඔබට කැමති ක්‍රීඩාවක් තෝරා ගන්න. සෑම ක්‍රීඩාවක්ම ඔබේ මොළය පුහුණු කිරීමට උපකාරී වේ. ක්‍රීඩාවක් තෝරා එහි උපදෙස් අනුගමනය කරන්න.'
+        : 'Here are different thinking games. Choose a game you like. Each game helps train your brain. Select a game and follow the instructions.';
+      speak(instructionText, 'instruction');
+    }
+  }, [soundsLoaded]);
 
   const handleGameComplete = async (score: number) => {
     setGameScore(score);
@@ -335,7 +435,7 @@ export default function ThinkingGames() {
 
   const renderGame = () => {
     if (!selectedGame) return null;
-    
+
     switch (selectedGame.component) {
       case 'OddOneOut':
         return <OddOneOut colors={colors} onComplete={handleGameComplete} />;
@@ -368,10 +468,10 @@ export default function ThinkingGames() {
             {t(selectedGame.titleKey)}
           </Text>
           <TouchableOpacity onPress={handleToggleSound} style={styles.soundButton}>
-            <MaterialIcons 
-              name={isEnabled ? "volume-up" : "volume-off"} 
-              size={24} 
-              color={colors.primary} 
+            <MaterialIcons
+              name={isEnabled ? "volume-up" : "volume-off"}
+              size={24}
+              color={colors.primary}
             />
           </TouchableOpacity>
           <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
@@ -418,10 +518,10 @@ export default function ThinkingGames() {
           {t('thinkingGames.mainTitle')}
         </Text>
         <TouchableOpacity onPress={handleToggleSound} style={styles.soundButton}>
-          <MaterialIcons 
-            name={isEnabled ? "volume-up" : "volume-off"} 
-            size={24} 
-            color={colors.primary} 
+          <MaterialIcons
+            name={isEnabled ? "volume-up" : "volume-off"}
+            size={24}
+            color={colors.primary}
           />
         </TouchableOpacity>
       </View>
@@ -569,9 +669,9 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   optionEmoji: { fontSize: 40 },
-  explanationContainer: { 
-    marginTop: Spacing.lg, 
-    padding: Spacing.md, 
+  explanationContainer: {
+    marginTop: Spacing.lg,
+    padding: Spacing.md,
     borderRadius: BorderRadius.md,
     flexDirection: 'row',
     alignItems: 'center',

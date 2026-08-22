@@ -1,16 +1,18 @@
-// app/(games)/WordMatchGame.tsx (with Sounds & Haptics)
+// app/(games)/WordMatchGame.tsx (with Sinhala voice instruction)
 import { MaterialIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
@@ -42,19 +44,19 @@ const wordPairs: WordPair[] = [
   { id: 'bird', englishWord: 'Bird', sinhalaWord: 'කුරුල්ලා', emoji: '🐦', category: 'Animals', imageEmoji: '🐦' },
   { id: 'fish', englishWord: 'Fish', sinhalaWord: 'මාළුවා', emoji: '🐠', category: 'Animals', imageEmoji: '🐠' },
   { id: 'rabbit', englishWord: 'Rabbit', sinhalaWord: 'හාවා', emoji: '🐰', category: 'Animals', imageEmoji: '🐰' },
-  
+
   // Fruits
   { id: 'apple', englishWord: 'Apple', sinhalaWord: 'ඇපල්', emoji: '🍎', category: 'Fruits', imageEmoji: '🍎' },
   { id: 'banana', englishWord: 'Banana', sinhalaWord: 'කෙසෙල්', emoji: '🍌', category: 'Fruits', imageEmoji: '🍌' },
   { id: 'orange', englishWord: 'Orange', sinhalaWord: 'දොඩම්', emoji: '🍊', category: 'Fruits', imageEmoji: '🍊' },
   { id: 'mango', englishWord: 'Mango', sinhalaWord: 'අඹ', emoji: '🥭', category: 'Fruits', imageEmoji: '🥭' },
-  
+
   // Colors
   { id: 'red', englishWord: 'Red', sinhalaWord: 'රතු', emoji: '🔴', category: 'Colors', imageEmoji: '🔴' },
   { id: 'blue', englishWord: 'Blue', sinhalaWord: 'නිල්', emoji: '🔵', category: 'Colors', imageEmoji: '🔵' },
   { id: 'green', englishWord: 'Green', sinhalaWord: 'කොළ', emoji: '🟢', category: 'Colors', imageEmoji: '🟢' },
   { id: 'yellow', englishWord: 'Yellow', sinhalaWord: 'කහ', emoji: '🟡', category: 'Colors', imageEmoji: '🟡' },
-  
+
   // Vehicles
   { id: 'car', englishWord: 'Car', sinhalaWord: 'කාර් එක', emoji: '🚗', category: 'Vehicles', imageEmoji: '🚗' },
   { id: 'bus', englishWord: 'Bus', sinhalaWord: 'බස් එක', emoji: '🚌', category: 'Vehicles', imageEmoji: '🚌' },
@@ -70,18 +72,23 @@ const levels: Level[] = [
   { id: 5, name: 'Mixed', nameSin: 'මිශ්‍ර', pairs: wordPairs.slice(0, 8) },
 ];
 
+// ─── Sinhala external audio map ─────────────────────────────────
+const sinhalaAudioMap: { [key: string]: any } = {
+  instruction: require('../../assets/sounds/sinhala/games/wordMatchinstruction.mp3'),
+};
+
 export default function WordMatchGame() {
   const { colors } = useTheme();
-  const { t, language, setLanguage } = useLanguage();
-  const { 
-    playSound, 
-    playCelebration, 
-    playStarEarned, 
+  const { t, language } = useLanguage(); // ← language
+  const {
+    playSound,
+    playCelebration,
+    playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled 
+    isEnabled: soundEnabled
   } = useSound();
-  
+
   const [currentLevel, setCurrentLevel] = useState(0);
   const [currentPair, setCurrentPair] = useState<WordPair | null>(null);
   const [options, setOptions] = useState<string[]>([]);
@@ -94,9 +101,14 @@ export default function WordMatchGame() {
   const [stars, setStars] = useState(3);
   const [levelPairs, setLevelPairs] = useState<WordPair[]>([]);
   const [matchMode, setMatchMode] = useState<'engToSin' | 'sinToEng' | 'emojiToWord'>('engToSin');
-  const [showSoundSettings, setShowSoundSettings] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
   const shakeAnim = useState(new Animated.Value(0))[0];
+
+  // ─── Sinhala voice state ──────────────────────────────────────
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
+  const pendingInstruction = useRef(false);
+  const isFirstRender = useRef(true);
 
   const level = levels[currentLevel];
 
@@ -111,6 +123,96 @@ export default function WordMatchGame() {
       generateOptions(current);
     }
   }, [questionCount, levelPairs]);
+
+  // Load Sinhala instruction audio
+  useEffect(() => {
+    let isMounted = true;
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+    loadSounds();
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak function (external audio for Sinhala, TTS for English)
+  const speak = async (text: string, audioKey?: string) => {
+    if (!soundEnabled) return;
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          if (language === 'si') {
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Speak instruction when the game opens
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, ඔබට වචන ගැලපීමට අවස්ථාව ලැබේ. ඉහළින් පෙන්වන වචනයට හෝ පින්තූරයට ගැලපෙන නිවැරදි පිළිතුර තෝරන්න. භාෂා දෙකෙහිම වචන ඉගෙන ගැනීමට මෙය උපකාරී වේ.'
+        : 'In this game, you will match words. Choose the correct answer that matches the word or picture shown above. This helps you learn words in both languages.';
+
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+      speak(instructionText, 'instruction');
+    }
+  }, [language]);
+
+  // Pending instruction effect
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, ඔබට වචන ගැලපීමට අවස්ථාව ලැබේ. ඉහළින් පෙන්වන වචනයට හෝ පින්තූරයට ගැලපෙන නිවැරදි පිළිතුර තෝරන්න. භාෂා දෙකෙහිම වචන ඉගෙන ගැනීමට මෙය උපකාරී වේ.'
+        : 'In this game, you will match words. Choose the correct answer that matches the word or picture shown above. This helps you learn words in both languages.';
+      speak(instructionText, 'instruction');
+    }
+  }, [soundsLoaded]);
 
   const initializeLevel = () => {
     const shuffled = [...level.pairs];
@@ -132,7 +234,7 @@ export default function WordMatchGame() {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffledOthers[i], shuffledOthers[j]] = [shuffledOthers[j], shuffledOthers[i]];
     }
-    
+
     let optionValues: string[] = [];
     if (matchMode === 'engToSin') {
       optionValues = [current.sinhalaWord, ...shuffledOthers.slice(0, 3).map(p => p.sinhalaWord)];
@@ -141,7 +243,7 @@ export default function WordMatchGame() {
     } else {
       optionValues = [current.englishWord, ...shuffledOthers.slice(0, 3).map(p => p.englishWord)];
     }
-    
+
     for (let i = optionValues.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [optionValues[i], optionValues[j]] = [optionValues[j], optionValues[i]];
@@ -185,19 +287,17 @@ export default function WordMatchGame() {
 
   const handleAnswer = async (answer: string) => {
     if (selectedAnswer !== null) return;
-    
+
     setSelectedAnswer(answer);
     const correct = answer === getCorrectAnswer();
     setIsCorrect(correct);
 
     if (correct) {
-      // Play correct answer sound with star effects
       await playCorrectAnswer();
-      
+
       const newScore = score + 10;
       setScore(newScore);
-      
-      // Play additional star sounds
+
       await playStarEarned();
 
       Animated.sequence([
@@ -209,7 +309,7 @@ export default function WordMatchGame() {
         if (questionCount + 1 >= level.pairs.length) {
           const earnedStars = calculateStars();
           setStars(earnedStars);
-          
+
           if (currentLevel === levels.length - 1) {
             await playCelebration();
             setShowComplete(true);
@@ -287,21 +387,20 @@ export default function WordMatchGame() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        
+
         <Text style={[styles.title, { color: colors.text }]}>Word Match</Text>
-        
-        {/* Sound Toggle Button */}
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.soundButton}
           onPress={handleToggleSound}
         >
-          <MaterialIcons 
-            name={soundEnabled ? "volume-up" : "volume-off"} 
-            size={24} 
-            color={colors.primary} 
+          <MaterialIcons
+            name={soundEnabled ? "volume-up" : "volume-off"}
+            size={24}
+            color={colors.primary}
           />
         </TouchableOpacity>
-        
+
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
@@ -347,7 +446,7 @@ export default function WordMatchGame() {
       </View>
 
       {/* Question Card */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.questionCard,
           { backgroundColor: colors.surface },
