@@ -1,30 +1,34 @@
-// app/signup.tsx (Fixed)
+// app/signup.tsx – Connected to backend and navigates to dashboard
+import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { router } from 'expo-router';
 import Button from '../components/Button';
-import { Typography, Spacing } from '../constants/theme';
+import { Spacing, Typography } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
-import { MaterialIcons } from '@expo/vector-icons';
+import { signup as apiSignup, storeToken } from '../services/api';
 
 export default function SignupScreen() {
   const { colors } = useTheme();
   const [formData, setFormData] = useState({
-    name: '',
+    parentName: '',   // matches backend field
     email: '',
     password: '',
     confirmPassword: '',
     childName: '',
     childAge: '',
+    phone: '',
+    childGender: 'Male',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,24 +38,44 @@ export default function SignupScreen() {
   };
 
   const handleSignup = async () => {
-    const { name, email, password, confirmPassword, childName, childAge } = formData;
-    
-    if (!name || !email || !password || !confirmPassword || !childName || !childAge) {
-      alert('Please fill in all fields');
+    const { parentName, email, password, confirmPassword, childName, childAge, phone, childGender } = formData;
+
+    // Validation
+    if (!parentName || !email || !password || !confirmPassword || !childName || !childAge) {
+      Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      Alert.alert('Error', 'Passwords do not match');
       return;
     }
 
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const data = await apiSignup({
+        parentName,
+        email,
+        password,
+        childName,
+        childAge: Number(childAge),
+        phone: phone || '',
+        childGender: childGender || 'Male',
+      });
+
+      // Store token for later authenticated requests
+      if (data.token) {
+        await storeToken(data.token);
+      }
+
+      Alert.alert('Success', 'Account created successfully!');
+      // ✅ Correct navigation to dashboard
+      router.replace('/(tabs)/dashboard');
+    } catch (error: any) {
+      Alert.alert('Signup Failed', error.message || 'Something went wrong');
+    } finally {
       setLoading(false);
-      router.push('/(tabs)');
-    }, 1500);
+    }
   };
 
   return (
@@ -62,10 +86,7 @@ export default function SignupScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
@@ -76,24 +97,24 @@ export default function SignupScreen() {
         <View style={styles.form}>
           {/* Parent Information */}
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>Parent Information</Text>
-          
-          <View style={[styles.inputContainer, { 
+
+          <View style={[styles.inputContainer, {
             backgroundColor: colors.surface,
-            borderColor: colors.primaryLight 
+            borderColor: colors.primaryLight
           }]}>
             <MaterialIcons name="person" size={24} color={colors.textLight} />
             <TextInput
               style={[styles.input, { color: colors.text }]}
               placeholder="Your Name"
-              value={formData.name}
-              onChangeText={(value) => handleChange('name', value)}
+              value={formData.parentName}
+              onChangeText={(value) => handleChange('parentName', value)}
               placeholderTextColor={colors.textDisabled}
             />
           </View>
 
-          <View style={[styles.inputContainer, { 
+          <View style={[styles.inputContainer, {
             backgroundColor: colors.surface,
-            borderColor: colors.primaryLight 
+            borderColor: colors.primaryLight
           }]}>
             <MaterialIcons name="email" size={24} color={colors.textLight} />
             <TextInput
@@ -107,9 +128,9 @@ export default function SignupScreen() {
             />
           </View>
 
-          <View style={[styles.inputContainer, { 
+          <View style={[styles.inputContainer, {
             backgroundColor: colors.surface,
-            borderColor: colors.primaryLight 
+            borderColor: colors.primaryLight
           }]}>
             <MaterialIcons name="lock" size={24} color={colors.textLight} />
             <TextInput
@@ -129,9 +150,9 @@ export default function SignupScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.inputContainer, { 
+          <View style={[styles.inputContainer, {
             backgroundColor: colors.surface,
-            borderColor: colors.primaryLight 
+            borderColor: colors.primaryLight
           }]}>
             <MaterialIcons name="lock-outline" size={24} color={colors.textLight} />
             <TextInput
@@ -146,10 +167,10 @@ export default function SignupScreen() {
 
           {/* Child Information */}
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>Child Information</Text>
-          
-          <View style={[styles.inputContainer, { 
+
+          <View style={[styles.inputContainer, {
             backgroundColor: colors.surface,
-            borderColor: colors.primaryLight 
+            borderColor: colors.primaryLight
           }]}>
             <MaterialIcons name="child-care" size={24} color={colors.textLight} />
             <TextInput
@@ -161,9 +182,9 @@ export default function SignupScreen() {
             />
           </View>
 
-          <View style={[styles.inputContainer, { 
+          <View style={[styles.inputContainer, {
             backgroundColor: colors.surface,
-            borderColor: colors.primaryLight 
+            borderColor: colors.primaryLight
           }]}>
             <MaterialIcons name="cake" size={24} color={colors.textLight} />
             <TextInput
@@ -193,7 +214,7 @@ export default function SignupScreen() {
 
           <Button
             title="Continue as Guest"
-            onPress={() => router.push('/dashboard')}
+            onPress={() => router.replace('/(tabs)/dashboard')}
             variant="outline"
             size="large"
           />

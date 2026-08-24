@@ -1,20 +1,22 @@
-// app/login.tsx (Fixed)
+// app/login.tsx – Connected to backend, navigates to dashboard
+import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { router } from 'expo-router';
 import Button from '../components/Button';
-import { Typography, Spacing } from '../constants/theme';
+import { Spacing, Typography } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
-import { MaterialIcons } from '@expo/vector-icons';
+import { login as apiLogin, storeToken } from '../services/api';
 
 export default function LoginScreen() {
   const { colors } = useTheme();
@@ -25,20 +27,25 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      alert('Please fill in all fields');
+      Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const data = await apiLogin({ email, password });
+      await storeToken(data.token);
+      // ✅ Correct navigation to dashboard
+      router.replace('/(tabs)/dashboard');
+    } catch (error: any) {
+      Alert.alert('Login Failed', error.message || 'Something went wrong');
+    } finally {
       setLoading(false);
-      router.push('/dashboard');
-    }, 1500);
+    }
   };
 
   const handleForgotPassword = () => {
-    alert('Password reset link will be sent to your email');
+    Alert.alert('Forgot Password', 'Password reset link will be sent to your email');
   };
 
   return (
@@ -56,7 +63,9 @@ export default function LoginScreen() {
             <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.text }]}>Welcome Back!</Text>
-          <Text style={[styles.subtitle, { color: colors.textLight }]}>Sign in to continue with Bloom</Text>
+          <Text style={[styles.subtitle, { color: colors.textLight }]}>
+            Sign in to continue with Bloom
+          </Text>
         </View>
 
         {/* Logo */}
@@ -68,10 +77,15 @@ export default function LoginScreen() {
 
         {/* Form */}
         <View style={styles.form}>
-          <View style={[styles.inputContainer, { 
-            backgroundColor: colors.surface,
-            borderColor: colors.primaryLight 
-          }]}>
+          <View
+            style={[
+              styles.inputContainer,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.primaryLight,
+              },
+            ]}
+          >
             <MaterialIcons name="email" size={24} color={colors.textLight} />
             <TextInput
               style={[styles.input, { color: colors.text }]}
@@ -84,10 +98,15 @@ export default function LoginScreen() {
             />
           </View>
 
-          <View style={[styles.inputContainer, { 
-            backgroundColor: colors.surface,
-            borderColor: colors.primaryLight 
-          }]}>
+          <View
+            style={[
+              styles.inputContainer,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.primaryLight,
+              },
+            ]}
+          >
             <MaterialIcons name="lock" size={24} color={colors.textLight} />
             <TextInput
               style={[styles.input, { color: colors.text }]}
@@ -106,11 +125,10 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={styles.forgotPassword}
-            onPress={handleForgotPassword}
-          >
-            <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Forgot Password?</Text>
+          <TouchableOpacity style={styles.forgotPassword} onPress={handleForgotPassword}>
+            <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
+              Forgot Password?
+            </Text>
           </TouchableOpacity>
 
           <Button
@@ -130,7 +148,7 @@ export default function LoginScreen() {
 
           <Button
             title="Continue as Guest"
-            onPress={() => router.push('/(tabs)')}
+            onPress={() => router.replace('/(tabs)/dashboard')}
             variant="outline"
             size="large"
             style={styles.guestButton}
@@ -139,7 +157,9 @@ export default function LoginScreen() {
 
         {/* Sign Up Link */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.textLight }]}>Don't have an account? </Text>
+          <Text style={[styles.footerText, { color: colors.textLight }]}>
+            Don't have an account?{' '}
+          </Text>
           <TouchableOpacity onPress={() => router.push('/signup')}>
             <Text style={[styles.signupLink, { color: colors.primary }]}>Sign Up</Text>
           </TouchableOpacity>

@@ -1,29 +1,58 @@
-// app/(tabs)/dashboard.tsx (Updated with full language support)
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native';
+// app/(tabs)/dashboard.tsx (fetches real user data)
+import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Card from '../../components/Card';
 import ProgressBar from '../../components/ProgressBar';
-import { Typography, Spacing } from '../../constants/theme';
-import { useTheme } from '../../context/ThemeContext';
+import { Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
-import { MaterialIcons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
+import { getProfile } from '../../services/api';
 
 export default function DashboardScreen() {
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState({
+    parentName: '',
+    childName: '',
+    childAge: '',
+  });
+
   const [childProgress, setChildProgress] = useState({
     learning: 0.65,
     games: 0.45,
     routine: 0.80,
     behavioral: 0.30,
   });
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const data = await getProfile();
+        setUserProfile({
+          parentName: data.parentName || '',
+          childName: data.childName || '',
+          childAge: data.childAge ? String(data.childAge) : '',
+        });
+      } catch (error) {
+        // If token missing or invalid, redirect to login
+        Alert.alert('Session expired', 'Please sign in again.');
+        router.replace('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProfile();
+  }, []);
 
   const dailyTasks = [
     { id: '1', title: t('morningRoutine'), icon: 'brightness-6', completed: true },
@@ -39,15 +68,25 @@ export default function DashboardScreen() {
     { id: '3', title: t('dayStreak'), icon: 'local-fire-department', color: colors.accentOrange },
   ];
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: colors.text }}>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={[styles.greeting, { color: colors.text }]}>{t('hello')}, Alex!</Text>
+          <Text style={[styles.greeting, { color: colors.text }]}>
+            {t('hello')}, {userProfile.childName || 'Friend'}!
+          </Text>
           <Text style={[styles.subGreeting, { color: colors.textLight }]}>{t('readyToLearn')}</Text>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.profileButton}
           onPress={() => router.push('/profile')}
         >

@@ -1,23 +1,24 @@
-// app/settings.tsx (Updated with back to profile navigation)
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
-  Alert,
-} from 'react-native';
-import { router } from 'expo-router';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage, LanguageType } from '../context/LanguageContext';
-import { Spacing, BorderRadius } from '../constants/theme';
+// app/settings.tsx (TypeScript errors fixed)
 import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Card from '../components/Card';
+import { BorderRadius, Spacing } from '../constants/theme';
+import { LanguageType, useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
+import { getSettings, updateSettings } from '../services/api';
 
 export default function SettingsScreen() {
-  const { theme, colors, toggleTheme, setTheme } = useTheme();
+  const { theme, colors, setTheme } = useTheme();
   const { language, t, setLanguage } = useLanguage();
   const [notifications, setNotifications] = useState({
     push: true,
@@ -26,19 +27,73 @@ export default function SettingsScreen() {
     vibration: true,
   });
 
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await getSettings();
+        if (data.language) setLanguage(data.language as LanguageType);
+        if (data.theme) setTheme(data.theme as 'light' | 'dark');
+        if (data.notifications) setNotifications(data.notifications);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          Alert.alert('Error', error.message);
+        } else {
+          Alert.alert('Error', 'Failed to load settings');
+        }
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const saveNotifications = async (field: keyof typeof notifications, value: boolean) => {
+    const updated = { ...notifications, [field]: value };
+    setNotifications(updated);
+    try {
+      await updateSettings({ notifications: updated });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        Alert.alert('Error', error.message);
+      } else {
+        Alert.alert('Error', 'Failed to save notification settings');
+      }
+    }
+  };
+
+  const handleLanguageChange = async (lang: LanguageType) => {
+    setLanguage(lang);
+    try {
+      await updateSettings({ language: lang });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        Alert.alert('Error', error.message);
+      } else {
+        Alert.alert('Error', 'Failed to save language');
+      }
+    }
+  };
+
+  const handleThemeChange = async (newTheme: 'light' | 'dark') => {
+    setTheme(newTheme);
+    try {
+      await updateSettings({ theme: newTheme });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        Alert.alert('Error', error.message);
+      } else {
+        Alert.alert('Error', 'Failed to save theme');
+      }
+    }
+  };
+
   const handleLogout = () => {
     Alert.alert(
       t('logout'),
-      t('Are you sure you want to logout?'),
+      t('areYouSureLogout'),
       [
         { text: t('cancel'), style: 'cancel' },
         { text: t('logout'), style: 'destructive', onPress: () => router.replace('/welcome') },
       ]
     );
-  };
-
-  const handleBackToProfile = () => {
-    router.back(); // This will go back to profile screen
   };
 
   const languages: { key: LanguageType; label: string; icon: string }[] = [
@@ -56,10 +111,7 @@ export default function SettingsScreen() {
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBackToProfile}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>{t('settings')}</Text>
@@ -91,7 +143,7 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionDescription, { color: colors.textLight }]}>
           {t('notificationsDesc')}
         </Text>
-        
+
         <View style={styles.settingItem}>
           <View style={styles.settingLeft}>
             <MaterialIcons name="notifications" size={24} color={colors.text} />
@@ -101,7 +153,7 @@ export default function SettingsScreen() {
           </View>
           <Switch
             value={notifications.push}
-            onValueChange={(value) => setNotifications({ ...notifications, push: value })}
+            onValueChange={(value) => saveNotifications('push', value)}
             trackColor={{ false: colors.textDisabled, true: colors.primary }}
             thumbColor={colors.surface}
           />
@@ -116,7 +168,7 @@ export default function SettingsScreen() {
           </View>
           <Switch
             value={notifications.email}
-            onValueChange={(value) => setNotifications({ ...notifications, email: value })}
+            onValueChange={(value) => saveNotifications('email', value)}
             trackColor={{ false: colors.textDisabled, true: colors.primary }}
             thumbColor={colors.surface}
           />
@@ -131,7 +183,7 @@ export default function SettingsScreen() {
           </View>
           <Switch
             value={notifications.sound}
-            onValueChange={(value) => setNotifications({ ...notifications, sound: value })}
+            onValueChange={(value) => saveNotifications('sound', value)}
             trackColor={{ false: colors.textDisabled, true: colors.primary }}
             thumbColor={colors.surface}
           />
@@ -146,7 +198,7 @@ export default function SettingsScreen() {
           </View>
           <Switch
             value={notifications.vibration}
-            onValueChange={(value) => setNotifications({ ...notifications, vibration: value })}
+            onValueChange={(value) => saveNotifications('vibration', value)}
             trackColor={{ false: colors.textDisabled, true: colors.primary }}
             thumbColor={colors.surface}
           />
@@ -163,7 +215,7 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionDescription, { color: colors.textLight }]}>
           {t('selectLanguage')}
         </Text>
-        
+
         {languages.map((lang) => (
           <TouchableOpacity
             key={lang.key}
@@ -171,7 +223,7 @@ export default function SettingsScreen() {
               styles.languageItem,
               { backgroundColor: language === lang.key ? colors.primaryLight : 'transparent' },
             ]}
-            onPress={() => setLanguage(lang.key)}
+            onPress={() => handleLanguageChange(lang.key)}
           >
             <MaterialIcons name={lang.icon as any} size={24} color={colors.text} />
             <Text style={[styles.languageLabel, { color: colors.text }]}>
@@ -194,7 +246,7 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionDescription, { color: colors.textLight }]}>
           {t('selectTheme')}
         </Text>
-        
+
         {themes.map((themeItem) => (
           <TouchableOpacity
             key={themeItem.key}
@@ -202,7 +254,7 @@ export default function SettingsScreen() {
               styles.themeItem,
               { backgroundColor: theme === themeItem.key ? colors.primaryLight : 'transparent' },
             ]}
-            onPress={() => setTheme(themeItem.key)}
+            onPress={() => handleThemeChange(themeItem.key)}
           >
             <MaterialIcons name={themeItem.icon as any} size={24} color={colors.text} />
             <Text style={[styles.themeLabel, { color: colors.text }]}>
@@ -220,7 +272,7 @@ export default function SettingsScreen() {
           </Text>
           <Switch
             value={false}
-            onValueChange={() => {}}
+            onValueChange={() => { }}
             trackColor={{ false: colors.textDisabled, true: colors.primary }}
             thumbColor={colors.surface}
           />
@@ -288,9 +340,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -298,13 +348,8 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     paddingTop: Spacing.xl,
   },
-  backButton: {
-    padding: Spacing.sm,
-  },
-  title: {
-    fontWeight: 'bold',
-    fontSize: 24,
-  },
+  backButton: { padding: Spacing.sm },
+  title: { fontWeight: 'bold', fontSize: 24 },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -321,22 +366,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: Spacing.md,
   },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontWeight: 'bold',
-    fontSize: 18,
-    marginBottom: Spacing.xs,
-  },
-  profileEmail: {
-    fontSize: 14,
-  },
-  sectionDescription: {
-    fontSize: 14,
-    marginBottom: Spacing.md,
-    lineHeight: 20,
-  },
+  profileInfo: { flex: 1 },
+  profileName: { fontWeight: 'bold', fontSize: 18, marginBottom: Spacing.xs },
+  profileEmail: { fontSize: 14 },
+  sectionDescription: { fontSize: 14, marginBottom: Spacing.md, lineHeight: 20 },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -345,14 +378,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
   },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingLabel: {
-    fontSize: 16,
-    marginLeft: Spacing.md,
-  },
+  settingLeft: { flexDirection: 'row', alignItems: 'center' },
+  settingLabel: { fontSize: 16, marginLeft: Spacing.md },
   languageItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -360,11 +387,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.xs,
   },
-  languageLabel: {
-    flex: 1,
-    fontSize: 16,
-    marginLeft: Spacing.md,
-  },
+  languageLabel: { flex: 1, fontSize: 16, marginLeft: Spacing.md },
   themeItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -372,11 +395,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.xs,
   },
-  themeLabel: {
-    flex: 1,
-    fontSize: 16,
-    marginLeft: Spacing.md,
-  },
+  themeLabel: { flex: 1, fontSize: 16, marginLeft: Spacing.md },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -384,18 +403,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
   },
-  menuLabel: {
-    flex: 1,
-    fontSize: 16,
-    marginLeft: Spacing.md,
-  },
-  versionContainer: {
-    alignItems: 'center',
-    paddingTop: Spacing.md,
-  },
-  versionLabel: {
-    fontSize: 14,
-  },
+  menuLabel: { flex: 1, fontSize: 16, marginLeft: Spacing.md },
+  versionContainer: { alignItems: 'center', paddingTop: Spacing.md },
+  versionLabel: { fontSize: 14 },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -411,7 +421,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: Spacing.sm,
   },
-  spacer: {
-    height: Spacing.xxl,
-  },
+  spacer: { height: Spacing.xxl },
 });
