@@ -70,7 +70,7 @@ const levels: Level[] = [
 
 // ─── Sinhala external audio map ─────────────────────────────────
 const sinhalaAudioMap: { [key: string]: any } = {
-  instruction: require('../../assets/sounds/sinhala/games/shapePuzzle/instruction.mp3'),
+  instruction: require('../../assets/sounds/sinhala/games/shapePuzzleinstruction.mp3'),
 };
 
 export default function ShapePuzzleGame() {

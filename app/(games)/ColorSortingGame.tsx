@@ -352,7 +352,7 @@ export default function ColorSortingGame() {
   const isFirstRender = useRef(true);
 
   const sinhalaAudioMap: { [key: string]: any } = {
-    instruction: require('../assets/sounds/sinhala/games/colorSortinginstruction.mp3'),
+    instruction: require('../../assets/sounds/sinhala/games/colorSortinginstruction.mp3'),
   };
 
   // Load Sinhala instruction audio

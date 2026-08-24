@@ -176,21 +176,21 @@ const lettersList = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
 // ─── Sinhala external audio mapping (English letters & numbers) ─
 const sinhalaAudioMap: { [key: string]: any } = {
   // Instruction for letters
-  instruction_letters: require('../../assets/sounds/sinhala/english/letters/englishlettersinstruction.mp3'),
+  instruction_letters: require('../assets/sounds/sinhala/english/letters/englishlettersinstruction.mp3'),
   // Instruction for numbers
-  instruction_numbers: require('../../assets/sounds/sinhala/numbers/sinhalanumbersinstruction.mp3'),
+  instruction_numbers: require('../assets/sounds/sinhala/numbers/sinhalanumbersinstruction.mp3'),
   // Letters
   // Numbers
-  '1': require('../../assets/sounds/sinhala/numbers/1.mp3'),
-  '2': require('../../assets/sounds/sinhala/numbers/2.mp3'),
-  '3': require('../../assets/sounds/sinhala/numbers/3.mp3'),
-  '4': require('../../assets/sounds/sinhala/numbers/4.mp3'),
-  '5': require('../../assets/sounds/sinhala/numbers/5.mp3'),
-  '6': require('../../assets/sounds/sinhala/numbers/6.mp3'),
-  '7': require('../../assets/sounds/sinhala/numbers/7.mp3'),
-  '8': require('../../assets/sounds/sinhala/numbers/8.mp3'),
-  '9': require('../../assets/sounds/sinhala/numbers/9.mp3'),
-  '0': require('../../assets/sounds/sinhala/numbers/0.mp3'),
+  '1': require('../assets/sounds/sinhala/numbers/1.mp3'),
+  '2': require('../assets/sounds/sinhala/numbers/2.mp3'),
+  '3': require('../assets/sounds/sinhala/numbers/3.mp3'),
+  '4': require('../assets/sounds/sinhala/numbers/4.mp3'),
+  '5': require('../assets/sounds/sinhala/numbers/5.mp3'),
+  '6': require('../assets/sounds/sinhala/numbers/6.mp3'),
+  '7': require('../assets/sounds/sinhala/numbers/7.mp3'),
+  '8': require('../assets/sounds/sinhala/numbers/8.mp3'),
+  '9': require('../assets/sounds/sinhala/numbers/9.mp3'),
+  '0': require('../assets/sounds/sinhala/numbers/0.mp3'),
 };
 
 export default function TracingGame({ type, onComplete, onProgress }: TracingGameProps) {
