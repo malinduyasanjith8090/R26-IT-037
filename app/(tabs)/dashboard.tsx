@@ -1,7 +1,7 @@
-// app/(tabs)/dashboard.tsx (fetches real user data)
+// app/(tabs)/dashboard.tsx (real-time updates when screen focused)
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router'; // or import from '@react-navigation/native'
+import React, { useCallback, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -25,34 +25,39 @@ export default function DashboardScreen() {
     parentName: '',
     childName: '',
     childAge: '',
+    stats: {
+      learning: 0,
+      games: 0,
+      routine: 0,
+      behavioral: 0,
+    },
+    achievements: [] as string[],
   });
 
-  const [childProgress, setChildProgress] = useState({
-    learning: 0.65,
-    games: 0.45,
-    routine: 0.80,
-    behavioral: 0.30,
-  });
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const data = await getProfile();
-        setUserProfile({
-          parentName: data.parentName || '',
-          childName: data.childName || '',
-          childAge: data.childAge ? String(data.childAge) : '',
-        });
-      } catch (error) {
-        // If token missing or invalid, redirect to login
-        Alert.alert('Session expired', 'Please sign in again.');
-        router.replace('/login');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadProfile();
+  const loadProfile = useCallback(async () => {
+    try {
+      const data = await getProfile();
+      setUserProfile({
+        parentName: data.parentName || '',
+        childName: data.childName || '',
+        childAge: data.childAge ? String(data.childAge) : '',
+        stats: data.stats || { learning: 0, games: 0, routine: 0, behavioral: 0 },
+        achievements: data.achievements || [],
+      });
+    } catch (error) {
+      Alert.alert('Session expired', 'Please sign in again.');
+      router.replace('/login');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Re-fetch data every time the dashboard screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
 
   const dailyTasks = [
     { id: '1', title: t('morningRoutine'), icon: 'brightness-6', completed: true },
@@ -62,11 +67,18 @@ export default function DashboardScreen() {
     { id: '5', title: t('eveningRoutine'), icon: 'nightlight-round', completed: false },
   ];
 
-  const recentAchievements = [
-    { id: '1', title: t('learnedNewWords'), icon: 'star', color: colors.accentYellow },
-    { id: '2', title: t('completedGames'), icon: 'emoji-events', color: colors.secondary },
-    { id: '3', title: t('dayStreak'), icon: 'local-fire-department', color: colors.accentOrange },
-  ];
+  const achievementItems = userProfile.achievements.length > 0
+    ? userProfile.achievements.map((title, index) => ({
+      id: String(index),
+      title,
+      icon: 'star',
+      color: index % 2 === 0 ? colors.accentYellow : colors.secondary,
+    }))
+    : [
+      { id: '1', title: t('learnedNewWords'), icon: 'star', color: colors.accentYellow },
+      { id: '2', title: t('completedGames'), icon: 'emoji-events', color: colors.secondary },
+      { id: '3', title: t('dayStreak'), icon: 'local-fire-department', color: colors.accentOrange },
+    ];
 
   if (loading) {
     return (
@@ -105,23 +117,31 @@ export default function DashboardScreen() {
         <View style={styles.progressGrid}>
           <View style={styles.progressItem}>
             <Text style={[styles.progressLabel, { color: colors.text }]}>{t('learning')}</Text>
-            <ProgressBar progress={childProgress.learning} height={10} showLabel />
-            <Text style={[styles.progressValue, { color: colors.primary }]}>65%</Text>
+            <ProgressBar progress={userProfile.stats.learning / 100 || 0} height={10} showLabel />
+            <Text style={[styles.progressValue, { color: colors.primary }]}>
+              {Math.round(userProfile.stats.learning)}%
+            </Text>
           </View>
           <View style={styles.progressItem}>
             <Text style={[styles.progressLabel, { color: colors.text }]}>{t('games')}</Text>
-            <ProgressBar progress={childProgress.games} height={10} showLabel />
-            <Text style={[styles.progressValue, { color: colors.primary }]}>45%</Text>
+            <ProgressBar progress={userProfile.stats.games / 100 || 0} height={10} showLabel />
+            <Text style={[styles.progressValue, { color: colors.primary }]}>
+              {Math.round(userProfile.stats.games)}%
+            </Text>
           </View>
           <View style={styles.progressItem}>
             <Text style={[styles.progressLabel, { color: colors.text }]}>{t('routine')}</Text>
-            <ProgressBar progress={childProgress.routine} height={10} showLabel />
-            <Text style={[styles.progressValue, { color: colors.primary }]}>80%</Text>
+            <ProgressBar progress={userProfile.stats.routine / 100 || 0} height={10} showLabel />
+            <Text style={[styles.progressValue, { color: colors.primary }]}>
+              {Math.round(userProfile.stats.routine)}%
+            </Text>
           </View>
           <View style={styles.progressItem}>
             <Text style={[styles.progressLabel, { color: colors.text }]}>{t('socialSkills')}</Text>
-            <ProgressBar progress={childProgress.behavioral} height={10} showLabel />
-            <Text style={[styles.progressValue, { color: colors.primary }]}>30%</Text>
+            <ProgressBar progress={userProfile.stats.behavioral / 100 || 0} height={10} showLabel />
+            <Text style={[styles.progressValue, { color: colors.primary }]}>
+              {Math.round(userProfile.stats.behavioral)}%
+            </Text>
           </View>
         </View>
       </Card>
@@ -180,7 +200,7 @@ export default function DashboardScreen() {
         icon="emoji-events"
         iconColor={colors.accentOrange}
       >
-        {recentAchievements.map((achievement) => (
+        {achievementItems.map((achievement) => (
           <View key={achievement.id} style={styles.achievementItem}>
             <View style={[styles.achievementIcon, { backgroundColor: achievement.color + '20' }]}>
               <MaterialIcons name={achievement.icon as any} size={24} color={achievement.color} />

@@ -1,4 +1,4 @@
-// app/(games)/ColorSortingGame.tsx (with Sinhala voice instruction)
+// app/(games)/ColorSortingGame.tsx (with progress update)
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { router } from 'expo-router';
@@ -25,6 +25,7 @@ import {
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSound } from '../../hooks/useSound';
+import { updateStats } from '../../services/api'; // ← new import
 
 const { width } = Dimensions.get('window');
 const Spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
@@ -647,6 +648,15 @@ export default function ColorSortingGame() {
         if (timerRef.current) clearInterval(timerRef.current);
         setStatus('completed');
         await playCelebration();
+
+        // ✅ Update backend stats
+        const progress = Math.round(((levelIdx + 1) / LEVELS.length) * 100);
+        try {
+          await updateStats({ games: progress });
+        } catch (error) {
+          console.warn('Failed to update stats:', error);
+        }
+
         setTimeout(showOverlay, 500);
       }
     } else if (droppedColor) {
@@ -658,7 +668,7 @@ export default function ColorSortingGame() {
     }
 
     setDraggingId(null);
-  }, [status, level, playCorrectAnswer, playStarEarned, playCelebration]);
+  }, [status, level, playCorrectAnswer, playStarEarned, playCelebration, levelIdx]);
 
   // ── Bin layout measurement ──────────────────────────────────────────────────
   const measureBin = (color: string) => {

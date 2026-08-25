@@ -1,4 +1,4 @@
-// app/(games)/EmotionMatchGame.tsx (with Sinhala voice instruction)
+// app/(games)/EmotionMatchGame.tsx (with stats update)
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { router } from 'expo-router';
@@ -18,6 +18,7 @@ import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSound } from '../../hooks/useSound';
+import { updateStats } from '../../services/api'; // ✅ IMPORT
 
 const { width } = Dimensions.get('window');
 
@@ -35,7 +36,6 @@ interface Level {
   emotions: Emotion[];
 }
 
-// Level definitions using translation keys
 const levels: Level[] = [
   {
     id: 1,
@@ -69,7 +69,6 @@ const levels: Level[] = [
   },
 ];
 
-// Coping strategies – mapped using translation keys for dynamic lookup
 const copingStrategyKeys: { [key: string]: string } = {
   happy: 'coping.shareHappiness',
   sad: 'coping.cryAndTalk',
@@ -85,9 +84,8 @@ const copingStrategyKeys: { [key: string]: string } = {
   lonely: 'coping.notAlone',
 };
 
-// ─── Sinhala external audio map ─────────────────────────────────
 const sinhalaAudioMap: { [key: string]: any } = {
-  instruction: require('../../assets/sounds/sinhala/games/emotionMatchinstruction.mp3'),
+  instruction: require('../../assets/sounds/sinhala/games/emotionMatchinstruction.mp3'),   // ✅ FIXED PATH
 };
 
 export default function EmotionMatchGame() {
@@ -118,7 +116,6 @@ export default function EmotionMatchGame() {
   const scaleAnim = useState(new Animated.Value(1))[0];
   const shakeAnim = useState(new Animated.Value(0))[0];
 
-  // ─── Sinhala voice state ──────────────────────────────────────
   const [soundsLoaded, setSoundsLoaded] = useState(false);
   const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
   const pendingInstruction = useRef(false);
@@ -126,7 +123,6 @@ export default function EmotionMatchGame() {
 
   const level = levels[currentLevel];
 
-  // Load Sinhala instruction audio
   useEffect(() => {
     let isMounted = true;
     const loadSounds = async () => {
@@ -154,7 +150,6 @@ export default function EmotionMatchGame() {
     };
   }, []);
 
-  // Speak function (external audio for Sinhala, TTS for English)
   const speak = async (text: string, audioKey?: string) => {
     if (!soundEnabled) return;
     if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
@@ -184,12 +179,10 @@ export default function EmotionMatchGame() {
     }
   };
 
-  // Stop speech on unmount
   useEffect(() => {
     return () => Speech.stop();
   }, []);
 
-  // Speak instruction when the game opens
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -205,7 +198,6 @@ export default function EmotionMatchGame() {
     }
   }, [language]);
 
-  // Pending instruction effect
   useEffect(() => {
     if (pendingInstruction.current && soundsLoaded) {
       pendingInstruction.current = false;
@@ -300,6 +292,13 @@ export default function EmotionMatchGame() {
         if (questionCount + 1 >= level.emotions.length) {
           const earnedStars = calculateStars();
           setStars(earnedStars);
+
+          // ✅ UPDATE STATS
+          const newProgress = Math.min(100, ((currentLevel + 1) / levels.length) * 100);
+          console.log('Updating behavioral to:', newProgress);
+          updateStats({ behavioral: newProgress })
+            .then(() => console.log('Stats updated successfully'))
+            .catch(err => console.error('Failed to update stats:', err));
 
           if (currentLevel === levels.length - 1) {
             playCelebration();
