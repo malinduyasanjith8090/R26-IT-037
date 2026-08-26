@@ -2,15 +2,15 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import TracingCanvas from '../../components/TracingCanvasdilsha';
 import { useChild } from '../../context/ChildContext';

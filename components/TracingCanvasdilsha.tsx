@@ -1,23 +1,23 @@
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 
 import {
-    Animated,
-    Image,
-    PanResponder,
-    StyleSheet,
-    View,
+  Animated,
+  Image,
+  PanResponder,
+  StyleSheet,
+  View,
 } from 'react-native';
 
 import Svg, {
-    Circle,
-    G,
-    Path,
+  Circle,
+  G,
+  Path,
 } from 'react-native-svg';
 
 /* -------------------------------------------------------------------------- */
@@ -377,6 +377,14 @@ const AnimatedCircle =
 const TRACING_IMAGES: Record<string, any> = {
   basketball: require('../assets/tracing/basketball.png'),
   ball: require('../assets/tracing/basketball.png'),
+  car: require('../assets/tracing/car.png'),
+  star: require('../assets/tracing/star.png'),
+  flower: require('../assets/tracing/flower.png'),
+  banana: require('../assets/tracing/banana.png'),
+  ship: require('../assets/tracing/ship.png'),
+  hand: require('../assets/tracing/hand.png'),
+  tshirt: require('../assets/tracing/tshirt.png'),
+
 };
 
 /* -------------------------------------------------------------------------- */
@@ -898,51 +906,98 @@ export default function TracingCanvas({
         /* COMPLETION REVEAL                                                  */
         /* ------------------------------------------------------------------ */
 
-        const finishAndNotify = () => {
-          setShowCompletedImage(false);
-          setTracingState(false);
-          setUserPath([]);
-          setTrialStarted(false);
-          setHitDots([]);
+/* ------------------------------------------------------------------ */
+/* COMPLETION REVEAL                                                  */
+/* ------------------------------------------------------------------ */
 
-          touchPointsRef.current = [];
-          trialStartTimeRef.current = null;
-          liftCountRef.current = 0;
-          hitDotsRef.current = [];
-          nextExpectedDotRef.current = 0;
+const finishAndNotify = async () => {
+  /*
+   * IMPORTANT:
+   *
+   * Completed PNG එක hide කරන්නේ trial result එක
+   * parent එකට යවලා ඉවර වුණාට පස්සේ.
+   *
+   * ඒ නිසා child ට completed image එක පේන අතරතුර
+   * reward එක process වෙන්න පුළුවන්.
+   */
 
-          pulseAnimsRef.current.forEach(
-            animation =>
-              animation.setValue(0),
-          );
+  setTracingState(false);
+  setUserPath([]);
+  setTrialStarted(false);
+  setHitDots([]);
 
-          onTrialComplete({
-            metrics,
-            touchPathSample,
-            completed,
-          });
-        };
+  try {
+    await onTrialComplete({
+      metrics,
+      touchPathSample,
+      completed,
+    });
+  } catch (error) {
+    console.error(
+      '[TracingCanvas] Trial completion failed:',
+      error,
+    );
+  }
 
-        if (completed) {
-          /*
-           * Keep the completed picture on screen briefly so the child
-           * can actually see the finished object before the next trial.
-           */
-          setShowCompletedImage(true);
-          setTracingState(false);
-          setUserPath([]);
+  /*
+   * Reward / trial processing එකෙන් පස්සේ
+   * next shape එකට යන්න කලින් current image state එක reset කරනවා.
+   */
+  setShowCompletedImage(false);
 
-          if (revealTimeoutRef.current) {
-            clearTimeout(revealTimeoutRef.current);
-          }
+  touchPointsRef.current = [];
+  trialStartTimeRef.current = null;
+  liftCountRef.current = 0;
+  hitDotsRef.current = [];
+  nextExpectedDotRef.current = 0;
 
-          revealTimeoutRef.current = setTimeout(
-            finishAndNotify,
-            1000,
-          );
-        } else {
-          finishAndNotify();
-        }
+  pulseAnimsRef.current.forEach(
+    animation => animation.setValue(0),
+  );
+};
+
+if (completed) {
+  /*
+   * ================================================================
+   * STEP 1
+   * ================================================================
+   *
+   * Child නිවැරදිව shape එක complete කළා.
+   *
+   * PNG එක 100% opacity එකට පෙන්වන්න.
+   */
+  setShowCompletedImage(true);
+
+  setTracingState(false);
+  setUserPath([]);
+
+  /*
+   * කලින් timeout එකක් තිබුණොත් cancel කරන්න.
+   */
+  if (revealTimeoutRef.current) {
+    clearTimeout(revealTimeoutRef.current);
+  }
+
+  /*
+   * ================================================================
+   * STEP 2
+   * ================================================================
+   *
+   * PNG එක child ට පේන්න 1.5 seconds දෙන්න.
+   *
+   * ඊට පස්සේ trial result එක parent එකට යවනවා.
+   */
+  revealTimeoutRef.current = setTimeout(() => {
+    finishAndNotify();
+  }, 1500);
+
+} else {
+  /*
+   * Trial එක complete නැත්නම්
+   * colorful image reveal කරන්න එපා.
+   */
+  finishAndNotify();
+}
       },
       [
         onTrialComplete,
