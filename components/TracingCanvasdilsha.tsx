@@ -41,6 +41,7 @@ type Shape = {
   dotPositions: [number, number][];
   idealPath: [number, number][];
   imageId?: string;
+  tolerancePx?: number;
 
   wheelCenters?: [number, number][];
   tireRadius?: number;
@@ -77,6 +78,13 @@ type TracingCanvasProps = {
 };
 
 /* -------------------------------------------------------------------------- */
+/* DEFAULTS                                                                    */
+/* -------------------------------------------------------------------------- */
+
+// Used only when a shape doesn't define its own tolerancePx.
+const DEFAULT_TOLERANCE_PX = 40;
+
+/* -------------------------------------------------------------------------- */
 /* WAYPOINT HIT CHECK                                                         */
 /* -------------------------------------------------------------------------- */
 
@@ -85,7 +93,7 @@ function checkDotHit(
   y: number,
   dotPositions: [number, number][],
   shapeSize: number,
-  threshold = 40,
+  threshold: number,
 ): number {
   for (let i = 0; i < dotPositions.length; i++) {
     const px = dotPositions[i][0] * shapeSize;
@@ -164,7 +172,7 @@ function getClockwiseDotOrder(
 
     let diff = dotAngle - startAngle;
 
-    if (diff <= 0) {
+    if (diff < 0) {
       diff += Math.PI * 2;
     }
 
@@ -188,7 +196,7 @@ function computeWaypointCoverage(
   touchPoints: TouchPoint[],
   dotPositions: [number, number][],
   shapeSize: number,
-  threshold = 40,
+  threshold: number,
 ): boolean[] {
   return dotPositions.map(([nx, ny]) => {
     const px = nx * shapeSize;
@@ -207,7 +215,11 @@ function computeWaypointCoverage(
 /* -------------------------------------------------------------------------- */
 /* PATH DEVIATION                                                             */
 /* -------------------------------------------------------------------------- */
-
+/*
+ * Returns the mean nearest-neighbour distance in px. Normalizing this
+ * against a shape's tolerancePx (rather than a fixed 100px) happens at
+ * the call site, since tolerance is shape-specific.
+ */
 function computePathDeviation(
   userPoints: Point[],
   scaledIdealPoints: Point[],
@@ -384,6 +396,10 @@ const TRACING_IMAGES: Record<string, any> = {
   ship: require('../assets/tracing/ship.png'),
   hand: require('../assets/tracing/hand.png'),
   tshirt: require('../assets/tracing/tshirt.png'),
+  house: require('../assets/tracing/house.png'),
+  butterfly: require('../assets/tracing/Butterfly.png'),
+  bus: require('../assets/tracing/Bus.png'),
+  cloud: require('../assets/tracing/cloud.png'),
 
 };
 
@@ -446,6 +462,11 @@ export default function TracingCanvas({
   const shapeSizeRef =
     useRef(shapeSize);
 
+  // Per-shape waypoint/hit tolerance in px. Falls back to a sane default
+  // when a shape doesn't define its own tolerancePx.
+  const toleranceRef =
+    useRef(DEFAULT_TOLERANCE_PX);
+
   const scaledIdealPathRef =
     useRef<Point[]>([]);
 
@@ -467,12 +488,6 @@ export default function TracingCanvas({
   const revealTimeoutRef =
     useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const panResponderRef =
-    useRef<any>(null);
-
-  const panHandlersRef =
-    useRef<any>({});
-
   /* ------------------------------------------------------------------------ */
   /* SHAPE SIZE                                                                */
   /* ------------------------------------------------------------------------ */
@@ -480,6 +495,17 @@ export default function TracingCanvas({
   useEffect(() => {
     shapeSizeRef.current = shapeSize;
   }, [shapeSize]);
+
+  /* ------------------------------------------------------------------------ */
+  /* TOLERANCE                                                                 */
+  /* ------------------------------------------------------------------------ */
+
+  useEffect(() => {
+    toleranceRef.current =
+      typeof shape.tolerancePx === 'number' && shape.tolerancePx > 0
+        ? shape.tolerancePx
+        : DEFAULT_TOLERANCE_PX;
+  }, [shape]);
 
   /* ------------------------------------------------------------------------ */
   /* CLOCKWISE DOT ORDER                                                       */
@@ -646,6 +672,9 @@ export default function TracingCanvas({
         endY: number,
         completed: boolean,
       ) => {
+        // Make sure the point the trial actually ended on (release point)
+        // is included in the metrics — onPanResponderRelease no longer
+        // pushes it separately, it's captured before this is called.
         const touchPoints =
           touchPointsRef.current;
 
@@ -669,15 +698,23 @@ export default function TracingCanvas({
         const endPt =
           endPointRef.current;
 
+        const tolerancePx =
+          toleranceRef.current;
+
         /* ------------------------------------------------------------------ */
         /* METRICS                                                             */
         /* ------------------------------------------------------------------ */
 
-        const pathDeviation =
+        const rawPathDeviation =
           computePathDeviation(
             touchPoints,
             scaledIdeal,
           );
+
+        // Normalize against this shape's own tolerance instead of a fixed
+        // 100px, so tighter/looser shapes score consistently.
+        const pathDeviation =
+          rawPathDeviation;
 
         const hesitationCount =
           countHesitations(
@@ -701,6 +738,7 @@ export default function TracingCanvas({
                 touchPoints,
                 shape.dotPositions,
                 shapeSizeRef.current,
+                tolerancePx,
               );
 
         const waypointScore =
@@ -811,13 +849,15 @@ export default function TracingCanvas({
         /* METRICS OBJECT                                                      */
         /* ------------------------------------------------------------------ */
 
+        // Path deviation is normalized against this shape's own tolerance
+        // (not a fixed 100px), so tighter/looser shapes score consistently.
         const blendedAccuracy =
           startAccuracy * 0.15 +
           endAccuracy * 0.15 +
           waypointScore * 0.30 +
           Math.max(
             0,
-            1 - pathDeviation / 100,
+            1 - pathDeviation / tolerancePx,
           ) *
             0.40;
 
@@ -881,7 +921,7 @@ export default function TracingCanvas({
 
             blendedAccuracy:
               parseFloat(
-                blendedAccuracy.toFixed(
+                Math.min(1, Math.max(0, blendedAccuracy)).toFixed(
                   3,
                 ),
               ),
@@ -906,98 +946,94 @@ export default function TracingCanvas({
         /* COMPLETION REVEAL                                                  */
         /* ------------------------------------------------------------------ */
 
-/* ------------------------------------------------------------------ */
-/* COMPLETION REVEAL                                                  */
-/* ------------------------------------------------------------------ */
+        const finishAndNotify = async () => {
+          /*
+           * IMPORTANT:
+           *
+           * Completed PNG එක hide කරන්නේ trial result එක
+           * parent එකට යවලා ඉවර වුණාට පස්සේ.
+           *
+           * ඒ නිසා child ට completed image එක පේන අතරතුර
+           * reward එක process වෙන්න පුළුවන්.
+           */
 
-const finishAndNotify = async () => {
-  /*
-   * IMPORTANT:
-   *
-   * Completed PNG එක hide කරන්නේ trial result එක
-   * parent එකට යවලා ඉවර වුණාට පස්සේ.
-   *
-   * ඒ නිසා child ට completed image එක පේන අතරතුර
-   * reward එක process වෙන්න පුළුවන්.
-   */
+          setTracingState(false);
+          setUserPath([]);
+          setTrialStarted(false);
+          setHitDots([]);
 
-  setTracingState(false);
-  setUserPath([]);
-  setTrialStarted(false);
-  setHitDots([]);
+          try {
+            await onTrialComplete({
+              metrics,
+              touchPathSample,
+              completed,
+            });
+          } catch (error) {
+            console.error(
+              '[TracingCanvas] Trial completion failed:',
+              error,
+            );
+          }
 
-  try {
-    await onTrialComplete({
-      metrics,
-      touchPathSample,
-      completed,
-    });
-  } catch (error) {
-    console.error(
-      '[TracingCanvas] Trial completion failed:',
-      error,
-    );
-  }
+          /*
+           * Reward / trial processing එකෙන් පස්සේ
+           * next shape එකට යන්න කලින් current image state එක reset කරනවා.
+           */
+          setShowCompletedImage(false);
 
-  /*
-   * Reward / trial processing එකෙන් පස්සේ
-   * next shape එකට යන්න කලින් current image state එක reset කරනවා.
-   */
-  setShowCompletedImage(false);
+          touchPointsRef.current = [];
+          trialStartTimeRef.current = null;
+          liftCountRef.current = 0;
+          hitDotsRef.current = [];
+          nextExpectedDotRef.current = 0;
 
-  touchPointsRef.current = [];
-  trialStartTimeRef.current = null;
-  liftCountRef.current = 0;
-  hitDotsRef.current = [];
-  nextExpectedDotRef.current = 0;
+          pulseAnimsRef.current.forEach(
+            animation => animation.setValue(0),
+          );
+        };
 
-  pulseAnimsRef.current.forEach(
-    animation => animation.setValue(0),
-  );
-};
+        if (completed) {
+          /*
+           * ================================================================
+           * STEP 1
+           * ================================================================
+           *
+           * Child නිවැරදිව shape එක complete කළා.
+           *
+           * PNG එක 100% opacity එකට පෙන්වන්න.
+           */
+          setShowCompletedImage(true);
 
-if (completed) {
-  /*
-   * ================================================================
-   * STEP 1
-   * ================================================================
-   *
-   * Child නිවැරදිව shape එක complete කළා.
-   *
-   * PNG එක 100% opacity එකට පෙන්වන්න.
-   */
-  setShowCompletedImage(true);
+          setTracingState(false);
+          setUserPath([]);
 
-  setTracingState(false);
-  setUserPath([]);
+          /*
+           * කලින් timeout එකක් තිබුණොත් cancel කරන්න.
+           */
+          if (revealTimeoutRef.current) {
+            clearTimeout(revealTimeoutRef.current);
+          }
 
-  /*
-   * කලින් timeout එකක් තිබුණොත් cancel කරන්න.
-   */
-  if (revealTimeoutRef.current) {
-    clearTimeout(revealTimeoutRef.current);
-  }
+          /*
+           * ================================================================
+           * STEP 2
+           * ================================================================
+           *
+           * PNG එක child ට පේන්න 1.5 seconds දෙන්න.
+           *
+           * ඊට පස්සේ trial result එක parent එකට යවනවා.
+           */
+          revealTimeoutRef.current = setTimeout(() => {
+            finishAndNotify();
+          }, 1500);
 
-  /*
-   * ================================================================
-   * STEP 2
-   * ================================================================
-   *
-   * PNG එක child ට පේන්න 1.5 seconds දෙන්න.
-   *
-   * ඊට පස්සේ trial result එක parent එකට යවනවා.
-   */
-  revealTimeoutRef.current = setTimeout(() => {
-    finishAndNotify();
-  }, 1500);
-
-} else {
-  /*
-   * Trial එක complete නැත්නම්
-   * colorful image reveal කරන්න එපා.
-   */
-  finishAndNotify();
-}
+        } else {
+          /*
+           * Trial එක complete නැත්නම්
+           * colorful image reveal කරන්න එපා.
+           */
+          finishAndNotify();
+        }
       },
       [
         onTrialComplete,
@@ -1009,10 +1045,16 @@ if (completed) {
   /* ------------------------------------------------------------------------ */
   /* PAN RESPONDER                                                            */
   /* ------------------------------------------------------------------------ */
-
-  useEffect(() => {
-    const responder =
-      PanResponder.create({
+  /*
+   * FIX: built with useMemo (not useEffect + ref) so panHandlers exist
+   * synchronously on the very first render. The previous ref-based version
+   * left the View with no touch handlers at all until a later re-render
+   * happened to occur — which no longer reliably happens now that
+   * TracingCanvas only mounts once a shape is picked.
+   */
+  const panResponder =
+    useMemo(() => {
+      return PanResponder.create({
         onStartShouldSetPanResponder:
           () => true,
 
@@ -1129,6 +1171,7 @@ if (completed) {
               y,
               shape.dotPositions,
               shapeSizeRef.current,
+              toleranceRef.current,
             );
 
           const expectedDotIndex =
@@ -1177,6 +1220,28 @@ if (completed) {
               locationX: x,
               locationY: y,
             } = event.nativeEvent;
+
+            // FIX: the release point was previously used only to compute
+            // distToEnd and never added to touchPointsRef, so the final
+            // point of the trace was silently excluded from every metric
+            // (touchPathSample, pathDeviation, hesitationCount,
+            // velocityVariance). Push it before finalising.
+            if (trialStartTimeRef.current) {
+              const t =
+                Date.now() -
+                trialStartTimeRef.current;
+
+              touchPointsRef.current.push({
+                t,
+                x,
+                y,
+              });
+
+              setUserPath(previous => [
+                ...previous,
+                { x, y },
+              ]);
+            }
 
             liftCountRef.current++;
 
@@ -1263,19 +1328,13 @@ if (completed) {
             }
           },
       });
-
-    panResponderRef.current =
-      responder;
-
-    panHandlersRef.current =
-      responder.panHandlers;
-  }, [
-    shape,
-    shapeSize,
-    finaliseTrial,
-    setTracingState,
-    triggerPulse,
-  ]);
+    }, [
+      shape,
+      shapeSize,
+      finaliseTrial,
+      setTracingState,
+      triggerPulse,
+    ]);
 
   useEffect(() => {
     return () => {
@@ -1312,7 +1371,7 @@ if (completed) {
           height: shapeSize,
         },
       ]}
-      {...panHandlersRef.current}
+      {...panResponder.panHandlers}
     >
       {/* ------------------------------------------------------------------ */}
       {/* FAINT FINAL IMAGE                                                  */}

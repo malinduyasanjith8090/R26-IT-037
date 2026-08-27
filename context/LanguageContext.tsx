@@ -763,6 +763,7 @@ const translations = {
 'object.leaf': 'කොළය',
 'object.sun': 'හිරු',
 'object.banana': 'කෙසෙල්',
+'object.house': 'ගෙදර',
 'object.star': 'තරුව',
 'object.orangeFruit': 'දොඩම් ගෙඩිය',
 'object.pumpkin': 'වට්ටක්කා',
