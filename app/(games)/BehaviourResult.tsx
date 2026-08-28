@@ -2,26 +2,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, {
-    useEffect,
-    useRef,
-    useState,
+  useEffect,
+  useRef,
+  useState,
 } from 'react';
 
 import {
-    Animated,
-    Dimensions,
-    Easing,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Easing,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import {
-    getBehaviourSessionSummary,
+  getBehaviourSessionSummary,
 } from '../../services/apiService';
 
 const { width: SW } =
@@ -76,6 +76,40 @@ const shadow = (depth = 8) =>
       ),
     },
   });
+
+// ---------------------------------------------------------------------------
+// RESEARCH LABELS
+// ---------------------------------------------------------------------------
+// Human-readable, parent-safe labels for the trial classification categories
+// produced by classifyTrial() on the game screen. Deliberately descriptive
+// of the *task*, never diagnostic of the *child* (per the project's ethical
+// design principle — see Section VI of the paper).
+const CLASSIFICATION_META = {
+  mastered: {
+    label: 'Confident & Correct',
+    si: 'විශ්වාසයෙන් නිවැරදි',
+    color: '#2BBFA4',
+    icon: 'checkmark-circle',
+  },
+  uncertain_but_correct: {
+    label: 'Got There, Took Time',
+    si: 'නිවැරදියි, කල් ගත විය',
+    color: '#4A9FD4',
+    icon: 'time-outline',
+  },
+  impulsive: {
+    label: 'Quick Tap, Worth Revisiting',
+    si: 'ඉක්මන් තේරීමක්',
+    color: '#F5A623',
+    icon: 'flash-outline',
+  },
+  confused: {
+    label: 'Needs More Practice',
+    si: 'තව පුහුණුවක් අවශ්‍යයි',
+    color: '#FF6B4A',
+    icon: 'help-circle-outline',
+  },
+};
 
 function AnimCount({
   target,
@@ -304,6 +338,88 @@ const cr =
     },
   });
 
+// Row for the trial-classification breakdown (mastered / uncertain /
+// impulsive / confused). Purely descriptive of *this session's* task
+// performance — never shown as a label about the child.
+function ClassificationRow({ type, count, totalTrials }) {
+  const meta =
+    CLASSIFICATION_META[type] || {
+      label: type,
+      si: '',
+      color: C.inkFaint,
+      icon: 'ellipse-outline',
+    };
+
+  const pct =
+    totalTrials > 0
+      ? Math.round((count / totalTrials) * 100)
+      : 0;
+
+  return (
+    <View style={clr.row}>
+      <View
+        style={[
+          clr.iconWrap,
+          { backgroundColor: `${meta.color}22` },
+        ]}
+      >
+        <Ionicons
+          name={meta.icon}
+          size={18}
+          color={meta.color}
+        />
+      </View>
+
+      <View style={clr.textWrap}>
+        <Text style={clr.label}>{meta.label}</Text>
+        <Text style={clr.si}>{meta.si}</Text>
+      </View>
+
+      <Text style={[clr.count, { color: meta.color }]}>
+        {count} · {pct}%
+      </Text>
+    </View>
+  );
+}
+
+const clr = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 12,
+  },
+
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  textWrap: {
+    flex: 1,
+  },
+
+  label: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1C1610',
+  },
+
+  si: {
+    fontSize: 11,
+    color: '#A89E96',
+    marginTop: 1,
+  },
+
+  count: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+});
+
 export default function BehaviourResultScreen() {
   const params =
     useLocalSearchParams();
@@ -340,6 +456,48 @@ export default function BehaviourResultScreen() {
         ? params.total[0]
         : params.total,
     ) || 8;
+
+  // -------------------------------------------------------------------------
+  // RESEARCH PARAMS
+  // -------------------------------------------------------------------------
+  // Passed from BehaviourGameScreen as JSON strings via navigation params.
+  // Parsed defensively — if parsing fails or params are absent, the sections
+  // that depend on them simply don't render (graceful degradation).
+  const trialClassifications = (() => {
+    try {
+      const raw = Array.isArray(params.trialClassifications)
+        ? params.trialClassifications[0]
+        : params.trialClassifications;
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  })();
+
+  const generalizationResults = (() => {
+    try {
+      const raw = Array.isArray(params.generalizationResults)
+        ? params.generalizationResults[0]
+        : params.generalizationResults;
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  })();
+
+  const classificationCounts = trialClassifications.reduce(
+    (acc, type) => {
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    },
+    {},
+  );
+
+  const generalizationCorrectCount = generalizationResults.filter(
+    g => g.isCorrect,
+  ).length;
 
   const [
     summary,
@@ -755,6 +913,83 @@ export default function BehaviourResultScreen() {
           </Animated.View>
         )}
 
+        {/* ------------------------------------------------------------- */}
+        {/* RESEARCH: Trial classification breakdown                      */}
+        {/* Shows mastered / uncertain / impulsive / confused counts for  */}
+        {/* this session. Purely descriptive of task performance, never   */}
+        {/* framed as a statement about the child.                        */}
+        {/* ------------------------------------------------------------- */}
+        {trialClassifications.length > 0 && (
+          <Animated.View
+            style={[s.panel, { opacity: fadeAnim }]}
+          >
+            <View style={s.secHead}>
+              <View
+                style={[
+                  s.secAccent,
+                  { backgroundColor: C.plum },
+                ]}
+              />
+
+              <View>
+                <Text style={s.secTitle}>
+                  How Kavindu Responded
+                </Text>
+                <Text style={s.secSub}>
+                  Response pattern this session
+                </Text>
+              </View>
+            </View>
+
+            {Object.keys(CLASSIFICATION_META).map(type => (
+              <ClassificationRow
+                key={type}
+                type={type}
+                count={classificationCounts[type] || 0}
+                totalTrials={trialClassifications.length}
+              />
+            ))}
+          </Animated.View>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* RESEARCH: Generalization probe results                        */}
+        {/* Shows whether the child correctly handled a brand-new,        */}
+        {/* never-before-seen pairing — evidence of rule learning rather  */}
+        {/* than memorisation of specific pictures.                        */}
+        {/* ------------------------------------------------------------- */}
+        {generalizationResults.length > 0 && (
+          <Animated.View
+            style={[s.panel, { opacity: fadeAnim }]}
+          >
+            <View style={s.secHead}>
+              <View
+                style={[
+                  s.secAccent,
+                  { backgroundColor: C.sky || '#4A9FD4' },
+                ]}
+              />
+
+              <View>
+                <Text style={s.secTitle}>
+                  New Situation Check
+                </Text>
+                <Text style={s.secSub}>
+                  නව අවස්ථාවක් හඳුනාගැනීම
+                </Text>
+              </View>
+            </View>
+
+            <Text style={s.genBody}>
+              {generalizationCorrectCount}/
+              {generalizationResults.length} correct on a
+              scenario {childName} hadn't practiced before —
+              a good sign of understanding the idea, not just
+              memorising a picture.
+            </Text>
+          </Animated.View>
+        )}
+
         <Animated.View
           style={{
             opacity: fadeAnim,
@@ -1081,6 +1316,12 @@ const s =
       fontSize: 11,
       color: C.inkFaint,
       marginTop: 1,
+    },
+
+    genBody: {
+      fontSize: 13,
+      color: C.inkMid,
+      lineHeight: 20,
     },
 
     encCard: {

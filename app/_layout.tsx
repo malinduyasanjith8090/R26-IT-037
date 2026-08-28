@@ -113,7 +113,7 @@ function RootNavigator() {
     >
       {/* Home */}
       <Stack.Screen
-        name="index"
+        name="hello"
         options={{
           title: 'Home',
           animation: 'fade',

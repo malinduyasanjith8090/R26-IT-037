@@ -1,3 +1,6 @@
+import {
+  Ionicons
+} from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -12,6 +15,10 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+
+import {
+  LinearGradient
+} from 'expo-linear-gradient';
 import TracingCanvas from '../../components/TracingCanvasdilsha';
 import { useChild } from '../../context/ChildContext';
 import { endSession, startSession, submitTrial, syncOfflineQueue } from '../../services/apiService';
@@ -45,6 +52,29 @@ const SHAPE_EMOJIS: Record<string, string> = {
   bus: '🚌',
   house: '🏠',
 };
+const H_PAD = 20;
+
+const C = {
+  heroA: '#7A4E2D',
+  heroB: '#B97845',
+};
+
+const shadow = (depth = 8) =>
+  Platform.select({
+    web: {
+      boxShadow: `0 ${depth}px ${depth * 2.5}px rgba(0,0,0,0.07)`,
+    },
+    default: {
+      shadowColor: '#000',
+      shadowOpacity: 0.08,
+      shadowRadius: depth,
+      shadowOffset: {
+        width: 0,
+        height: depth / 2,
+      },
+      elevation: Math.round(depth / 2),
+    },
+  });
 
 function getShapeEmoji(shape: any) {
   return SHAPE_EMOJIS[shape.imageId] || SHAPE_EMOJIS[shape.id] || '🔷'; // fallback
@@ -57,7 +87,7 @@ function getPerformancePhase(blendedAccuracy) {
 }
 
 export default function TracingGameScreen() {
-  const { activeChild, cognitiveState, updateCognitiveState } = useChild();
+  const { activeChild, cognitiveState } = useChild();
 
   const [sessionId,       setSessionId]       = useState(null);
   const [currentShape,    setCurrentShape]    = useState(null);
@@ -273,6 +303,7 @@ export default function TracingGameScreen() {
       <View style={styles.container}>
        <View style={styles.shapeSelectionContainer}>
   <Text style={styles.shapeSelectionTitle}>Select a Shape</Text>
+  
 
   <View style={styles.shapeList}>
   {getShapesForDifficulty(difficultyLevel).map((shape: any) => {
@@ -358,15 +389,60 @@ export default function TracingGameScreen() {
     <View style={styles.container}>
 
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.shapeName}>{currentShape.nameSinhala}</Text>
-        <Text style={styles.shapeNameEn}>{currentShape.name}</Text>
-        {accuracy !== null && (
-          <Text style={styles.accuracyText}>
-            Last: {accuracy}%
-          </Text>
-        )}
-      </View>
+<LinearGradient
+  colors={[
+    C.heroA,
+    C.heroB,
+  ]}
+  start={{
+    x: 0,
+    y: 0,
+  }}
+  end={{
+    x: 1,
+    y: 1,
+  }}
+  style={styles.header}
+>
+  <TouchableOpacity
+    style={styles.backBtn}
+    onPress={() => router.back()}
+  >
+    <Ionicons
+      name="arrow-back"
+      size={22}
+      color="#fff"
+    />
+  </TouchableOpacity>
+
+  <View style={styles.headerCenter}>
+    <Text style={styles.headerTitle}>
+      Adaptive Fine-Motor Training Module
+    </Text>
+
+    <Text style={styles.headerSi}>
+      අනුවර්තන සියුම්-චලන පුහුණු මොඩියුලය
+    </Text>
+  </View>
+
+ 
+</LinearGradient>
+
+<View style={styles.shapeInfo}>
+  <Text style={styles.shapeName}>
+    {currentShape.nameSinhala}
+  </Text>
+
+  <Text style={styles.shapeNameEn}>
+    {currentShape.name}
+  </Text>
+
+  {accuracy !== null && (
+    <Text style={styles.accuracyText}>
+      Last: {accuracy}%
+    </Text>
+  )}
+</View>
 
       {/* Instruction text */}
       <Text style={styles.instruction}>
@@ -403,7 +479,7 @@ export default function TracingGameScreen() {
       {performancePhase === 'poor' && (
         <View style={[styles.phaseOverlay, styles.phasePoor]}>
           <Text style={styles.phaseStar}>🔵</Text>
-          <Text style={styles.phaseTitle}>Let's try again</Text>
+          <Text style={styles.phaseTitle}>Let&apos;s try again</Text>
           <Text style={styles.phaseSinhala}>සෙමෙන් dots follow කරන්න</Text>
         </View>
       )}
@@ -473,7 +549,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFDF5',  // warm white — calm for ASD
     alignItems: 'center',
-    paddingTop: 50,
+    paddingTop: 0,
   },
   loadingContainer: {
     flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFDF5'
@@ -481,21 +557,90 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 18, color: '#8B7355', marginTop: 16, fontFamily: 'System'
   },
-  header: {
-    alignItems: 'center', marginBottom: 8
+ header: {
+  paddingTop:
+    Platform.OS === 'ios'
+      ? 56
+      : 44,
+
+  paddingBottom: 18,
+
+  paddingHorizontal: H_PAD,
+
+  flexDirection: 'row',
+  alignItems: 'center',
+
+  ...shadow(12),
+},
+
+  shapeInfo: {
+    width: '100%',
+    alignItems: 'center',
+    paddingHorizontal: H_PAD,
+    paddingTop: 18,
+    paddingBottom: 10,
   },
+
+backBtn: {
+  width: 38,
+  height: 38,
+  borderRadius: 19,
+
+  backgroundColor:
+    'rgba(255,255,255,0.18)',
+
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+headerCenter: {
+  flex: 1,
+  alignItems: 'center',
+},
+
+headerTitle: {
+  color: '#fff',
+  fontSize: 17,
+  fontWeight: '800',
+  textAlign: 'center',
+  lineHeight: 22,
+},
+
+headerSi: {
+  color:
+    'rgba(255,255,255,0.75)',
+  fontSize: 11,
+  marginTop: 1,
+  textAlign: 'center',
+},
+
+scorePill: {
+  backgroundColor:
+    'rgba(255,255,255,0.2)',
+
+  borderRadius: 20,
+
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+},
+
+scoreText: {
+  color: '#fff',
+  fontSize: 15,
+  fontWeight: '700',
+},
   shapeName: {
-    fontSize: 28, color: '#3D2B1F', fontWeight: '500', letterSpacing: 1
+    fontSize: 26, color: '#3D2B1F', fontWeight: '600', textAlign: 'center'
   },
   shapeNameEn: {
-    fontSize: 16, color: '#8B7355', marginTop: 2
+    fontSize: 15, color: '#8B7355', marginTop: 3, textAlign: 'center'
   },
   accuracyText: {
     fontSize: 14, color: '#6B9B6B', marginTop: 4
   },
   instruction: {
     fontSize: 15, color: '#8B7355', textAlign: 'center',
-    marginHorizontal: 24, marginBottom: 20, lineHeight: 22
+    marginHorizontal: 24, marginBottom: 14, lineHeight: 22
   },
   canvasContainer: {
     alignItems: 'center', justifyContent: 'center',
@@ -509,6 +654,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     justifyContent: 'center', alignItems: 'center',
     borderRadius: 20,
+    zIndex: 2,
   },
   phaseGreat: {
     backgroundColor: 'rgba(255, 200, 50, 0.93)',  // warm gold — celebration
@@ -537,13 +683,14 @@ const styles = StyleSheet.create({
   guidanceText:        { fontSize: 20, color: '#fff', fontWeight: '500' },
   guidanceTextSinhala: { fontSize: 16, color: '#ddeeff', marginTop: 4 },
   footer: {
-    position: 'absolute', bottom: 30,
+    position: 'absolute', bottom: 20,
     flexDirection: 'row', justifyContent: 'space-between',
-    width: SCREEN_WIDTH * 0.85, alignItems: 'center'
+    width: '88%', alignItems: 'center',
+    paddingHorizontal: 2,
   },
   difficultyText: { fontSize: 14, color: '#8B7355', backgroundColor: '#F0E8D8', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   trialCountText: { fontSize: 14, color: '#8B7355' },
-  endButton:      { fontSize: 14, color: '#C0392B', fontWeight: '500', paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#C0392B', borderRadius: 8 },
+  endButton:      { fontSize: 14, color: '#C0392B', fontWeight: '600', paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#C0392B', borderRadius: 8 },
 
   levelButton: {
     backgroundColor: '#F0E8D8',
@@ -615,6 +762,7 @@ const styles = StyleSheet.create({
   // the original file but weren't defined in this stylesheet — add these
   // (or your app's equivalents) or the picker grid will render unstyled.
   shapeSelectionContainer: {
+    justifyContent: 'center',
     flex: 1,
     width: '100%',
     paddingHorizontal: 20,
@@ -622,8 +770,15 @@ const styles = StyleSheet.create({
   },
   shapeSelectionTitle: {
     fontSize: 22,
-    color: '#3D2B1F',
+    color: '#279aa9',
     fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+
+  shapeSelectionTitleSinhala: {
+    fontSize: 14,
+    color: '#8B7355',
     textAlign: 'center',
     marginBottom: 20,
   },

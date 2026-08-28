@@ -3,25 +3,25 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    Easing,
-    Image,
-    Platform,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Easing,
+  Image,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import { useChild } from '../../context/ChildContext';
 
 import {
-    getNextBehaviourScenario,
-    startSession,
-    submitBehaviourTrial,
+  getNextBehaviourScenario,
+  startSession,
+  submitBehaviourTrial,
 } from '../../services/apiService';
 
 const ASSET_MAP = {
@@ -66,6 +66,36 @@ const { width: SW, height: SH } = Dimensions.get('window');
 const H_PAD = 20;
 const CARD_RADIUS = 28;
 const TRIALS_PER_SESSION = 8;
+
+// ---------------------------------------------------------------------------
+// RESEARCH INSTRUMENTATION CONSTANTS
+// ---------------------------------------------------------------------------
+// Response-time thresholds (ms) used to classify each trial into one of four
+// behavioural-signal buckets. These thresholds are a starting point — tune
+// them once you have pilot data on typical response times for this age group.
+const FAST_RESPONSE_MS = 2000;   // below this = fast / confident tap
+const SLOW_RESPONSE_MS = 6000;   // above this = hesitant / uncertain tap
+
+/**
+ * Classifies a single trial into an interpretable behavioural-signal category.
+ * This turns raw accuracy + response time into a richer research signal:
+ *   - mastered            : fast + correct  -> child knows this confidently
+ *   - uncertain_but_correct: slow + correct -> got there, but hesitated
+ *   - impulsive            : fast + incorrect -> tapped without thinking
+ *   - confused             : slow + incorrect -> genuine difficulty
+ *
+ * Kept as a pure, simple, auditable function (not a black-box model) so it
+ * can be explained to parents/therapists and cited directly in the report.
+ */
+function classifyTrial(isCorrect, responseTimeMs) {
+  const isFast = responseTimeMs < FAST_RESPONSE_MS;
+  const isSlow = responseTimeMs > SLOW_RESPONSE_MS;
+
+  if (isCorrect && isFast) return 'mastered';
+  if (isCorrect && (isSlow || !isFast)) return 'uncertain_but_correct';
+  if (!isCorrect && isFast) return 'impulsive';
+  return 'confused';
+}
 
 const C = {
   bg: '#F7F3EE',
@@ -572,6 +602,32 @@ export default function BehaviourGameScreen() {
     setHintShown,
   ] = useState(false);
 
+  // -------------------------------------------------------------------------
+  // RESEARCH STATE
+  // -------------------------------------------------------------------------
+  // Running tallies passed on to the results screen so the whole session's
+  // research picture (not just the raw score) survives navigation.
+  const [
+    trialClassifications,
+    setTrialClassifications,
+  ] = useState([]); // array of 'mastered' | 'uncertain_but_correct' | 'impulsive' | 'confused'
+
+  const [
+    generalizationResults,
+    setGeneralizationResults,
+  ] = useState([]); // array of { scenarioId, isCorrect }
+
+  const [
+    lastDifficultyChangeReason,
+    setLastDifficultyChangeReason,
+  ] = useState(null); // e.g. "3_correct_streak" returned by backend, for transparency/debugging
+
+  // Reserved for the future fixed-vs-adaptive comparison study.
+  // 'adaptive' = current behaviour (difficulty responds to performance).
+  // 'fixed' = backend should ignore difficulty and serve scenarios in a
+  // pre-set order — wire this up on the backend when you run that study.
+  const sessionModeRef = useRef('adaptive');
+
   const hintTimer =
     useRef(null);
 
@@ -612,6 +668,7 @@ export default function BehaviourGameScreen() {
             screenWidth: SW,
             screenHeight: SH,
             appVersion: '1.0.0',
+            sessionMode: sessionModeRef.current,
           },
         );
 
@@ -662,6 +719,26 @@ export default function BehaviourGameScreen() {
           setScenario(
             data.scenario,
           );
+
+          // Backend may optionally return why difficulty moved
+          // (e.g. "3_correct_streak", "2_incorrect_in_a_row").
+          // Kept simple/interpretable per the project's design principle.
+          if (data.difficultyChangeReason) {
+            setLastDifficultyChangeReason(
+              data.difficultyChangeReason,
+            );
+          }
+
+          // Backend may flag this scenario as a generalization probe —
+          // a pairing never shown to this child before, used to test
+          // whether the child is applying a learned rule rather than
+          // memorising a specific picture.
+          if (data.scenario?.isGeneralizationProbe) {
+            console.log(
+              '[BehaviourGame] Generalization probe scenario served:',
+              data.scenario._id,
+            );
+          }
 
           setTrialStartTime(
             Date.now(),
@@ -717,6 +794,17 @@ export default function BehaviourGameScreen() {
         image.assetKey,
       );
 
+      // Local, interpretable classification — computed client-side so it's
+      // always available even if the network call fails (see catch below).
+      const localCorrectGuess =
+        image.isCorrect;
+
+      const classification =
+        classifyTrial(
+          localCorrectGuess,
+          responseTimeMs,
+        );
+
       try {
         const result =
           await submitBehaviourTrial({
@@ -729,6 +817,10 @@ export default function BehaviourGameScreen() {
             responseTimeMs,
             hintShown,
             attemptNumber: 1,
+            trialClassification:
+              classification,
+            isGeneralizationProbe:
+              !!scenario.isGeneralizationProbe,
           });
 
         const correct =
@@ -741,6 +833,25 @@ export default function BehaviourGameScreen() {
         if (correct) {
           setScore(
             s => s + 1,
+          );
+        }
+
+        setTrialClassifications(
+          prev => [
+            ...prev,
+            classifyTrial(correct, responseTimeMs),
+          ],
+        );
+
+        if (scenario.isGeneralizationProbe) {
+          setGeneralizationResults(
+            prev => [
+              ...prev,
+              {
+                scenarioId: scenario._id,
+                isCorrect: correct,
+              },
+            ],
           );
         }
 
@@ -766,6 +877,22 @@ export default function BehaviourGameScreen() {
           );
         }
 
+        setTrialClassifications(
+          prev => [...prev, classification],
+        );
+
+        if (scenario.isGeneralizationProbe) {
+          setGeneralizationResults(
+            prev => [
+              ...prev,
+              {
+                scenarioId: scenario._id,
+                isCorrect: correct,
+              },
+            ],
+          );
+        }
+
         setShowFeedback(
           true,
         );
@@ -784,7 +911,10 @@ export default function BehaviourGameScreen() {
        *
        * The previous version used router.back().
        * Now we send the user to the actual
-       * BehaviourResult screen.
+       * BehaviourResult screen, along with the
+       * research-relevant tallies gathered this
+       * session (classification counts + any
+       * generalization-probe outcomes).
        */
       if (
         nextTrialNumber >=
@@ -808,6 +938,15 @@ export default function BehaviourGameScreen() {
               String(
                 TRIALS_PER_SESSION,
               ),
+
+            // Research payloads — encoded as JSON strings for navigation params.
+            trialClassifications: JSON.stringify(
+              trialClassifications,
+            ),
+
+            generalizationResults: JSON.stringify(
+              generalizationResults,
+            ),
           },
         });
 
@@ -840,6 +979,8 @@ export default function BehaviourGameScreen() {
       scenario,
       difficulty,
       loadNextScenario,
+      trialClassifications,
+      generalizationResults,
     ]);
 
   if (!childId) {
