@@ -1,4 +1,4 @@
-// app/(tabs)/routine.tsx – Complete & Working (Timer Fixed + Alarm)
+// app/(tabs)/routine.tsx – External MP3 Voice, Adjustable Alarm, Timer End Sound, Calming Activity Play Modal with Breathing Animation
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
@@ -15,9 +15,9 @@ import {
   TextInput,
   TouchableOpacity,
   Vibration,
-  View
+  View,
 } from 'react-native';
-import Svg, { Circle } from 'react-native-svg'; // ✅ IMPORT ADDED
+import Svg, { Circle } from 'react-native-svg';
 import Card from '../../components/Card';
 import { Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
@@ -73,16 +73,39 @@ const formatTimeString = (h: number, m: number, period: 'AM' | 'PM') => {
   return `${hour}:${minute} ${period}`;
 };
 
-// Audio maps (add your own files)
+// ─── External Audio Maps ───────────────────────────────────────
+// Sinhala voice prompts for each routine + instruction
 const sinhalaAudioMap: { [key: string]: any } = {
   instruction: require('../../assets/sounds/sinhala/routinesinstruction.mp3'),
+  wakeUp: require('../../assets/sounds/sinhala/routines/wakeUp.mp3'),
+  brushTeeth: require('../../assets/sounds/sinhala/routines/brushTeeth.mp3'),
+  breakfast: require('../../assets/sounds/sinhala/routines/breakfast.mp3'),
+  learningTime: require('../../assets/sounds/sinhala/routines/learningTime.mp3'),
+  playTime: require('../../assets/sounds/sinhala/routines/playTime.mp3'),
+  lunch: require('../../assets/sounds/sinhala/routines/lunch.mp3'),
+  quietTime: require('../../assets/sounds/sinhala/routines/quietTime.mp3'),
+  outdoorPlay: require('../../assets/sounds/sinhala/routines/outdoorPlay.mp3'),
+  dinner: require('../../assets/sounds/sinhala/routines/dinner.mp3'),
+  bedtime: require('../../assets/sounds/sinhala/routines/bedtime.mp3'),
 };
+
+// Alarm & timer end sound
+const alarmSoundFile = require('../../assets/sounds/alarm_sound.mp3');
+
+// Background music
 const backgroundMusic = require('../../assets/sounds/calm_background.mp3');
+
+// Calming activity intro MP3s (add your own files for each)
+const calmingIntroAudioMap: { [key: string]: any } = {
+  'Deep Breathing': require('../../assets/sounds/calming/deep_breathing_intro.mp3'),
+  // ... add all other activities
+  // If missing, we'll fall back to TTS or silence
+};
 
 export default function RoutineScreen() {
   const { colors } = useTheme();
   const { t, language } = useLanguage();
-  const { playSound } = useSound(); // for alarm/beep
+  const { playSound } = useSound();
 
   // ─── State ────────────────────────────────────────────────────
   const [routines, setRoutines] = useState(initialRoutines);
@@ -119,6 +142,24 @@ export default function RoutineScreen() {
   const pendingInstruction = useRef(false);
   const isFirstRender = useRef(true);
 
+  // ─── Alarm State ─────────────────────────────────────────────
+  const [alarmHour, setAlarmHour] = useState(7);
+  const [alarmMinute, setAlarmMinute] = useState(0);
+  const [alarmPeriod, setAlarmPeriod] = useState<'AM' | 'PM'>('AM');
+  const [alarmSet, setAlarmSet] = useState(false);
+  const [alarmSound, setAlarmSound] = useState<Audio.Sound | null>(null);
+
+  // ─── Calming Activity Play Modal State ───────────────────────
+  const [calmingPlayModalVisible, setCalmingPlayModalVisible] = useState(false);
+  const [selectedPlayActivity, setSelectedPlayActivity] = useState<typeof CALMING_ACTIVITIES[0] | null>(null);
+  const [calmingTimerMinutes, setCalmingTimerMinutes] = useState(5);
+  const [calmingTimerSeconds, setCalmingTimerSeconds] = useState(5 * 60);
+  const [isCalmingTimerRunning, setIsCalmingTimerRunning] = useState(false);
+  const [isBreathingVisible, setIsBreathingVisible] = useState(false);
+  const [introSound, setIntroSound] = useState<Audio.Sound | null>(null);
+  const breathScale = useRef(new Animated.Value(1)).current;
+  const breathAnimation = useRef<Animated.CompositeAnimation | null>(null);
+
   const todayIndex = new Date().getDate() % CALMING_ACTIVITIES.length;
   const dailyCalmingActivity = CALMING_ACTIVITIES[todayIndex];
 
@@ -130,7 +171,7 @@ export default function RoutineScreen() {
   const progressPercent = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
   const activeRoutine = routines.find(r => r.id === activeRoutineId) || routines[0];
 
-  // Load Sinhala audio
+  // ─── Load Sinhala audio files ─────────────────────────────────
   useEffect(() => {
     let isMounted = true;
     const loadSounds = async () => {
@@ -156,9 +197,27 @@ export default function RoutineScreen() {
         if (sound) sound.unloadAsync();
       });
       if (backgroundSound) backgroundSound.unloadAsync();
+      if (alarmSound) alarmSound.unloadAsync();
+      if (introSound) introSound.unloadAsync();
     };
   }, []);
 
+  // ─── Play alarm sound (MP3) ──────────────────────────────────
+  const playAlarmSound = async () => {
+    try {
+      if (!alarmSound) {
+        const { sound } = await Audio.Sound.createAsync(alarmSoundFile);
+        setAlarmSound(sound);
+        await sound.playAsync();
+      } else {
+        await alarmSound.replayAsync();
+      }
+    } catch (error) {
+      console.error('Failed to play alarm sound:', error);
+    }
+  };
+
+  // ─── Speak function (external MP3 for Sinhala) ──────────────
   const speak = async (text: string, audioKey?: string) => {
     try {
       if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
@@ -177,7 +236,7 @@ export default function RoutineScreen() {
     }
   };
 
-  // Speak instruction on first open
+  // ─── Instruction on first open ───────────────────────────────
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -188,7 +247,7 @@ export default function RoutineScreen() {
     }
   }, [language]);
 
-  // ─── Timer logic (with alarm) ────────────────────────────────
+  // ─── Timer logic (with MP3 alarm) ───────────────────────────
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     if (isTimerRunning) {
@@ -197,18 +256,9 @@ export default function RoutineScreen() {
           if (prev <= 1) {
             clearInterval(interval);
             setIsTimerRunning(false);
-            // Alarm actions
-            playSound('error', true);
+            playAlarmSound();
             Vibration.vibrate(1000);
-            Notifications.scheduleNotificationAsync({
-              content: {
-                title: 'Bloom Timer',
-                body: 'Time is up! Great job!',
-                sound: true,
-              },
-              trigger: null,
-            });
-            Alert.alert('Timer Finished', 'Time is up! Great job!');
+            Alert.alert('Timer Finished', 'Great job! Time is up!');
             return 0;
           }
           return prev - 1;
@@ -218,16 +268,31 @@ export default function RoutineScreen() {
     return () => clearInterval(interval);
   }, [isTimerRunning]);
 
+  // ─── Alarm checking loop ─────────────────────────────────────
   useEffect(() => {
-    const totalTime = (parseInt(timerInput) || 15) * 60;
-    const progress = timerSeconds / totalTime;
-    Animated.timing(timerProgress, {
-      toValue: progress,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [timerSeconds]);
+    let interval: ReturnType<typeof setInterval>;
+    if (alarmSet) {
+      interval = setInterval(() => {
+        const now = new Date();
+        const currentHour24 = now.getHours();
+        const currentMinute = now.getMinutes();
 
+        let targetHour = alarmHour;
+        if (alarmPeriod === 'PM' && alarmHour !== 12) targetHour += 12;
+        if (alarmPeriod === 'AM' && alarmHour === 12) targetHour = 0;
+
+        if (currentHour24 === targetHour && currentMinute === alarmMinute) {
+          playAlarmSound();
+          Vibration.vibrate(1000);
+          Alert.alert('Alarm', 'Time for your scheduled activity!');
+          setAlarmSet(false);
+        }
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [alarmSet, alarmHour, alarmMinute, alarmPeriod]);
+
+  // ─── Timer & alarm controls ──────────────────────────────────
   const startTimer = () => {
     if (timerSeconds <= 0) {
       const minutes = parseInt(timerInput) || 15;
@@ -244,6 +309,97 @@ export default function RoutineScreen() {
     setTimerSeconds(minutes * 60);
   };
 
+  const setAlarm = () => {
+    setAlarmSet(true);
+    Alert.alert('Alarm Set', `Alarm will ring at ${formatTimeString(alarmHour, alarmMinute, alarmPeriod)}`);
+  };
+
+  // ─── Calming Activity Play Modal functions ───────────────────
+  const openCalmingPlayModal = (item: typeof calmingSchedule[0]) => {
+    setSelectedPlayActivity(item.activity);
+    setCalmingTimerMinutes(5);
+    setCalmingTimerSeconds(5 * 60);
+    setIsCalmingTimerRunning(false);
+    setIsBreathingVisible(false);
+    setCalmingPlayModalVisible(true);
+  };
+
+  const startCalmingTimer = async () => {
+    if (calmingTimerSeconds <= 0) {
+      setCalmingTimerSeconds(calmingTimerMinutes * 60);
+    }
+    setIsCalmingTimerRunning(true);
+    setIsBreathingVisible(true);
+
+    // Play intro MP3 if available
+    if (selectedPlayActivity) {
+      const introFile = calmingIntroAudioMap[selectedPlayActivity.title];
+      if (introFile) {
+        try {
+          if (introSound) {
+            await introSound.unloadAsync();
+          }
+          const { sound } = await Audio.Sound.createAsync(introFile);
+          setIntroSound(sound);
+          await sound.playAsync();
+        } catch (error) {
+          console.warn('Intro audio missing, using TTS fallback');
+          // Fallback to speech
+          Speech.stop();
+          Speech.speak(`Let's do ${selectedPlayActivity.title} together. Follow the animation.`);
+        }
+      } else {
+        // Fallback to TTS
+        Speech.stop();
+        Speech.speak(`Let's do ${selectedPlayActivity.title} together. Follow the animation.`);
+      }
+    }
+
+    // Start breathing animation
+    startBreathingAnimation();
+
+    // Start countdown
+    const interval = setInterval(() => {
+      setCalmingTimerSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setIsCalmingTimerRunning(false);
+          setIsBreathingVisible(false);
+          stopBreathingAnimation();
+          // Stop intro sound
+          if (introSound) introSound.stopAsync();
+          // Play completion sound
+          playSound('complete', false);
+          Alert.alert('Well Done!', 'You completed the calming activity.');
+          setCalmingPlayModalVisible(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const startBreathingAnimation = () => {
+    if (breathAnimation.current) breathAnimation.current.stop();
+    breathScale.setValue(1);
+    breathAnimation.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathScale, { toValue: 1.3, duration: 2000, useNativeDriver: true }),
+        Animated.timing(breathScale, { toValue: 1, duration: 2000, useNativeDriver: true }),
+      ])
+    );
+    breathAnimation.current.start();
+  };
+
+  const stopBreathingAnimation = () => {
+    if (breathAnimation.current) {
+      breathAnimation.current.stop();
+      breathAnimation.current = null;
+    }
+    breathScale.setValue(1);
+  };
+
+  // ─── Routine completion ──────────────────────────────────────
   const handleMarkComplete = (id: string) => {
     setRoutines(prev =>
       prev.map(r => (r.id === id ? { ...r, completed: !r.completed } : r))
@@ -371,7 +527,8 @@ export default function RoutineScreen() {
 
   const handleRoutinePress = (item: any) => {
     setActiveRoutineId(item.id);
-    speak(t(item.titleKey));
+    // Speak the routine name using MP3 (or TTS for English)
+    speak(t(item.titleKey), item.titleKey);
   };
 
   // ─── Time picker helpers ──────────────────────────────────────
@@ -387,7 +544,13 @@ export default function RoutineScreen() {
   const decrementCalmingMinute = () => setCalmingMinute(prev => (prev === 0 ? 55 : prev - 5));
   const toggleCalmingPeriod = () => setCalmingPeriod(prev => (prev === 'AM' ? 'PM' : 'AM'));
 
-  // Render routine item
+  const incrementAlarmHour = () => setAlarmHour(prev => (prev % 12) + 1);
+  const decrementAlarmHour = () => setAlarmHour(prev => (prev === 1 ? 12 : prev - 1));
+  const incrementAlarmMinute = () => setAlarmMinute(prev => (prev + 5) % 60);
+  const decrementAlarmMinute = () => setAlarmMinute(prev => (prev === 0 ? 55 : prev - 5));
+  const toggleAlarmPeriod = () => setAlarmPeriod(prev => (prev === 'AM' ? 'PM' : 'AM'));
+
+  // ─── Render routine item ──────────────────────────────────────
   const renderRoutineItem = ({ item }: any) => (
     <TouchableOpacity
       style={[
@@ -425,7 +588,7 @@ export default function RoutineScreen() {
     </TouchableOpacity>
   );
 
-  // Render calming schedule item
+  // ─── Render calming schedule item ─────────────────────────────
   const renderCalmingScheduleItem = (item: typeof calmingSchedule[0]) => (
     <View
       key={item.id}
@@ -454,12 +617,8 @@ export default function RoutineScreen() {
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
-            onPress={() => {
-              setActiveRoutineId('calming_' + item.id);
-              startTimer();
-            }}
+            onPress={() => openCalmingPlayModal(item)}
             style={styles.timerMiniButton}
-            disabled={isTimerRunning}
           >
             <MaterialIcons name="play-arrow" size={18} color={colors.primary} />
           </TouchableOpacity>
@@ -475,7 +634,7 @@ export default function RoutineScreen() {
     </View>
   );
 
-  // Timer display
+  // ─── Timer display ────────────────────────────────────────────
   const minutes = Math.floor(timerSeconds / 60);
   const secondsRemaining = timerSeconds % 60;
   const timeDisplay = `${minutes}:${secondsRemaining.toString().padStart(2, '0')}`;
@@ -563,7 +722,7 @@ export default function RoutineScreen() {
           </TouchableOpacity>
         </Card>
 
-        {/* Current Activity (dynamic) */}
+        {/* Current Activity (dynamic) with Alarm & Timer */}
         <Card title={t('currentActivity')} backgroundColor={colors.softGreen}>
           <View style={styles.currentActivityRow}>
             <View style={[styles.currentIcon, { backgroundColor: activeRoutine.color + '30' }]}>
@@ -582,7 +741,7 @@ export default function RoutineScreen() {
             </View>
           </View>
 
-          {/* Visual Timer Section */}
+          {/* Timer Section */}
           <View style={styles.timerSection}>
             <View style={styles.timerInputRow}>
               <Text style={[styles.timerLabel, { color: colors.textLight }]}>
@@ -607,9 +766,9 @@ export default function RoutineScreen() {
               </View>
             </View>
 
+            {/* Circular Timer */}
             <View style={styles.timerCircleWrapper}>
               <View style={styles.timerCircleOuter}>
-                {/* Circular progress background */}
                 <Svg width={circleSize} height={circleSize} style={{ position: 'absolute' }}>
                   <Circle
                     cx={circleSize / 2}
@@ -631,7 +790,6 @@ export default function RoutineScreen() {
                     strokeLinecap="round"
                   />
                 </Svg>
-                {/* Timer text */}
                 <View style={[styles.timerCircle, { borderColor: 'transparent' }]}>
                   <Text style={[styles.timerText, { color: colors.text }]}>{timeDisplay}</Text>
                 </View>
@@ -654,6 +812,60 @@ export default function RoutineScreen() {
                   <MaterialIcons name="refresh" size={32} color={colors.primary} />
                 </TouchableOpacity>
               </View>
+            </View>
+
+            {/* Alarm Setting */}
+            <View style={styles.alarmSection}>
+              <Text style={[styles.alarmTitle, { color: colors.text }]}>⏰ Set Alarm</Text>
+              <View style={styles.timePickerContainer}>
+                <View style={styles.timeColumn}>
+                  <TouchableOpacity onPress={incrementAlarmHour} style={styles.timeArrowButton}>
+                    <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                  </TouchableOpacity>
+                  <Text style={[styles.timeValue, { color: colors.text }]}>
+                    {alarmHour.toString().padStart(2, '0')}
+                  </Text>
+                  <TouchableOpacity onPress={decrementAlarmHour} style={styles.timeArrowButton}>
+                    <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                  </TouchableOpacity>
+                  <Text style={styles.timeUnit}>Hour</Text>
+                </View>
+                <View style={styles.timeColumn}>
+                  <TouchableOpacity onPress={incrementAlarmMinute} style={styles.timeArrowButton}>
+                    <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                  </TouchableOpacity>
+                  <Text style={[styles.timeValue, { color: colors.text }]}>
+                    {alarmMinute.toString().padStart(2, '0')}
+                  </Text>
+                  <TouchableOpacity onPress={decrementAlarmMinute} style={styles.timeArrowButton}>
+                    <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                  </TouchableOpacity>
+                  <Text style={styles.timeUnit}>Min</Text>
+                </View>
+                <View style={styles.timeColumn}>
+                  <TouchableOpacity
+                    onPress={toggleAlarmPeriod}
+                    style={[styles.periodButton, { backgroundColor: alarmPeriod === 'AM' ? colors.primary : colors.primaryLight }]}
+                  >
+                    <Text style={[styles.periodText, { color: alarmPeriod === 'AM' ? '#FFFFFF' : colors.text }]}>AM</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={toggleAlarmPeriod}
+                    style={[styles.periodButton, { backgroundColor: alarmPeriod === 'PM' ? colors.primary : colors.primaryLight, marginTop: 8 }]}
+                  >
+                    <Text style={[styles.periodText, { color: alarmPeriod === 'PM' ? '#FFFFFF' : colors.text }]}>PM</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[styles.alarmButton, { backgroundColor: alarmSet ? colors.success : colors.primary }]}
+                onPress={setAlarm}
+              >
+                <MaterialIcons name={alarmSet ? 'alarm-on' : 'alarm'} size={20} color="#FFF" />
+                <Text style={styles.alarmButtonText}>
+                  {alarmSet ? 'Alarm Set' : 'Set Alarm'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Card>
@@ -960,11 +1172,114 @@ export default function RoutineScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ─── MODAL: Play Calming Activity ──────────────────────── */}
+      <Modal
+        visible={calmingPlayModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setCalmingPlayModalVisible(false);
+          stopBreathingAnimation();
+          if (introSound) introSound.stopAsync();
+          setIsCalmingTimerRunning(false);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, alignItems: 'center' }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {selectedPlayActivity?.title || 'Calming Activity'}
+            </Text>
+
+            {/* Breathing Animation */}
+            {isBreathingVisible && selectedPlayActivity?.title === 'Deep Breathing' ? (
+              <View style={styles.breathingContainer}>
+                <Animated.View
+                  style={[
+                    styles.breathingCircle,
+                    {
+                      backgroundColor: selectedPlayActivity.color + '40',
+                      borderColor: selectedPlayActivity.color,
+                      transform: [{ scale: breathScale }],
+                    },
+                  ]}
+                />
+                <Text style={[styles.breathingText, { color: colors.text }]}>Breathe in... Breathe out...</Text>
+              </View>
+            ) : (
+              <View style={styles.breathingContainer}>
+                <MaterialIcons name={selectedPlayActivity?.icon as any} size={80} color={selectedPlayActivity?.color} />
+                <Text style={[styles.breathingText, { color: colors.text }]}>Follow along quietly</Text>
+              </View>
+            )}
+
+            {/* Timer display */}
+            <Text style={[styles.modalTimerText, { color: colors.primary }]}>
+              {Math.floor(calmingTimerSeconds / 60)}:{(calmingTimerSeconds % 60).toString().padStart(2, '0')}
+            </Text>
+
+            {/* Timer minutes input */}
+            {!isCalmingTimerRunning && (
+              <View style={styles.timerInputContainer}>
+                <TouchableOpacity
+                  onPress={() => setCalmingTimerMinutes(prev => Math.max(1, prev - 1))}
+                  style={styles.timerAdjustButton}
+                >
+                  <MaterialIcons name="remove" size={20} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.timerInputText, { color: colors.text, borderColor: colors.primaryLight }]}>
+                  {calmingTimerMinutes} min
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setCalmingTimerMinutes(prev => prev + 1)}
+                  style={styles.timerAdjustButton}
+                >
+                  <MaterialIcons name="add" size={20} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Start / Cancel buttons */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primaryLight }]}
+                onPress={() => {
+                  setCalmingPlayModalVisible(false);
+                  stopBreathingAnimation();
+                  if (introSound) introSound.stopAsync();
+                  setIsCalmingTimerRunning(false);
+                }}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.primary }]}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              {!isCalmingTimerRunning ? (
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                  onPress={startCalmingTimer}
+                >
+                  <Text style={[styles.modalButtonText, { color: colors.background }]}>Start</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: colors.error }]}
+                  onPress={() => {
+                    setIsCalmingTimerRunning(false);
+                    stopBreathingAnimation();
+                    if (introSound) introSound.stopAsync();
+                  }}
+                >
+                  <Text style={[styles.modalButtonText, { color: '#FFF' }]}>Stop</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
 
-// ─── STYLES (updated for timer circle) ────────────────────────────
+// ─── STYLES (with breathing animation additions) ────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, padding: Spacing.md },
   header: { marginBottom: Spacing.lg },
@@ -1111,6 +1426,26 @@ const styles = StyleSheet.create({
   addButtonText: { fontWeight: 'bold', fontSize: Typography.fontSize.md, marginLeft: Spacing.md },
   tipsContainer: { marginTop: Spacing.sm },
   tipText: { fontSize: Typography.fontSize.md, marginBottom: Spacing.sm, lineHeight: 24 },
+  // Alarm styles
+  alarmSection: {
+    marginTop: Spacing.lg,
+    padding: Spacing.md,
+    borderRadius: Spacing.md,
+    backgroundColor: '#f9f9f9',
+  },
+  alarmTitle: { fontSize: Typography.fontSize.md, fontWeight: 'bold', marginBottom: Spacing.sm },
+  alarmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: 20,
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  alarmButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: Typography.fontSize.md },
+  // Modal styles (existing)
   modalOverlay: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1147,4 +1482,27 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: Spacing.xl, gap: 10 },
   modalButton: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: 10 },
   modalButtonText: { fontWeight: 'bold', fontSize: Typography.fontSize.md },
+  // Breathing animation styles
+  breathingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: Spacing.lg,
+  },
+  breathingCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    marginBottom: Spacing.md,
+  },
+  breathingText: {
+    fontSize: Typography.fontSize.md,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  modalTimerText: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    marginVertical: Spacing.md,
+  },
 });
