@@ -1,4 +1,4 @@
-// app/(tabs)/routine.tsx (Full ASD-Friendly Routine Screen – TypeScript Fixed)
+// app/(tabs)/routine.tsx – Complete & Working (Timer Fixed + Alarm)
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
@@ -12,13 +12,17 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
+  Vibration,
   View
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg'; // ✅ IMPORT ADDED
 import Card from '../../components/Card';
 import { Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useSound } from '../../hooks/useSound';
 import { updateStats } from '../../services/api';
 
 // ------------- Daily routines with completion state -------------
@@ -78,8 +82,9 @@ const backgroundMusic = require('../../assets/sounds/calm_background.mp3');
 export default function RoutineScreen() {
   const { colors } = useTheme();
   const { t, language } = useLanguage();
+  const { playSound } = useSound(); // for alarm/beep
 
-  // State
+  // ─── State ────────────────────────────────────────────────────
   const [routines, setRoutines] = useState(initialRoutines);
   const [activeRoutineId, setActiveRoutineId] = useState('4');
   const [stars, setStars] = useState(0);
@@ -119,6 +124,7 @@ export default function RoutineScreen() {
 
   const timerProgress = useRef(new Animated.Value(1)).current;
 
+  // Derived data
   const completedCount = routines.filter(r => r.completed).length + calmingSchedule.filter(c => c.completed).length;
   const totalTasks = routines.length + calmingSchedule.length;
   const progressPercent = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
@@ -171,6 +177,7 @@ export default function RoutineScreen() {
     }
   };
 
+  // Speak instruction on first open
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -181,18 +188,35 @@ export default function RoutineScreen() {
     }
   }, [language]);
 
-  // Timer logic
+  // ─── Timer logic (with alarm) ────────────────────────────────
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    if (isTimerRunning && timerSeconds > 0) {
+    if (isTimerRunning) {
       interval = setInterval(() => {
-        setTimerSeconds(prev => prev - 1);
+        setTimerSeconds(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setIsTimerRunning(false);
+            // Alarm actions
+            playSound('error', true);
+            Vibration.vibrate(1000);
+            Notifications.scheduleNotificationAsync({
+              content: {
+                title: 'Bloom Timer',
+                body: 'Time is up! Great job!',
+                sound: true,
+              },
+              trigger: null,
+            });
+            Alert.alert('Timer Finished', 'Time is up! Great job!');
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
-    } else if (timerSeconds === 0 && isTimerRunning) {
-      setIsTimerRunning(false);
     }
     return () => clearInterval(interval);
-  }, [isTimerRunning, timerSeconds]);
+  }, [isTimerRunning]);
 
   useEffect(() => {
     const totalTime = (parseInt(timerInput) || 15) * 60;
@@ -208,6 +232,7 @@ export default function RoutineScreen() {
     if (timerSeconds <= 0) {
       const minutes = parseInt(timerInput) || 15;
       setTimerSeconds(minutes * 60);
+      timerProgress.setValue(1);
     }
     setIsTimerRunning(true);
   };
@@ -306,7 +331,7 @@ export default function RoutineScreen() {
           sound: true,
         },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.CALENDAR, // ✅ fixed
+          type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
           hour,
           minute,
           repeats: true,
@@ -349,6 +374,7 @@ export default function RoutineScreen() {
     speak(t(item.titleKey));
   };
 
+  // ─── Time picker helpers ──────────────────────────────────────
   const incrementHour = () => setSelectedHour(prev => (prev % 12) + 1);
   const decrementHour = () => setSelectedHour(prev => (prev === 1 ? 12 : prev - 1));
   const incrementMinute = () => setSelectedMinute(prev => (prev + 5) % 60);
@@ -361,6 +387,7 @@ export default function RoutineScreen() {
   const decrementCalmingMinute = () => setCalmingMinute(prev => (prev === 0 ? 55 : prev - 5));
   const toggleCalmingPeriod = () => setCalmingPeriod(prev => (prev === 'AM' ? 'PM' : 'AM'));
 
+  // Render routine item
   const renderRoutineItem = ({ item }: any) => (
     <TouchableOpacity
       style={[
@@ -398,6 +425,7 @@ export default function RoutineScreen() {
     </TouchableOpacity>
   );
 
+  // Render calming schedule item
   const renderCalmingScheduleItem = (item: typeof calmingSchedule[0]) => (
     <View
       key={item.id}
@@ -447,9 +475,20 @@ export default function RoutineScreen() {
     </View>
   );
 
+  // Timer display
   const minutes = Math.floor(timerSeconds / 60);
   const secondsRemaining = timerSeconds % 60;
   const timeDisplay = `${minutes}:${secondsRemaining.toString().padStart(2, '0')}`;
+
+  // Circular progress dimensions
+  const circleSize = 160;
+  const strokeWidth = 10;
+  const radius = (circleSize - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = timerProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0],
+  });
 
   const routineTips = [
     t('visualTimers'),
@@ -570,7 +609,30 @@ export default function RoutineScreen() {
 
             <View style={styles.timerCircleWrapper}>
               <View style={styles.timerCircleOuter}>
-                <View style={[styles.timerCircle, { borderColor: activeRoutine.color }]}>
+                {/* Circular progress background */}
+                <Svg width={circleSize} height={circleSize} style={{ position: 'absolute' }}>
+                  <Circle
+                    cx={circleSize / 2}
+                    cy={circleSize / 2}
+                    r={radius}
+                    stroke={colors.primaryLight}
+                    strokeWidth={strokeWidth}
+                    fill="none"
+                  />
+                  <Circle
+                    cx={circleSize / 2}
+                    cy={circleSize / 2}
+                    r={radius}
+                    stroke={activeRoutine.color}
+                    strokeWidth={strokeWidth}
+                    fill="none"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                  />
+                </Svg>
+                {/* Timer text */}
+                <View style={[styles.timerCircle, { borderColor: 'transparent' }]}>
                   <Text style={[styles.timerText, { color: colors.text }]}>{timeDisplay}</Text>
                 </View>
               </View>
@@ -627,7 +689,7 @@ export default function RoutineScreen() {
         <Card
           title={t('calmingCorner') || 'Calming Corner'}
           icon="self-care"
-          iconColor={colors.accentPink} // ✅ fixed from accentPurple
+          iconColor={colors.accentPink}
         >
           {calmingSchedule.length > 0 ? (
             calmingSchedule.map(item => renderCalmingScheduleItem(item))
@@ -677,20 +739,232 @@ export default function RoutineScreen() {
         </Card>
       </ScrollView>
 
-      {/* Custom Routine Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
-        {/* ... (same as before, no changes needed) ... */}
+      {/* ─── MODAL: Add Custom Routine ─────────────────────────── */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {t('addCustomActivity')}
+            </Text>
+
+            <TextInput
+              style={[styles.input, { color: colors.text, borderColor: colors.primaryLight, backgroundColor: colors.surface }]}
+              placeholder={t('activityName') || 'Activity name'}
+              placeholderTextColor={colors.textLight}
+              value={newTitle}
+              onChangeText={setNewTitle}
+            />
+
+            <Text style={[styles.pickerLabel, { color: colors.text, marginBottom: Spacing.sm }]}>
+              {t('time') || 'Time'}
+            </Text>
+            <View style={styles.timePickerContainer}>
+              <View style={styles.timeColumn}>
+                <TouchableOpacity onPress={incrementHour} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.timeValue, { color: colors.text }]}>
+                  {selectedHour.toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity onPress={decrementHour} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={styles.timeUnit}>Hour</Text>
+              </View>
+
+              <View style={styles.timeColumn}>
+                <TouchableOpacity onPress={incrementMinute} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.timeValue, { color: colors.text }]}>
+                  {selectedMinute.toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity onPress={decrementMinute} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={styles.timeUnit}>Min</Text>
+              </View>
+
+              <View style={styles.timeColumn}>
+                <TouchableOpacity
+                  onPress={togglePeriod}
+                  style={[styles.periodButton, { backgroundColor: selectedPeriod === 'AM' ? colors.primary : colors.primaryLight }]}
+                >
+                  <Text style={[styles.periodText, { color: selectedPeriod === 'AM' ? '#FFFFFF' : colors.text }]}>AM</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={togglePeriod}
+                  style={[styles.periodButton, { backgroundColor: selectedPeriod === 'PM' ? colors.primary : colors.primaryLight, marginTop: 8 }]}
+                >
+                  <Text style={[styles.periodText, { color: selectedPeriod === 'PM' ? '#FFFFFF' : colors.text }]}>PM</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <Text style={[styles.pickerLabel, { color: colors.text, marginTop: Spacing.md }]}>
+              {t('chooseIcon') || 'Choose icon'}
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconRow}>
+              {AVAILABLE_ICONS.map(icon => (
+                <TouchableOpacity
+                  key={icon}
+                  onPress={() => setSelectedIcon(icon)}
+                  style={[
+                    styles.iconOption,
+                    {
+                      borderColor: selectedIcon === icon ? colors.primary : 'transparent',
+                      backgroundColor: selectedIcon === icon ? colors.primaryLight : colors.surface,
+                    },
+                  ]}
+                >
+                  <MaterialIcons name={icon as any} size={32} color={selectedIcon === icon ? colors.primary : colors.textLight} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={[styles.pickerLabel, { color: colors.text, marginTop: Spacing.md }]}>
+              {t('chooseColor') || 'Choose color'}
+            </Text>
+            <View style={styles.colorRow}>
+              {AVAILABLE_COLORS.map(color => (
+                <TouchableOpacity
+                  key={color}
+                  onPress={() => setSelectedColor(color)}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: color, borderColor: selectedColor === color ? colors.primary : 'transparent' },
+                  ]}
+                />
+              ))}
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primaryLight }]}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.primary }]}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                onPress={handleAddCustomRoutine}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.background }]}>{t('add')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
-      {/* Calming Activity Modal */}
-      <Modal visible={calmingModalVisible} transparent animationType="slide" onRequestClose={() => setCalmingModalVisible(false)}>
-        {/* ... (same as before) ... */}
+      {/* ─── MODAL: Add Calming Activity ───────────────────────── */}
+      <Modal
+        visible={calmingModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCalmingModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {t('selectCalmingActivity') || 'Select Calming Activity'}
+            </Text>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.calmingList}>
+              {CALMING_ACTIVITIES.map((activity, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => setSelectedCalmingActivity(index)}
+                  style={[
+                    styles.calmingOption,
+                    {
+                      borderColor: selectedCalmingActivity === index ? activity.color : 'transparent',
+                      backgroundColor: selectedCalmingActivity === index ? activity.color + '20' : colors.surface,
+                    },
+                  ]}
+                >
+                  <View style={[styles.calmingOptionIcon, { backgroundColor: activity.color + '40' }]}>
+                    <MaterialIcons name={activity.icon as any} size={30} color={activity.color} />
+                  </View>
+                  <Text style={[styles.calmingOptionTitle, { color: colors.text }]} numberOfLines={2}>
+                    {activity.title}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={[styles.pickerLabel, { color: colors.text, marginTop: Spacing.md }]}>
+              {t('time') || 'Time'}
+            </Text>
+            <View style={styles.timePickerContainer}>
+              <View style={styles.timeColumn}>
+                <TouchableOpacity onPress={incrementCalmingHour} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.timeValue, { color: colors.text }]}>
+                  {calmingHour.toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity onPress={decrementCalmingHour} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={styles.timeUnit}>Hour</Text>
+              </View>
+
+              <View style={styles.timeColumn}>
+                <TouchableOpacity onPress={incrementCalmingMinute} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.timeValue, { color: colors.text }]}>
+                  {calmingMinute.toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity onPress={decrementCalmingMinute} style={styles.timeArrowButton}>
+                  <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={styles.timeUnit}>Min</Text>
+              </View>
+
+              <View style={styles.timeColumn}>
+                <TouchableOpacity
+                  onPress={toggleCalmingPeriod}
+                  style={[styles.periodButton, { backgroundColor: calmingPeriod === 'AM' ? colors.primary : colors.primaryLight }]}
+                >
+                  <Text style={[styles.periodText, { color: calmingPeriod === 'AM' ? '#FFFFFF' : colors.text }]}>AM</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={toggleCalmingPeriod}
+                  style={[styles.periodButton, { backgroundColor: calmingPeriod === 'PM' ? colors.primary : colors.primaryLight, marginTop: 8 }]}
+                >
+                  <Text style={[styles.periodText, { color: calmingPeriod === 'PM' ? '#FFFFFF' : colors.text }]}>PM</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primaryLight }]}
+                onPress={() => setCalmingModalVisible(false)}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.primary }]}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                onPress={handleAddCalmingActivity}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.background }]}>{t('add')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </>
   );
 }
 
-// ─── STYLES (unchanged, includes musicButton) ───────────────────
+// ─── STYLES (updated for timer circle) ────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, padding: Spacing.md },
   header: { marginBottom: Spacing.lg },
@@ -780,10 +1054,19 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 8,
   },
   timerCircleWrapper: { alignItems: 'center', marginTop: Spacing.sm },
-  timerCircleOuter: { width: 160, height: 160, justifyContent: 'center', alignItems: 'center' },
+  timerCircleOuter: {
+    width: 160,
+    height: 160,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   timerCircle: {
-    width: 130, height: 130, borderRadius: 65, borderWidth: 10,
-    justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF',
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   timerText: { fontSize: 32, fontWeight: 'bold' },
   timerControls: { flexDirection: 'row', gap: 20, marginTop: Spacing.md },
