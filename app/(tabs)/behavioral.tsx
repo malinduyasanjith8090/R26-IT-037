@@ -6,6 +6,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  ImageBackground,
   Platform,
   ScrollView,
   StatusBar,
@@ -24,7 +25,7 @@ import { useChild } from '../../context/ChildContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getDashboard } from '../../services/apiService';
-
+const playgroundBg = require('../../assets/images/playground.png');
 const { width: SW } = Dimensions.get('window');
 
 const CARD_RADIUS = BorderRadius.xl;
@@ -609,6 +610,53 @@ function NavPill({
   );
 }
 
+type CtaCardProps = {
+  icon: string;
+  title: string;
+  subtitle: string;
+  tint: string;
+  onPress: () => void;
+  delay?: number;
+};
+
+function CtaCard({ icon, title, subtitle, tint, onPress, delay = 0 }: CtaCardProps) {
+  const { colors } = useTheme();
+
+  return (
+    <FadeSlide delay={delay}>
+      <TouchableOpacity
+        activeOpacity={0.88}
+        onPress={onPress}
+        style={styles.ctaWrap}
+      >
+        <View
+          style={[
+            styles.ctaSoft,
+            { backgroundColor: `${tint}14`, borderColor: `${tint}30` },
+          ]}
+        >
+          <View style={styles.ctaLeft}>
+            <View style={[styles.ctaIconWrap, { backgroundColor: `${tint}22` }]}>
+              <Ionicons name={icon as any} size={18} color={tint} />
+            </View>
+
+            <View>
+              <Text style={[styles.ctaTitle, { color: colors.text }]}>
+                {title}
+              </Text>
+              <Text style={[styles.ctaSubtitle, { color: colors.textLight }]}>
+                {subtitle}
+              </Text>
+            </View>
+          </View>
+
+          <Ionicons name="chevron-forward" size={22} color={`${tint}90`} />
+        </View>
+      </TouchableOpacity>
+    </FadeSlide>
+  );
+}
+
 export default function ParentDashboardScreen({
   navigation,
 }: AnyObject) {
@@ -744,210 +792,64 @@ export default function ParentDashboardScreen({
         contentContainerStyle={styles.scroll}
       >
         {/* HERO */}
-        <FadeSlide delay={0}>
-          <LinearGradient
-            colors={[
-              colors.primary,
-              colors.primaryDark,
-              colors.accentBlue,
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.hero}
-          >
-            <View style={styles.heroBubbleOne} />
-            <View style={styles.heroBubbleTwo} />
+   {/* HERO */}
+{/* HERO */}
+<FadeSlide delay={0}>
+  <ImageBackground
+    source={playgroundBg}
+    style={styles.hero}
+    imageStyle={{ borderRadius: CARD_RADIUS }}
+  >
+    {/* dark overlay so white text stays readable over the photo */}
+    <View style={styles.heroOverlay} />
 
-            <View style={styles.heroTop}>
-              <View>
-                <Text style={styles.heroGreetingSmall}>
-                  {t(getGreetingKey())},
-                </Text>
+    <View style={styles.heroTop}>
+      <Text style={styles.heroGreeting}>
+        Hi, {childName} baby
+      </Text>
 
-                <Text style={styles.heroGreeting}>
-                  {parentName}
-                </Text>
-              </View>
-
-              <View style={styles.heroTopRight}>
-                <TouchableOpacity
-                  style={styles.heroIconButton}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name="notifications-outline"
-                    size={20}
-                    color="#FFFFFF"
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.heroIconButton}
-                  onPress={handleLogout}
-                  activeOpacity={0.8}
-                >
-                  {loggingOut ? (
-                    <ActivityIndicator
-                      size="small"
-                      color="#FFFFFF"
-                    />
-                  ) : (
-                    <Ionicons
-                      name="log-out-outline"
-                      size={18}
-                      color="#FFFFFF"
-                    />
-                  )}
-                </TouchableOpacity>
-
-                <View style={styles.heroAvatar}>
-                  <Text
-                    style={[
-                      styles.heroAvatarText,
-                      { color: colors.primaryDark },
-                    ]}
-                  >
-                    {parentInitial}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.heroChild}>
-              <View style={styles.heroChildAvatar}>
-                <Text style={styles.heroChildAvatarText}>
-                  {childName?.[0]?.toUpperCase() || 'C'}
-                </Text>
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={styles.heroChildName}>
-                  {childName}
-                </Text>
-
-                <Text style={styles.heroChildSub}>
-                  {avgAccuracy >= 0.75
-                    ? `🌱 ${t('thrivingBeautifully')}`
-                    : `📈 ${t('makingProgress')}`}
-                </Text>
-              </View>
-
-              <View style={styles.heroRingWrap}>
-                <RadialRing
-                  value={avgAccuracy}
-                  size={72}
-                  color="#FFFFFF"
-                  textColor="#FFFFFF"
-                  mutedColor="rgba(255,255,255,0.7)"
-                />
-
-                <Text style={styles.heroRingLabel}>
-                  {t('accuracy')}
-                </Text>
-              </View>
-            </View>
-
-            <Text style={styles.heroDate}>
-              {t('viewChildProgress')} ·{' '}
-              {new Date().toLocaleDateString('en-LK', {
-                day: 'numeric',
-                month: 'short',
-              })}
-            </Text>
-          </LinearGradient>
-        </FadeSlide>
+      <TouchableOpacity
+        style={styles.heroIconButton}
+        onPress={handleLogout}
+        activeOpacity={0.8}
+      >
+        {loggingOut ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
+        )}
+      </TouchableOpacity>
+    </View>
+  </ImageBackground>
+</FadeSlide>
 
         {/* CTA */}
-        <FadeSlide delay={80}>
-          <TouchableOpacity
-  activeOpacity={0.88}
-  onPress={() => router.push('/(games)/TracingGame')}
-  style={styles.ctaWrap}
->
-            <LinearGradient
-              colors={[
-                colors.accentOrange,
-                colors.accentPink,
-              ]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.cta}
-            >
-              <View style={styles.ctaLeft}>
-                <View style={styles.ctaIconWrap}>
-                  <Ionicons
-                    name="play"
-                    size={18}
-                    color={colors.accentOrange}
-                  />
-                </View>
-
-                <View>
-                  <Text style={styles.ctaTitle}>
-                    {t('startNewTrial')}
-                  </Text>
-
-                  <Text style={styles.ctaSubtitle}>
-                    {t('startNewTrialDescription')}
-                  </Text>
-                </View>
-              </View>
-
-              <Ionicons
-                name="arrow-forward-circle"
-                size={30}
-                color="rgba(255,255,255,0.85)"
-              />
-            </LinearGradient>
-          </TouchableOpacity>
-        </FadeSlide>
-
-        <FadeSlide delay={120}>
-         <TouchableOpacity
-  activeOpacity={0.88}
-  onPress={() => router.push('/(games)/BehaviourGame')}
-  style={[
-    styles.ctaWrap,
-    { marginTop: Spacing.sm },
-  ]}
->
-            <LinearGradient
-              colors={[
-                colors.primary,
-                colors.primaryDark,
-              ]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.cta}
-            >
-              <View style={styles.ctaLeft}>
-                <View style={styles.ctaIconWrap}>
-                  <Ionicons
-                    name="game-controller-outline"
-                    size={18}
-                    color={colors.primary}
-                  />
-                </View>
-
-                <View>
-                  <Text style={styles.ctaTitle}>
-                    {t('behaviourGame')}
-                  </Text>
-
-                  <Text style={styles.ctaSubtitle}>
-                    {t('practiceSocialSkills')}
-                  </Text>
-                </View>
-              </View>
-
-              <Ionicons
-                name="arrow-forward-circle"
-                size={30}
-                color="rgba(255,255,255,0.85)"
-              />
-            </LinearGradient>
-          </TouchableOpacity>
-        </FadeSlide>
+       <View style={styles.ctaGroup}>
+  <CtaCard
+    icon="play"
+    title={t('startNewTrial')}
+    subtitle={t('startNewTrialDescription')}
+    tint={colors.accentOrange}
+    onPress={() => router.push('/(games)/TracingGame')}
+    delay={80}
+  />
+  <CtaCard
+    icon="game-controller-outline"
+    title={t('behaviourGame')}
+    subtitle={t('practiceSocialSkills')}
+    tint={colors.primary}
+    onPress={() => router.push('/(games)/BehaviourGame')}
+    delay={120}
+  />
+  <CtaCard
+    icon="book-outline"
+    title={t('parentsGuide')}
+    subtitle={t('parentsGuideDescription')}
+    tint={colors.accentPink}
+    onPress={() => router.push('/(games)/ParentsGuide')}
+    delay={160}
+  />
+</View>
 
         {/* STATS */}
         <FadeSlide
@@ -1286,14 +1188,22 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
 
-  hero: {
-    marginHorizontal: H_PAD,
-    marginTop: Platform.OS === 'ios' ? 56 : 44,
-    borderRadius: CARD_RADIUS,
-    padding: Spacing.lg,
-    overflow: 'hidden',
-    ...shadow(16),
-  },
+hero: {
+  marginHorizontal: H_PAD,
+  marginTop: Platform.OS === 'ios' ? 56 : 44,
+  borderRadius: CARD_RADIUS,
+  padding: Spacing.lg,
+  overflow: 'hidden',
+  minHeight: 240,
+  justifyContent: 'flex-start', // keeps content pinned to the top line
+  ...shadow(16),
+},
+
+heroOverlay: {
+  ...StyleSheet.absoluteFillObject,
+  backgroundColor: 'rgba(0,0,0,0.28)', // darkens the photo so white text reads clearly
+  borderRadius: CARD_RADIUS,
+},
 
   heroBubbleOne: {
     position: 'absolute',
@@ -1417,12 +1327,21 @@ const styles = StyleSheet.create({
   },
 
   ctaWrap: {
-    marginHorizontal: H_PAD,
-    marginTop: Spacing.sm + 2,
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-    ...shadow(10),
-  },
+  marginHorizontal: H_PAD,
+  borderRadius: BorderRadius.lg,
+  overflow: 'hidden',
+  ...shadow(4),
+},
+
+ctaSoft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingVertical: Spacing.md,
+  paddingHorizontal: Spacing.md,
+  borderRadius: BorderRadius.lg,
+  borderWidth: 1,
+},
 
   cta: {
     flexDirection: 'row',
@@ -1431,6 +1350,10 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.md,
   },
+  ctaGroup: {
+  marginTop: Spacing.sm + 2,
+  gap: 12, // ← this is your "minimal space" knob — shrink to 4 for even tighter, or use Spacing.xs if your theme has one
+},
 
   ctaLeft: {
     flexDirection: 'row',

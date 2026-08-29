@@ -243,6 +243,7 @@ const translations = {
   startNewTrial: 'Tracing Practice',
   startNewTrialDescription: 'Start a new learning trial',
   behaviourGame: 'Social Scenarios',
+  parentsGuide: "Parent's Guide",
   practiceSocialSkills: 'Practice social skills',
   sessions: 'Sessions',
   trials: 'Trials',

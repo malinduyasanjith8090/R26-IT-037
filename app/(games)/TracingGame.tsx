@@ -1,7 +1,6 @@
 import {
   Ionicons
 } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -21,6 +20,7 @@ import {
 } from 'expo-linear-gradient';
 import TracingCanvas from '../../components/TracingCanvasdilsha';
 import { useChild } from '../../context/ChildContext';
+import { useSound } from '../../hooks/useSound';
 import { endSession, startSession, submitTrial, syncOfflineQueue } from '../../services/apiService';
 import { getShapesForDifficulty } from '../data/shapes/sriLankanShapes';
 
@@ -33,9 +33,21 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
  * POOR  < 0.40 — gentle retry, no punishment
  * OK    0.40 – 0.74 — encouraging, acknowledges effort
  * GREAT ≥ 0.75 — full reward, celebration
- * 
- * 
+ *
+ * ── Level progression (NEW) ────────────────────────────────────────────
+ * We no longer jump straight to whatever difficulty level the backend
+ * suggests. Instead:
+ *   - Every successful trial ("great" or "ok") marks the current shape as
+ *     completed for this level.
+ *   - The next shape is picked from the shapes in the SAME level that
+ *     haven't been completed yet.
+ *   - Once every shape in the level has been completed, we advance
+ *     exactly ONE level (capped at MAX_LEVEL) and reset the completed list.
+ *   - A "poor" trial never marks the shape complete — it just retries the
+ *     same shape.
  */
+
+const MAX_LEVEL = 4;
 
 const SHAPE_EMOJIS: Record<string, string> = {
   ball: '⚽',
@@ -88,6 +100,7 @@ function getPerformancePhase(blendedAccuracy) {
 
 export default function TracingGameScreen() {
   const { activeChild, cognitiveState } = useChild();
+  const { playSound, playStarEarned } = useSound();
 
   const [sessionId,       setSessionId]       = useState(null);
   const [currentShape,    setCurrentShape]    = useState(null);
@@ -101,6 +114,10 @@ export default function TracingGameScreen() {
   const [sessionLoading,  setSessionLoading]  = useState(true);
   const [accuracy,        setAccuracy]        = useState(null);
   const sessionTrialsRef = useRef([]);
+
+  // Shapes completed (great/ok) within the CURRENT difficulty level.
+  // Reset whenever the level changes (auto-advance or manual pick).
+  const [completedShapeIds, setCompletedShapeIds] = useState<string[]>([]);
 
   // Start a new session when screen loads
   useEffect(() => {
@@ -138,22 +155,32 @@ export default function TracingGameScreen() {
     setDifficultyLevel(initialDifficulty);
     setShapeSize(getSizeForDifficulty(initialDifficulty));
     setGuidanceLevel(getGuidanceForDifficulty(initialDifficulty));
+    setCompletedShapeIds([]);
     setSessionLoading(false);
     // currentShape stays null here on purpose — this puts the user into the
     // shape-selection grid rather than silently auto-picking one.
   }
 
-  function pickNextShape(difficulty: number) {
-    const shapes = getShapesForDifficulty(difficulty);
+  /**
+   * Picks a random shape from `difficulty`, preferring shapes whose id is
+   * NOT in `excludeIds` (i.e. not yet completed this level). If every shape
+   * in the level has already been completed, falls back to the full list
+   * (shouldn't normally happen since callers reset excludeIds on advance).
+   */
+  function pickNextShape(difficulty: number, excludeIds: string[] = []) {
+    const allShapes = getShapesForDifficulty(difficulty);
 
-    if (!shapes || shapes.length === 0) {
+    if (!allShapes || allShapes.length === 0) {
       setCurrentShape(null);
       return;
     }
 
-    const randomIndex = Math.floor(Math.random() * shapes.length);
-    setCurrentShape(shapes[randomIndex]);
-    setSelectedShapeId(shapes[randomIndex].id);
+    const remaining = allShapes.filter((s: any) => !excludeIds.includes(s.id));
+    const pool = remaining.length > 0 ? remaining : allShapes;
+
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    setCurrentShape(pool[randomIndex]);
+    setSelectedShapeId(pool[randomIndex].id);
   }
 
   function getSizeForDifficulty(level) {
@@ -166,11 +193,13 @@ export default function TracingGameScreen() {
 
   // Called when user picks a level from the dropdown/modal
   function handleLevelSelect(level: number) {
+    playSound('click', true);
     setShowLevelPicker(false);
 
     setDifficultyLevel(level);
     setShapeSize(getSizeForDifficulty(level));
     setGuidanceLevel(getGuidanceForDifficulty(level));
+    setCompletedShapeIds([]); // manual level switch starts that level fresh
 
     setAccuracy(null);
 
@@ -180,6 +209,7 @@ export default function TracingGameScreen() {
   }
 
   function handleShapeSelect(shape: any) {
+    playSound('click', true);
     setSelectedShapeId(shape.id);
     setCurrentShape(shape);
     setAccuracy(null);
@@ -209,19 +239,12 @@ export default function TracingGameScreen() {
       completed,
     };
 
-    // Submit to backend (or offline queue)
+    // Submit to backend (or offline queue) — kept for analytics/adaptive
+    // logging, but we no longer let the backend's suggested difficulty
+    // level drive the UI jump (that's what caused the "jumps to level 4"
+    // behavior). Progression is now fully local & sequential.
     const result = await submitTrial(trialData);
     sessionTrialsRef.current.push(result.accuracyScore);
-
-    // Clamp difficulty to max level 4
-    const nextLevel = Math.min(result.currentDifficultyLevel || difficultyLevel, 4);
-
-    // Update local cognitive state display
-    if (nextLevel && nextLevel !== difficultyLevel) {
-      setDifficultyLevel(nextLevel);
-      setShapeSize(getSizeForDifficulty(nextLevel));
-      setGuidanceLevel(getGuidanceForDifficulty(nextLevel));
-    }
 
     setAccuracy(Math.round(result.accuracyScore * 100));
 
@@ -229,30 +252,57 @@ export default function TracingGameScreen() {
     const phase = getPerformancePhase(metrics.blendedAccuracy);
     setPerformancePhase(phase);
 
-    if (phase === 'great') {
-      // Full celebration — earned it, auto-advance to next shape
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setTimeout(() => {
-        setPerformancePhase(null);
-        pickNextShape(nextLevel);
-      }, 2200);
+    if (phase === 'great' || phase === 'ok') {
+      const updatedCompleted = [...completedShapeIds, currentShape.id];
+      const levelShapes = getShapesForDifficulty(difficultyLevel);
+      const remainingInLevel = levelShapes.filter(
+        (s: any) => !updatedCompleted.includes(s.id)
+      );
 
-    } else if (phase === 'ok') {
-      // Gentle encouragement — light haptic, shorter display, auto-advance
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setTimeout(() => {
-        setPerformancePhase(null);
-        pickNextShape(nextLevel);
-      }, 1800);
+      if (phase === 'great') {
+        // Full celebration — earned it.
+        playSound('levelUp', true);
+        playStarEarned();
+      } else {
+        // Gentle encouragement — light haptic.
+        playSound('cheer', true);
+      }
 
+      const delay = 2200;
+
+      if (remainingInLevel.length > 0) {
+        // Still shapes left in this level — stay here, move to next one.
+        setCompletedShapeIds(updatedCompleted);
+        setTimeout(() => {
+          setPerformancePhase(null);
+          pickNextShape(difficultyLevel, updatedCompleted);
+        }, delay);
+      } else {
+        // Every shape in this level is cleared — advance exactly one level.
+        const newLevel = Math.min(difficultyLevel + 1, MAX_LEVEL);
+        setTimeout(() => {
+          setPerformancePhase(null);
+          setCompletedShapeIds([]);
+          if (newLevel !== difficultyLevel) {
+            setDifficultyLevel(newLevel);
+            setShapeSize(getSizeForDifficulty(newLevel));
+            setGuidanceLevel(getGuidanceForDifficulty(newLevel));
+            pickNextShape(newLevel, []);
+          } else {
+            // Already at MAX_LEVEL — just cycle back through this level's shapes.
+            pickNextShape(difficultyLevel, []);
+          }
+        }, delay);
+      }
     } else {
-      // Poor — no haptic (avoid negative reinforcement), very brief overlay,
-      // retry the same shape rather than advancing
-      setTimeout(() => {
-        setPerformancePhase(null);
-        pickNextShape(difficultyLevel);
-      }, 1600);
-    }
+  // Poor — no haptic (avoid negative reinforcement), retry same shape,
+  // don't mark it as completed.
+  playSound('click', false);
+  setTimeout(() => {
+    setPerformancePhase(null);
+    // no pickNextShape call — currentShape stays the same, so it retries
+  }, 2200);
+}
   }
 
   // End session and go back
@@ -282,6 +332,7 @@ export default function TracingGameScreen() {
       sessionTrialsRef.current = [];
       setCurrentShape(null);
       setSelectedShapeId(null);
+      setCompletedShapeIds([]);
       initSession();
     }
   }
@@ -499,7 +550,7 @@ export default function TracingGameScreen() {
           <View style={styles.pickerContainer}>
             <Text style={styles.pickerTitle}>Select Level</Text>
             {[
-              { level: 1, label: 'Level 1 — Ball | Star | Cloud',     hint: 'Simple circles and shapes' },
+              { level: 1, label: 'Level 1 — Ball | Flower | Cloud',     hint: 'Simple circles and shapes' },
               { level: 2, label: 'Level 2 — Butterfly | Banana | Car', hint: 'Gentle curves' },
               { level: 3, label: 'Level 3 — T-Shirt | Bus | House',      hint: 'Compound outlines' },
               { level: 4, label: 'Level 4 — Hand | Star | Ship',  hint: 'Fine motor control' },
