@@ -1,4 +1,10 @@
 // app/(games)/SimplePuzzleGame.tsx (with Sinhala voice instruction)
+// ─────────────────────────────────────────────────────────────
+// Redesigned as an actual SLIDING-TILE PUZZLE (classic n-puzzle):
+// a grid has one empty slot, and tapping a tile next to the empty
+// slot slides it in. The grid grows harder each level (2x2 → 4x4).
+// Same theme/colors/hooks as the original file.
+// ─────────────────────────────────────────────────────────────
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { router } from 'expo-router';
@@ -7,10 +13,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
+  LayoutAnimation,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
+  UIManager,
   View,
 } from 'react-native';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
@@ -20,18 +29,22 @@ import { useSound } from '../../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
-interface PuzzlePiece {
-  id: number;
-  emoji: string;
-  correctPosition: number;
-  currentPosition: number;
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+// ─── Level / puzzle data ────────────────────────────────────────
+// Each level defines a gridSize (N) and N*N - 1 unique emoji "pieces".
+// The board is solved when piece with id `i` sits at index `i`,
+// and the last cell (index N*N - 1) is empty.
 interface Level {
   id: number;
   name: string;
-  pieces: PuzzlePiece[];
-  image: string;
+  gridSize: number;
+  pieces: string[]; // length = gridSize*gridSize - 1
   backgroundEmoji: string;
 }
 
@@ -39,69 +52,55 @@ const levels: Level[] = [
   {
     id: 1,
     name: 'Fruit Puzzle',
-    pieces: [
-      { id: 0, emoji: '🍎', correctPosition: 0, currentPosition: 0 },
-      { id: 1, emoji: '🍌', correctPosition: 1, currentPosition: 1 },
-      { id: 2, emoji: '🍊', correctPosition: 2, currentPosition: 2 },
-      { id: 3, emoji: '🍓', correctPosition: 3, currentPosition: 3 },
-    ],
-    image: '🍎🍌🍊🍓',
+    gridSize: 2,
+    pieces: ['🍎', '🍌', '🍊'],
     backgroundEmoji: '🍎',
   },
   {
     id: 2,
     name: 'Animal Puzzle',
-    pieces: [
-      { id: 0, emoji: '🦁', correctPosition: 0, currentPosition: 0 },
-      { id: 1, emoji: '🐘', correctPosition: 1, currentPosition: 1 },
-      { id: 2, emoji: '🐒', correctPosition: 2, currentPosition: 2 },
-      { id: 3, emoji: '🦒', correctPosition: 3, currentPosition: 3 },
-    ],
-    image: '🦁🐘🐒🦒',
+    gridSize: 3,
+    pieces: ['🦁', '🐘', '🐒', '🦒', '🦓', '🐊', '🦍', '🐆'],
     backgroundEmoji: '🦁',
   },
   {
     id: 3,
     name: 'Shape Puzzle',
-    pieces: [
-      { id: 0, emoji: '🔴', correctPosition: 0, currentPosition: 0 },
-      { id: 1, emoji: '🟦', correctPosition: 1, currentPosition: 1 },
-      { id: 2, emoji: '🔺', correctPosition: 2, currentPosition: 2 },
-      { id: 3, emoji: '⭐', correctPosition: 3, currentPosition: 3 },
-    ],
-    image: '🔴🟦🔺⭐',
+    gridSize: 3,
+    pieces: ['🔴', '🟦', '🔺', '⭐', '🟢', '🟣', '🔶', '🟡'],
     backgroundEmoji: '🔴',
   },
   {
     id: 4,
     name: 'Emoji Puzzle',
-    pieces: [
-      { id: 0, emoji: '😊', correctPosition: 0, currentPosition: 0 },
-      { id: 1, emoji: '😂', correctPosition: 1, currentPosition: 1 },
-      { id: 2, emoji: '🥰', correctPosition: 2, currentPosition: 2 },
-      { id: 3, emoji: '😎', correctPosition: 3, currentPosition: 3 },
-    ],
-    image: '😊😂🥰😎',
+    gridSize: 3,
+    pieces: ['😊', '😂', '🥰', '😎', '🤩', '🥳', '😇', '🤗'],
     backgroundEmoji: '😊',
   },
   {
     id: 5,
     name: 'Transport Puzzle',
+    gridSize: 4,
     pieces: [
-      { id: 0, emoji: '🚗', correctPosition: 0, currentPosition: 0 },
-      { id: 1, emoji: '🚌', correctPosition: 1, currentPosition: 1 },
-      { id: 2, emoji: '🚲', correctPosition: 2, currentPosition: 2 },
-      { id: 3, emoji: '✈️', correctPosition: 3, currentPosition: 3 },
+      '🚗', '🚌', '🚲', '✈️',
+      '🚀', '🚁', '🚂', '🚤',
+      '🚡', '🚜', '🏍️', '🚓',
+      '🚑', '🚒', '⛵',
     ],
-    image: '🚗🚌🚲✈️',
     backgroundEmoji: '🚗',
   },
 ];
+
+const EMPTY = -1;
 
 // ─── Sinhala external audio map ─────────────────────────────────
 const sinhalaAudioMap: { [key: string]: any } = {
   instruction: require('../../assets/sounds/sinhala/games/simplePuzzleinstruction.mp3'),
 };
+// NOTE: this audio file was recorded for the old "tap two pieces to
+// swap" mechanic. The Sinhala fallback text below has been updated
+// to describe the new sliding-tile mechanic, but the .mp3 itself
+// should be re-recorded to match for the best experience.
 
 export default function SimplePuzzleGame() {
   const { colors } = useTheme();
@@ -112,12 +111,11 @@ export default function SimplePuzzleGame() {
     playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled
+    isEnabled: soundEnabled,
   } = useSound();
 
   const [currentLevel, setCurrentLevel] = useState(0);
-  const [pieces, setPieces] = useState<PuzzlePiece[]>([]);
-  const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
+  const [board, setBoard] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
   const [showReward, setShowReward] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
@@ -125,6 +123,7 @@ export default function SimplePuzzleGame() {
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
   const successAnim = useState(new Animated.Value(1))[0];
+  const shakeAnim = useRef(new Animated.Value(0)).current;
 
   // ─── Sinhala voice state ──────────────────────────────────────
   const [soundsLoaded, setSoundsLoaded] = useState(false);
@@ -133,22 +132,65 @@ export default function SimplePuzzleGame() {
   const isFirstRender = useRef(true);
 
   const level = levels[currentLevel];
+  const totalCells = level.gridSize * level.gridSize;
+
+  // ─── Puzzle helpers ─────────────────────────────────────────
+  const getNeighbors = (index: number, gridSize: number) => {
+    const row = Math.floor(index / gridSize);
+    const col = index % gridSize;
+    const neighbors: number[] = [];
+    if (row > 0) neighbors.push(index - gridSize); // up
+    if (row < gridSize - 1) neighbors.push(index + gridSize); // down
+    if (col > 0) neighbors.push(index - 1); // left
+    if (col < gridSize - 1) neighbors.push(index + 1); // right
+    return neighbors;
+  };
+
+  const isSolved = (b: number[]) =>
+    b.every((value, index) =>
+      index === b.length - 1 ? value === EMPTY : value === index
+    );
 
   const initializePuzzle = () => {
-    const shuffled = [...level.pieces];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      shuffled[i].currentPosition = i;
-      shuffled[j].currentPosition = j;
+    const size = level.gridSize * level.gridSize;
+    const solved: number[] = Array.from({ length: size }, (_, i) =>
+      i === size - 1 ? EMPTY : i
+    );
+
+    let working = [...solved];
+    let blankIndex = size - 1;
+    let lastMoveFrom = -1;
+
+    // Shuffle by making a long chain of valid, non-reversing slides.
+    // This guarantees the resulting board is always solvable.
+    const shuffleSteps = size * 25;
+    for (let step = 0; step < shuffleSteps; step++) {
+      const neighbors = getNeighbors(blankIndex, level.gridSize).filter(
+        (n) => n !== lastMoveFrom
+      );
+      const pick = neighbors[Math.floor(Math.random() * neighbors.length)];
+      working[blankIndex] = working[pick];
+      working[pick] = EMPTY;
+      lastMoveFrom = blankIndex;
+      blankIndex = pick;
     }
-    setPieces(shuffled);
-    setSelectedPiece(null);
+
+    // Safety net: if the shuffle happened to land on a solved board
+    // (extremely rare), nudge it with one more move.
+    if (isSolved(working)) {
+      const neighbors = getNeighbors(blankIndex, level.gridSize);
+      const pick = neighbors[0];
+      working[blankIndex] = working[pick];
+      working[pick] = EMPTY;
+    }
+
+    setBoard(working);
     setMoves(0);
   };
 
   useEffect(() => {
     initializePuzzle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLevel]);
 
   // Load Sinhala instruction audio
@@ -173,7 +215,7 @@ export default function SimplePuzzleGame() {
     loadSounds();
     return () => {
       isMounted = false;
-      Object.values(sinhalaSounds.current).forEach(sound => {
+      Object.values(sinhalaSounds.current).forEach((sound) => {
         if (sound) sound.unloadAsync();
       });
     };
@@ -214,91 +256,96 @@ export default function SimplePuzzleGame() {
     return () => Speech.stop();
   }, []);
 
+  const instructionText =
+    language === 'si'
+      ? 'මෙම ක්‍රීඩාවේදී, රූපය සම්පූර්ණ කිරීමට කැබලි නිවැරදි අනුපිළිවෙලට සකස් කරන්න. හිස් තැනට යාබද කැබැල්ලක් තට්ටු කර එය එහි ලිස්සා යවන්න.'
+      : 'In this game, slide the tiles to put them back in order and complete the picture. Tap a tile next to the empty space to slide it in.';
+
   // Speak instruction when the game opens
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      const instructionText = language === 'si'
-        ? 'මෙම ක්‍රීඩාවේදී, අපි පෙන්වන රූපයට කෑලි නිවැරදි අනුපිළිවෙලට සකස් කරන්න. කෑල්ලක් තට්ටු කර, පසුව තවත් කෑල්ලක් තට්ටු කර ඒවා මාරු කරන්න.'
-        : 'In this game, arrange the pieces in the correct order to match the shown image. Tap a piece, then tap another piece to swap them.';
-
       if (language === 'si' && !soundsLoaded) {
         pendingInstruction.current = true;
         return;
       }
       speak(instructionText, 'instruction');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
 
   // Pending instruction effect
   useEffect(() => {
     if (pendingInstruction.current && soundsLoaded) {
       pendingInstruction.current = false;
-      const instructionText = language === 'si'
-        ? 'මෙම ක්‍රීඩාවේදී, අපි පෙන්වන රූපයට කෑලි නිවැරදි අනුපිළිවෙලට සකස් කරන්න. කෑල්ලක් තට්ටු කර, පසුව තවත් කෑල්ලක් තට්ටු කර ඒවා මාරු කරන්න.'
-        : 'In this game, arrange the pieces in the correct order to match the shown image. Tap a piece, then tap another piece to swap them.';
       speak(instructionText, 'instruction');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [soundsLoaded]);
 
   const calculateStars = () => {
-    const minMoves = level.pieces.length;
-    if (moves <= minMoves + 2) return 3;
-    if (moves <= minMoves + 5) return 2;
+    const optimalMoves = (totalCells - 1) * 3;
+    if (moves <= optimalMoves) return 3;
+    if (moves <= optimalMoves * 1.6) return 2;
     return 1;
   };
 
-  const checkComplete = async () => {
-    const isComplete = pieces.every(
-      (piece, index) => piece.id === pieces[index]?.id
-    );
+  const checkComplete = async (finalBoard: number[]) => {
+    if (!isSolved(finalBoard)) return;
 
-    if (isComplete) {
-      const earnedStars = calculateStars();
-      setStars(earnedStars);
+    const earnedStars = calculateStars();
+    setStars(earnedStars);
 
-      await playCorrectAnswer();
-      await playStarEarned();
+    await playCorrectAnswer();
+    await playStarEarned();
 
-      setShowSuccessAnimation(true);
-      Animated.sequence([
-        Animated.timing(successAnim, { toValue: 1.3, duration: 200, useNativeDriver: true }),
-        Animated.timing(successAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-      ]).start();
+    setShowSuccessAnimation(true);
+    Animated.sequence([
+      Animated.timing(successAnim, { toValue: 1.3, duration: 200, useNativeDriver: true }),
+      Animated.timing(successAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
 
-      setTimeout(() => setShowSuccessAnimation(false), 1000);
+    setTimeout(() => setShowSuccessAnimation(false), 1000);
 
-      if (currentLevel === levels.length - 1) {
-        await playCelebration();
-        setShowComplete(true);
-      } else {
-        await playSound('reward', false);
-        setShowReward(true);
-      }
+    if (currentLevel === levels.length - 1) {
+      await playCelebration();
+      setShowComplete(true);
+    } else {
+      await playSound('reward', false);
+      setShowReward(true);
     }
   };
 
-  const handlePiecePress = async (index: number) => {
-    if (selectedPiece === null) {
-      setSelectedPiece(index);
-      await playSound('click', true);
-    } else if (selectedPiece !== index) {
-      const newPieces = [...pieces];
-      const temp = newPieces[selectedPiece];
-      newPieces[selectedPiece] = newPieces[index];
-      newPieces[index] = temp;
+  const shakeInvalidTap = () => {
+    shakeAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -1, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+    ]).start();
+  };
 
-      setPieces(newPieces);
-      setMoves(moves + 1);
+  const handleTilePress = async (index: number) => {
+    const blankIndex = board.indexOf(EMPTY);
+    const neighbors = getNeighbors(blankIndex, level.gridSize);
 
-      await playSound('click', true);
-
-      setSelectedPiece(null);
-      await checkComplete();
-    } else {
-      setSelectedPiece(null);
+    if (!neighbors.includes(index)) {
+      shakeInvalidTap();
       await playSound('click', false);
+      return;
     }
+
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    const newBoard = [...board];
+    newBoard[blankIndex] = newBoard[index];
+    newBoard[index] = EMPTY;
+
+    setBoard(newBoard);
+    setMoves((m) => m + 1);
+    await playSound('click', true);
+
+    await checkComplete(newBoard);
   };
 
   const nextLevel = async () => {
@@ -311,6 +358,11 @@ export default function SimplePuzzleGame() {
     setShowComplete(false);
     await playSound('click', false);
     setCurrentLevel(0);
+  };
+
+  const handleReshuffle = async () => {
+    await playSound('click', false);
+    initializePuzzle();
   };
 
   const handleBack = async () => {
@@ -336,34 +388,63 @@ export default function SimplePuzzleGame() {
     </View>
   );
 
-  const renderPiece = (piece: PuzzlePiece, index: number) => {
-    const pieceSize = (width - 80) / 2;
-    const isSelected = selectedPiece === index;
-    const isCorrect = piece.id === index && !showReward;
+  // ─── Board sizing ───────────────────────────────────────────
+  const GAP = 6;
+  const boardOuterWidth = width - Spacing.lg * 2 - Spacing.md * 2;
+  const tileSize = (boardOuterWidth - GAP * (level.gridSize - 1)) / level.gridSize;
+  const tileFontSize = Math.max(20, tileSize * 0.42);
+
+  const renderTile = (value: number, index: number) => {
+    if (value === EMPTY) {
+      return (
+        <View
+          key={`empty-${index}`}
+          style={[
+            styles.tile,
+            styles.emptyTile,
+            {
+              width: tileSize,
+              height: tileSize,
+              marginRight: (index + 1) % level.gridSize === 0 ? 0 : GAP,
+              marginBottom: GAP,
+              borderColor: colors.primaryLight,
+              backgroundColor: colors.background,
+            },
+          ]}
+        />
+      );
+    }
+
+    const isCorrect = value === index;
 
     return (
       <TouchableOpacity
-        key={index}
+        // key by piece id so LayoutAnimation can animate it sliding
+        // to its new position when the board re-renders
+        key={`piece-${value}`}
+        activeOpacity={0.75}
         style={[
-          styles.piece,
+          styles.tile,
           {
-            width: pieceSize,
-            height: pieceSize,
-            backgroundColor: isSelected ? colors.primaryLight : colors.surface,
+            width: tileSize,
+            height: tileSize,
+            marginRight: (index + 1) % level.gridSize === 0 ? 0 : GAP,
+            marginBottom: GAP,
+            backgroundColor: colors.surface,
             borderColor: isCorrect ? colors.success : colors.primaryLight,
-            borderWidth: isCorrect ? 4 : 2,
+            borderWidth: isCorrect ? 3 : 2,
           },
         ]}
-        onPress={() => handlePiecePress(index)}
+        onPress={() => handleTilePress(index)}
       >
-        <Animated.View style={{ transform: [{ scale: isSelected ? 1.1 : 1 }] }}>
-          <Text style={styles.pieceEmoji}>{piece.emoji}</Text>
-          {isCorrect && (
-            <View style={styles.correctBadge}>
-              <MaterialIcons name="check-circle" size={24} color={colors.success} />
-            </View>
-          )}
-        </Animated.View>
+        <Text style={[styles.pieceEmoji, { fontSize: tileFontSize }]}>
+          {level.pieces[value]}
+        </Text>
+        {isCorrect && (
+          <View style={styles.correctBadge}>
+            <MaterialIcons name="check-circle" size={18} color={colors.success} />
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -376,18 +457,15 @@ export default function SimplePuzzleGame() {
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.soundButton}
-          onPress={handleToggleSound}
-        >
+        <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
           <MaterialIcons
-            name={soundEnabled ? "volume-up" : "volume-off"}
+            name={soundEnabled ? 'volume-up' : 'volume-off'}
             size={24}
             color={colors.primary}
           />
         </TouchableOpacity>
 
-        <Text style={[styles.title, { color: colors.text }]}>Simple Puzzle</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Slide Puzzle</Text>
         <View style={[styles.movesBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="swap-horiz" size={20} color={colors.primary} />
           <Text style={[styles.movesText, { color: colors.text }]}>{moves}</Text>
@@ -396,28 +474,61 @@ export default function SimplePuzzleGame() {
 
       {/* Level Info */}
       <View style={[styles.levelContainer, { backgroundColor: colors.primaryLight + '30' }]}>
-        <Text style={[styles.levelName, { color: colors.text }]}>{level.name}</Text>
+        <Text style={[styles.levelName, { color: colors.text }]}>
+          {level.backgroundEmoji} {level.name}
+        </Text>
         <Text style={[styles.levelProgress, { color: colors.textLight }]}>
-          Level {currentLevel + 1} of {levels.length}
+          Level {currentLevel + 1} of {levels.length} · {level.gridSize}×{level.gridSize} grid
         </Text>
       </View>
 
-      {/* Target Image */}
+      {/* Target preview */}
       <View style={[styles.targetContainer, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.targetLabel, { color: colors.text }]}>Complete this puzzle:</Text>
-        <Text style={styles.targetImage}>{level.image}</Text>
+        <Text style={[styles.targetLabel, { color: colors.text }]}>Complete this picture:</Text>
+        <View style={[styles.previewGrid, { width: level.gridSize * 26 }]}>
+          {level.pieces.map((emoji, i) => (
+            <View key={i} style={styles.previewCell}>
+              <Text style={styles.previewEmoji}>{emoji}</Text>
+            </View>
+          ))}
+          <View style={[styles.previewCell, styles.previewEmptyCell, { borderColor: colors.primaryLight }]} />
+        </View>
       </View>
 
       {/* Puzzle Board */}
-      <View style={styles.board}>
-        {pieces.map((piece, index) => renderPiece(piece, index))}
-      </View>
+      <Animated.View
+        style={[
+          styles.board,
+          {
+            width: boardOuterWidth,
+            transform: [
+              {
+                translateX: shakeAnim.interpolate({
+                  inputRange: [-1, 1],
+                  outputRange: [-6, 6],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        {board.map((value, index) => renderTile(value, index))}
+      </Animated.View>
+
+      {/* Reshuffle */}
+      <TouchableOpacity
+        style={[styles.reshuffleButton, { borderColor: colors.primaryLight }]}
+        onPress={handleReshuffle}
+      >
+        <MaterialIcons name="shuffle" size={18} color={colors.primary} />
+        <Text style={[styles.reshuffleText, { color: colors.primary }]}>Reshuffle</Text>
+      </TouchableOpacity>
 
       {/* Hint */}
       <View style={[styles.hintContainer, { backgroundColor: colors.primaryLight + '20' }]}>
         <MaterialIcons name="lightbulb" size={20} color={colors.accentYellow} />
         <Text style={[styles.hintText, { color: colors.textLight }]}>
-          Tap a piece, then tap another piece to swap them!
+          Tap a tile next to the empty space to slide it into place!
         </Text>
       </View>
 
@@ -524,22 +635,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   targetLabel: { fontSize: Typography.fontSize.sm, marginBottom: Spacing.sm },
-  targetImage: { fontSize: 40 },
+  previewGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  previewCell: {
+    width: 24,
+    height: 24,
+    margin: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewEmptyCell: {
+    borderWidth: 1,
+    borderRadius: 4,
+    borderStyle: 'dashed',
+  },
+  previewEmoji: { fontSize: 16 },
   board: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: Spacing.md,
-    padding: Spacing.md,
+    alignSelf: 'center',
+    marginTop: Spacing.sm,
   },
-  piece: {
+  tile: {
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: BorderRadius.lg,
-    margin: 4,
   },
-  pieceEmoji: { fontSize: 48 },
-  correctBadge: { position: 'absolute', top: -10, right: -10 },
+  emptyTile: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+  },
+  pieceEmoji: { fontSize: 40 },
+  correctBadge: { position: 'absolute', top: -8, right: -8 },
+  reshuffleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.round,
+    borderWidth: 1.5,
+  },
+  reshuffleText: { fontSize: Typography.fontSize.sm, fontWeight: 'bold' },
   hintContainer: {
     flexDirection: 'row',
     alignItems: 'center',

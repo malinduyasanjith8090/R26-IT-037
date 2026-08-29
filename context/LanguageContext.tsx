@@ -1,4 +1,3 @@
-// context/LanguageContext.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Localization from 'expo-localization';
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -137,6 +136,8 @@ const translations = {
     easy: 'Easy',
     medium: 'Medium',
     hard: 'Hard',
+    // Added missing keys
+    completeThreeGames: 'Complete 3 Games',
 
     // Game Messages
     gameUnderDevelopment: 'This game is under development. Stay tuned!',
@@ -192,6 +193,18 @@ const translations = {
     minuteWarnings: 'Give 5-minute warnings before activity changes',
     celebrateCompleting: 'Celebrate completing each task with praise',
     keepRoutinesConsistent: 'Keep routines consistent but flexible',
+    // Added missing keys
+    calmingActivityOfDay: 'Calming Activity of the Day',
+    startCalming: 'Start Activity',
+    focusTimer: 'Focus Timer',
+    addCalmingActivity: 'Add Calming Activity',
+    noCalmingActivities: 'No calming activities yet. Add up to 5!',
+    selectCalmingActivity: 'Select Calming Activity',
+    chooseIcon: 'Choose icon',
+    chooseColor: 'Choose color',
+    activityName: 'Activity name',
+    time: 'Time',
+    calmingCorner: 'Calming Corner',
 
     // Behavioral Screen
     socialSkillsTraining: 'Social Skills Training',
@@ -638,6 +651,7 @@ const translations = {
     'game.wordMatch.totalScore': 'Total Score: {score} points',
     'game.wordMatch.scorePoints': 'Score: {score} points',
     'game.wordMatch.encouragement': '🎉 Amazing progress! Keep learning! 🎉',
+
     // Color Sorting Game
     'game.level': 'Level',
     'game.levelComplete': 'Level Complete!',
@@ -862,6 +876,8 @@ const translations = {
     easy: 'පහසු',
     medium: 'මධ්‍යම',
     hard: 'දුෂ්කර',
+    // Added missing keys
+    completeThreeGames: 'ක්‍රීඩා 3 ක් සම්පූර්ණ කරන්න',
 
     // Game Messages
     gameUnderDevelopment: 'මෙම ක්‍රීඩාව සංවර්ධනය වෙමින් පවතී. රැඳී සිටින්න!',
@@ -917,6 +933,18 @@ const translations = {
     minuteWarnings: 'ක්‍රියාකාරකම් වෙනස්වීමට පෙර විනාඩි 5 අනතුරු ඇඟවීම් දෙන්න',
     celebrateCompleting: 'සෑම කාර්යයක්ම ප්‍රශංසාවෙන් සමරන්න',
     keepRoutinesConsistent: 'දිනචර්යාවන් ස්ථාවර නමුත් නම්‍යශීලීව තබා ගන්න',
+    // Added missing keys
+    calmingActivityOfDay: 'අද දින සන්සුන් ක්‍රියාකාරකම',
+    startCalming: 'සන්සුන් ක්‍රියාකාරකම ආරම්භ කරන්න',
+    focusTimer: 'අවධානය ටයිමරය',
+    addCalmingActivity: 'සන්සුන් ක්‍රියාකාරකමක් එක් කරන්න',
+    noCalmingActivities: 'සන්සුන් ක්‍රියාකාරකම් නොමැත. උපරිම 5 ක් එක් කරන්න!',
+    selectCalmingActivity: 'සන්සුන් ක්‍රියාකාරකම තෝරන්න',
+    chooseIcon: 'නිරූපකය තෝරන්න',
+    chooseColor: 'වර්ණය තෝරන්න',
+    activityName: 'ක්‍රියාකාරකමේ නම',
+    time: 'වේලාව',
+    calmingCorner: 'සන්සුන් කොන',
 
     // Behavioral Screen
     socialSkillsTraining: 'සමාජ කුසලතා පුහුණුව',
@@ -1310,8 +1338,6 @@ const translations = {
     'thinkingGames.complete.title': 'අභියෝගය සම්පූර්ණයි!',
     'thinkingGames.complete.message': 'ඔබ දවසින් දවස බුද්ධිමත් වෙමින්!',
 
-
-
     // Memory Match
     'game.memoryMatch.title': 'මතක ගැලපීම',
     'game.memoryMatch.subtitle': 'කාඩ් යුගල ගලපන්න',
@@ -1482,6 +1508,7 @@ const translations = {
     password: 'கடவுச்சொல்',
     confirmPassword: 'கடவுச்சொல்லை உறுதிப்படுத்தவும்',
     continueAsGuest: 'விருந்தினராகத் தொடரவும்',
+    // Add more Tamil translations as needed...
   },
 };
 

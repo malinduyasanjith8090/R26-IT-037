@@ -1,4 +1,4 @@
-// app/(tabs)/routine.tsx – External MP3 Voice, Adjustable Alarm, Timer End Sound, Calming Activity Play Modal with Breathing Animation
+// app/(tabs)/routine.tsx
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
+  Easing,
   FlatList,
   Modal,
   ScrollView,
@@ -74,7 +75,6 @@ const formatTimeString = (h: number, m: number, period: 'AM' | 'PM') => {
 };
 
 // ─── External Audio Maps ───────────────────────────────────────
-// Sinhala voice prompts for each routine + instruction
 const sinhalaAudioMap: { [key: string]: any } = {
   instruction: require('../../assets/sounds/sinhala/routinesinstruction.mp3'),
   wakeUp: require('../../assets/sounds/sinhala/routines/wakeUp.mp3'),
@@ -89,17 +89,12 @@ const sinhalaAudioMap: { [key: string]: any } = {
   bedtime: require('../../assets/sounds/sinhala/routines/bedtime.mp3'),
 };
 
-// Alarm & timer end sound
 const alarmSoundFile = require('../../assets/sounds/alarm_sound.mp3');
-
-// Background music
 const backgroundMusic = require('../../assets/sounds/calm_background.mp3');
 
-// Calming activity intro MP3s (add your own files for each)
 const calmingIntroAudioMap: { [key: string]: any } = {
   'Deep Breathing': require('../../assets/sounds/calming/deep_breathing_intro.mp3'),
-  // ... add all other activities
-  // If missing, we'll fall back to TTS or silence
+  // Add others if available
 };
 
 export default function RoutineScreen() {
@@ -123,8 +118,6 @@ export default function RoutineScreen() {
   const [selectedColor, setSelectedColor] = useState('#2196F3');
 
   const [calmingCompleted, setCalmingCompleted] = useState(false);
-  const [lastCalmingDate, setLastCalmingDate] = useState<string | null>(null);
-
   const [calmingSchedule, setCalmingSchedule] = useState<
     { id: string; activity: typeof CALMING_ACTIVITIES[0]; time: string; completed: boolean }[]
   >([]);
@@ -139,7 +132,6 @@ export default function RoutineScreen() {
 
   const [soundsLoaded, setSoundsLoaded] = useState(false);
   const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
-  const pendingInstruction = useRef(false);
   const isFirstRender = useRef(true);
 
   // ─── Alarm State ─────────────────────────────────────────────
@@ -159,6 +151,13 @@ export default function RoutineScreen() {
   const [introSound, setIntroSound] = useState<Audio.Sound | null>(null);
   const breathScale = useRef(new Animated.Value(1)).current;
   const breathAnimation = useRef<Animated.CompositeAnimation | null>(null);
+
+  // ─── Popup Modal State ───────────────────────────────────────
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [popupTitle, setPopupTitle] = useState('');
+  const [popupMessage, setPopupMessage] = useState('');
+  const [popupEmoji, setPopupEmoji] = useState('🎉');
+  const [popupType, setPopupType] = useState<'timer' | 'alarm'>('timer');
 
   const todayIndex = new Date().getDate() % CALMING_ACTIVITIES.length;
   const dailyCalmingActivity = CALMING_ACTIVITIES[todayIndex];
@@ -202,7 +201,7 @@ export default function RoutineScreen() {
     };
   }, []);
 
-  // ─── Play alarm sound (MP3) ──────────────────────────────────
+  // ─── Play alarm sound ─────────────────────────────────────────
   const playAlarmSound = async () => {
     try {
       if (!alarmSound) {
@@ -217,7 +216,7 @@ export default function RoutineScreen() {
     }
   };
 
-  // ─── Speak function (external MP3 for Sinhala) ──────────────
+  // ─── Speak function ────────────────────────────────────────────
   const speak = async (text: string, audioKey?: string) => {
     try {
       if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
@@ -247,7 +246,7 @@ export default function RoutineScreen() {
     }
   }, [language]);
 
-  // ─── Timer logic (with MP3 alarm) ───────────────────────────
+  // ─── Timer logic ──────────────────────────────────────────────
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     if (isTimerRunning) {
@@ -257,8 +256,13 @@ export default function RoutineScreen() {
             clearInterval(interval);
             setIsTimerRunning(false);
             playAlarmSound();
-            Vibration.vibrate(1000);
-            Alert.alert('Timer Finished', 'Great job! Time is up!');
+            Vibration.vibrate(500);
+            showPopup(
+              'timer',
+              '⏰ Time is Up!',
+              'Great job! You finished your focus time. 🌟',
+              '🎉'
+            );
             return 0;
           }
           return prev - 1;
@@ -283,14 +287,32 @@ export default function RoutineScreen() {
 
         if (currentHour24 === targetHour && currentMinute === alarmMinute) {
           playAlarmSound();
-          Vibration.vibrate(1000);
-          Alert.alert('Alarm', 'Time for your scheduled activity!');
+          Vibration.vibrate(500);
+          showPopup(
+            'alarm',
+            '⏰ Alarm!',
+            'Time for your scheduled activity! 🕐',
+            '🔔'
+          );
           setAlarmSet(false);
         }
       }, 1000);
     }
     return () => clearInterval(interval);
   }, [alarmSet, alarmHour, alarmMinute, alarmPeriod]);
+
+  // ─── Popup helper ─────────────────────────────────────────────
+  const showPopup = (type: 'timer' | 'alarm', title: string, message: string, emoji: string) => {
+    setPopupType(type);
+    setPopupTitle(title);
+    setPopupMessage(message);
+    setPopupEmoji(emoji);
+    setPopupVisible(true);
+  };
+
+  const closePopup = () => {
+    setPopupVisible(false);
+  };
 
   // ─── Timer & alarm controls ──────────────────────────────────
   const startTimer = () => {
@@ -331,34 +353,26 @@ export default function RoutineScreen() {
     setIsCalmingTimerRunning(true);
     setIsBreathingVisible(true);
 
-    // Play intro MP3 if available
     if (selectedPlayActivity) {
       const introFile = calmingIntroAudioMap[selectedPlayActivity.title];
       if (introFile) {
         try {
-          if (introSound) {
-            await introSound.unloadAsync();
-          }
+          if (introSound) await introSound.unloadAsync();
           const { sound } = await Audio.Sound.createAsync(introFile);
           setIntroSound(sound);
           await sound.playAsync();
-        } catch (error) {
-          console.warn('Intro audio missing, using TTS fallback');
-          // Fallback to speech
+        } catch {
           Speech.stop();
           Speech.speak(`Let's do ${selectedPlayActivity.title} together. Follow the animation.`);
         }
       } else {
-        // Fallback to TTS
         Speech.stop();
         Speech.speak(`Let's do ${selectedPlayActivity.title} together. Follow the animation.`);
       }
     }
 
-    // Start breathing animation
     startBreathingAnimation();
 
-    // Start countdown
     const interval = setInterval(() => {
       setCalmingTimerSeconds(prev => {
         if (prev <= 1) {
@@ -366,11 +380,15 @@ export default function RoutineScreen() {
           setIsCalmingTimerRunning(false);
           setIsBreathingVisible(false);
           stopBreathingAnimation();
-          // Stop intro sound
           if (introSound) introSound.stopAsync();
-          // Play completion sound
           playSound('complete', false);
-          Alert.alert('Well Done!', 'You completed the calming activity.');
+          Vibration.vibrate(300);
+          showPopup(
+            'timer',
+            '🧘 Well Done!',
+            'You completed the calming activity! 🌈',
+            '🌟'
+          );
           setCalmingPlayModalVisible(false);
           return 0;
         }
@@ -384,8 +402,18 @@ export default function RoutineScreen() {
     breathScale.setValue(1);
     breathAnimation.current = Animated.loop(
       Animated.sequence([
-        Animated.timing(breathScale, { toValue: 1.3, duration: 2000, useNativeDriver: true }),
-        Animated.timing(breathScale, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(breathScale, {
+          toValue: 1.4,
+          duration: 2500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(breathScale, {
+          toValue: 1,
+          duration: 2500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
       ])
     );
     breathAnimation.current.start();
@@ -427,6 +455,7 @@ export default function RoutineScreen() {
     if (!calmingCompleted) {
       setCalmingCompleted(true);
       setStars(prev => prev + 1);
+      Vibration.vibrate(50);
     }
   };
 
@@ -527,7 +556,6 @@ export default function RoutineScreen() {
 
   const handleRoutinePress = (item: any) => {
     setActiveRoutineId(item.id);
-    // Speak the routine name using MP3 (or TTS for English)
     speak(t(item.titleKey), item.titleKey);
   };
 
@@ -556,11 +584,13 @@ export default function RoutineScreen() {
       style={[
         styles.routineItem,
         {
-          backgroundColor: activeRoutineId === item.id ? item.color + '15' : colors.surface,
+          backgroundColor: activeRoutineId === item.id ? item.color + '20' : colors.surface,
           borderColor: activeRoutineId === item.id ? item.color : colors.surface,
+          shadowColor: activeRoutineId === item.id ? item.color : 'transparent',
         },
       ]}
       onPress={() => handleRoutinePress(item)}
+      activeOpacity={0.7}
     >
       <View style={styles.timeContainer}>
         <Text style={[styles.timeText, { color: colors.text }]}>{item.time}</Text>
@@ -580,7 +610,7 @@ export default function RoutineScreen() {
         <TouchableOpacity onPress={() => handleMarkComplete(item.id)} style={styles.checkButton}>
           <MaterialIcons
             name={item.completed ? 'check-circle' : 'radio-button-unchecked'}
-            size={28}
+            size={32}
             color={item.completed ? colors.success : colors.textLight}
           />
         </TouchableOpacity>
@@ -618,14 +648,14 @@ export default function RoutineScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => openCalmingPlayModal(item)}
-            style={styles.timerMiniButton}
+            style={[styles.timerMiniButton, { backgroundColor: item.activity.color + '30' }]}
           >
-            <MaterialIcons name="play-arrow" size={18} color={colors.primary} />
+            <MaterialIcons name="play-arrow" size={20} color={item.activity.color} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => handleCalmingScheduleComplete(item.id)} style={styles.checkButton}>
             <MaterialIcons
               name={item.completed ? 'check-circle' : 'radio-button-unchecked'}
-              size={28}
+              size={32}
               color={item.completed ? colors.success : colors.textLight}
             />
           </TouchableOpacity>
@@ -639,7 +669,6 @@ export default function RoutineScreen() {
   const secondsRemaining = timerSeconds % 60;
   const timeDisplay = `${minutes}:${secondsRemaining.toString().padStart(2, '0')}`;
 
-  // Circular progress dimensions
   const circleSize = 160;
   const strokeWidth = 10;
   const radius = (circleSize - strokeWidth) / 2;
@@ -647,7 +676,7 @@ export default function RoutineScreen() {
   const strokeDashoffset = timerProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [circumference, 0],
-  });
+  }) as any; // Cast to any to satisfy TypeScript (Animated interpolation is accepted at runtime)
 
   const routineTips = [
     t('visualTimers'),
@@ -682,193 +711,197 @@ export default function RoutineScreen() {
           style={[styles.musicButton, { backgroundColor: isMusicPlaying ? colors.success : colors.primary }]}
           onPress={toggleBackgroundMusic}
         >
-          <MaterialIcons name={isMusicPlaying ? 'music-off' : 'music-note'} size={20} color="#FFF" />
+          <MaterialIcons name={isMusicPlaying ? 'music-off' : 'music-note'} size={22} color="#FFF" />
           <Text style={styles.musicButtonText}>
             {isMusicPlaying ? 'Stop Music' : 'Play Calm Music'}
           </Text>
         </TouchableOpacity>
 
         {/* Calming Activity of the Day */}
-        <Card
-          title={t('calmingActivityOfDay') || 'Calming Activity of the Day'}
-          backgroundColor={dailyCalmingActivity.color + '30'}
-        >
-          <View style={styles.calmingContainer}>
-            <View style={[styles.calmingIcon, { backgroundColor: dailyCalmingActivity.color + '50' }]}>
-              <MaterialIcons name={dailyCalmingActivity.icon as any} size={36} color={dailyCalmingActivity.color} />
-            </View>
-            <View style={styles.calmingText}>
-              <Text style={[styles.calmingTitle, { color: colors.text }]}>
-                {dailyCalmingActivity.title}
-              </Text>
-              <Text style={[styles.calmingDesc, { color: colors.textLight }]}>
-                {dailyCalmingActivity.desc}
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            onPress={handleCalmingComplete}
-            style={[styles.calmingButton, { backgroundColor: calmingCompleted ? colors.success : dailyCalmingActivity.color }]}
-            disabled={calmingCompleted}
+        <View style={styles.cardShadow}>
+          <Card
+            title={t('calmingActivityOfDay')}
+            backgroundColor={dailyCalmingActivity.color + '20'}
           >
-            <MaterialIcons
-              name={calmingCompleted ? 'check-circle' : 'play-arrow'}
-              size={24}
-              color="#FFFFFF"
-            />
-            <Text style={styles.calmingButtonText}>
-              {calmingCompleted ? t('completed') : t('startCalming') || 'Start Activity'}
-            </Text>
-          </TouchableOpacity>
-        </Card>
+            <View style={styles.calmingContainer}>
+              <View style={[styles.calmingIcon, { backgroundColor: dailyCalmingActivity.color + '50' }]}>
+                <MaterialIcons name={dailyCalmingActivity.icon as any} size={36} color={dailyCalmingActivity.color} />
+              </View>
+              <View style={styles.calmingText}>
+                <Text style={[styles.calmingTitle, { color: colors.text }]}>
+                  {dailyCalmingActivity.title}
+                </Text>
+                <Text style={[styles.calmingDesc, { color: colors.textLight }]}>
+                  {dailyCalmingActivity.desc}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={handleCalmingComplete}
+              style={[styles.calmingButton, { backgroundColor: calmingCompleted ? colors.success : dailyCalmingActivity.color }]}
+              disabled={calmingCompleted}
+            >
+              <MaterialIcons
+                name={calmingCompleted ? 'check-circle' : 'play-arrow'}
+                size={24}
+                color="#FFFFFF"
+              />
+              <Text style={styles.calmingButtonText}>
+                {calmingCompleted ? t('completed') : t('startCalming')}
+              </Text>
+            </TouchableOpacity>
+          </Card>
+        </View>
 
         {/* Current Activity (dynamic) with Alarm & Timer */}
-        <Card title={t('currentActivity')} backgroundColor={colors.softGreen}>
-          <View style={styles.currentActivityRow}>
-            <View style={[styles.currentIcon, { backgroundColor: activeRoutine.color + '30' }]}>
-              <MaterialIcons name={activeRoutine.icon as any} size={40} color={activeRoutine.color} />
-            </View>
-            <View style={styles.currentInfo}>
-              <Text style={[styles.currentTitle, { color: colors.text }]}>
-                {activeRoutine.titleKey.includes(' ') ? activeRoutine.titleKey : t(activeRoutine.titleKey)}
-              </Text>
-              <Text style={[styles.currentTime, { color: colors.textLight }]}>
-                {activeRoutine.time}
-              </Text>
-              <Text style={[styles.currentDesc, { color: colors.textLight }]}>
-                {activeRoutine.completed ? t('completed') : t('inProgress')}
-              </Text>
-            </View>
-          </View>
-
-          {/* Timer Section */}
-          <View style={styles.timerSection}>
-            <View style={styles.timerInputRow}>
-              <Text style={[styles.timerLabel, { color: colors.textLight }]}>
-                {t('focusTimer')}
-              </Text>
-              <View style={styles.timerInputContainer}>
-                <TouchableOpacity
-                  onPress={() => setTimerInput(prev => Math.max(1, parseInt(prev) - 1).toString())}
-                  style={styles.timerAdjustButton}
-                >
-                  <MaterialIcons name="remove" size={20} color={colors.text} />
-                </TouchableOpacity>
-                <Text style={[styles.timerInputText, { color: colors.text, borderColor: colors.primaryLight }]}>
-                  {timerInput} min
+        <View style={styles.cardShadow}>
+          <Card title={t('currentActivity')} backgroundColor={colors.softGreen}>
+            <View style={styles.currentActivityRow}>
+              <View style={[styles.currentIcon, { backgroundColor: activeRoutine.color + '30' }]}>
+                <MaterialIcons name={activeRoutine.icon as any} size={40} color={activeRoutine.color} />
+              </View>
+              <View style={styles.currentInfo}>
+                <Text style={[styles.currentTitle, { color: colors.text }]}>
+                  {activeRoutine.titleKey.includes(' ') ? activeRoutine.titleKey : t(activeRoutine.titleKey)}
                 </Text>
-                <TouchableOpacity
-                  onPress={() => setTimerInput(prev => (parseInt(prev) + 1).toString())}
-                  style={styles.timerAdjustButton}
-                >
-                  <MaterialIcons name="add" size={20} color={colors.text} />
-                </TouchableOpacity>
+                <Text style={[styles.currentTime, { color: colors.textLight }]}>
+                  {activeRoutine.time}
+                </Text>
+                <Text style={[styles.currentDesc, { color: colors.textLight }]}>
+                  {activeRoutine.completed ? t('completed') : t('inProgress')}
+                </Text>
               </View>
             </View>
 
-            {/* Circular Timer */}
-            <View style={styles.timerCircleWrapper}>
-              <View style={styles.timerCircleOuter}>
-                <Svg width={circleSize} height={circleSize} style={{ position: 'absolute' }}>
-                  <Circle
-                    cx={circleSize / 2}
-                    cy={circleSize / 2}
-                    r={radius}
-                    stroke={colors.primaryLight}
-                    strokeWidth={strokeWidth}
-                    fill="none"
-                  />
-                  <Circle
-                    cx={circleSize / 2}
-                    cy={circleSize / 2}
-                    r={radius}
-                    stroke={activeRoutine.color}
-                    strokeWidth={strokeWidth}
-                    fill="none"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={strokeDashoffset}
-                    strokeLinecap="round"
-                  />
-                </Svg>
-                <View style={[styles.timerCircle, { borderColor: 'transparent' }]}>
-                  <Text style={[styles.timerText, { color: colors.text }]}>{timeDisplay}</Text>
-                </View>
-              </View>
-              <View style={styles.timerControls}>
-                <TouchableOpacity
-                  onPress={isTimerRunning ? pauseTimer : startTimer}
-                  style={[styles.timerControlButton, { backgroundColor: activeRoutine.color }]}
-                >
-                  <MaterialIcons
-                    name={isTimerRunning ? 'pause' : 'play-arrow'}
-                    size={32}
-                    color="#FFFFFF"
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={resetTimer}
-                  style={[styles.timerControlButton, { backgroundColor: colors.primaryLight }]}
-                >
-                  <MaterialIcons name="refresh" size={32} color={colors.primary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Alarm Setting */}
-            <View style={styles.alarmSection}>
-              <Text style={[styles.alarmTitle, { color: colors.text }]}>⏰ Set Alarm</Text>
-              <View style={styles.timePickerContainer}>
-                <View style={styles.timeColumn}>
-                  <TouchableOpacity onPress={incrementAlarmHour} style={styles.timeArrowButton}>
-                    <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
-                  </TouchableOpacity>
-                  <Text style={[styles.timeValue, { color: colors.text }]}>
-                    {alarmHour.toString().padStart(2, '0')}
-                  </Text>
-                  <TouchableOpacity onPress={decrementAlarmHour} style={styles.timeArrowButton}>
-                    <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
-                  </TouchableOpacity>
-                  <Text style={styles.timeUnit}>Hour</Text>
-                </View>
-                <View style={styles.timeColumn}>
-                  <TouchableOpacity onPress={incrementAlarmMinute} style={styles.timeArrowButton}>
-                    <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
-                  </TouchableOpacity>
-                  <Text style={[styles.timeValue, { color: colors.text }]}>
-                    {alarmMinute.toString().padStart(2, '0')}
-                  </Text>
-                  <TouchableOpacity onPress={decrementAlarmMinute} style={styles.timeArrowButton}>
-                    <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
-                  </TouchableOpacity>
-                  <Text style={styles.timeUnit}>Min</Text>
-                </View>
-                <View style={styles.timeColumn}>
+            {/* Timer Section */}
+            <View style={styles.timerSection}>
+              <View style={styles.timerInputRow}>
+                <Text style={[styles.timerLabel, { color: colors.textLight }]}>
+                  {t('focusTimer')}
+                </Text>
+                <View style={styles.timerInputContainer}>
                   <TouchableOpacity
-                    onPress={toggleAlarmPeriod}
-                    style={[styles.periodButton, { backgroundColor: alarmPeriod === 'AM' ? colors.primary : colors.primaryLight }]}
+                    onPress={() => setTimerInput(prev => Math.max(1, parseInt(prev) - 1).toString())}
+                    style={[styles.timerAdjustButton, { backgroundColor: colors.primaryLight }]}
                   >
-                    <Text style={[styles.periodText, { color: alarmPeriod === 'AM' ? '#FFFFFF' : colors.text }]}>AM</Text>
+                    <MaterialIcons name="remove" size={20} color={colors.primary} />
+                  </TouchableOpacity>
+                  <Text style={[styles.timerInputText, { color: colors.text, borderColor: colors.primaryLight }]}>
+                    {timerInput} min
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setTimerInput(prev => (parseInt(prev) + 1).toString())}
+                    style={[styles.timerAdjustButton, { backgroundColor: colors.primaryLight }]}
+                  >
+                    <MaterialIcons name="add" size={20} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Circular Timer */}
+              <View style={styles.timerCircleWrapper}>
+                <View style={styles.timerCircleOuter}>
+                  <Svg width={circleSize} height={circleSize} style={{ position: 'absolute' }}>
+                    <Circle
+                      cx={circleSize / 2}
+                      cy={circleSize / 2}
+                      r={radius}
+                      stroke={colors.primaryLight}
+                      strokeWidth={strokeWidth}
+                      fill="none"
+                    />
+                    <Circle
+                      cx={circleSize / 2}
+                      cy={circleSize / 2}
+                      r={radius}
+                      stroke={activeRoutine.color}
+                      strokeWidth={strokeWidth}
+                      fill="none"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={strokeDashoffset}
+                      strokeLinecap="round"
+                    />
+                  </Svg>
+                  <View style={[styles.timerCircle, { backgroundColor: colors.background }]}>
+                    <Text style={[styles.timerText, { color: colors.text }]}>{timeDisplay}</Text>
+                  </View>
+                </View>
+                <View style={styles.timerControls}>
+                  <TouchableOpacity
+                    onPress={isTimerRunning ? pauseTimer : startTimer}
+                    style={[styles.timerControlButton, { backgroundColor: activeRoutine.color }]}
+                  >
+                    <MaterialIcons
+                      name={isTimerRunning ? 'pause' : 'play-arrow'}
+                      size={32}
+                      color="#FFFFFF"
+                    />
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={toggleAlarmPeriod}
-                    style={[styles.periodButton, { backgroundColor: alarmPeriod === 'PM' ? colors.primary : colors.primaryLight, marginTop: 8 }]}
+                    onPress={resetTimer}
+                    style={[styles.timerControlButton, { backgroundColor: colors.primaryLight }]}
                   >
-                    <Text style={[styles.periodText, { color: alarmPeriod === 'PM' ? '#FFFFFF' : colors.text }]}>PM</Text>
+                    <MaterialIcons name="refresh" size={32} color={colors.primary} />
                   </TouchableOpacity>
                 </View>
               </View>
-              <TouchableOpacity
-                style={[styles.alarmButton, { backgroundColor: alarmSet ? colors.success : colors.primary }]}
-                onPress={setAlarm}
-              >
-                <MaterialIcons name={alarmSet ? 'alarm-on' : 'alarm'} size={20} color="#FFF" />
-                <Text style={styles.alarmButtonText}>
-                  {alarmSet ? 'Alarm Set' : 'Set Alarm'}
-                </Text>
-              </TouchableOpacity>
+
+              {/* Alarm Setting */}
+              <View style={[styles.alarmSection, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.alarmTitle, { color: colors.text }]}>⏰ Set Alarm</Text>
+                <View style={styles.timePickerContainer}>
+                  <View style={styles.timeColumn}>
+                    <TouchableOpacity onPress={incrementAlarmHour} style={styles.timeArrowButton}>
+                      <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                    </TouchableOpacity>
+                    <Text style={[styles.timeValue, { color: colors.text }]}>
+                      {alarmHour.toString().padStart(2, '0')}
+                    </Text>
+                    <TouchableOpacity onPress={decrementAlarmHour} style={styles.timeArrowButton}>
+                      <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                    </TouchableOpacity>
+                    <Text style={styles.timeUnit}>Hour</Text>
+                  </View>
+                  <View style={styles.timeColumn}>
+                    <TouchableOpacity onPress={incrementAlarmMinute} style={styles.timeArrowButton}>
+                      <MaterialIcons name="keyboard-arrow-up" size={28} color={colors.text} />
+                    </TouchableOpacity>
+                    <Text style={[styles.timeValue, { color: colors.text }]}>
+                      {alarmMinute.toString().padStart(2, '0')}
+                    </Text>
+                    <TouchableOpacity onPress={decrementAlarmMinute} style={styles.timeArrowButton}>
+                      <MaterialIcons name="keyboard-arrow-down" size={28} color={colors.text} />
+                    </TouchableOpacity>
+                    <Text style={styles.timeUnit}>Min</Text>
+                  </View>
+                  <View style={styles.timeColumn}>
+                    <TouchableOpacity
+                      onPress={toggleAlarmPeriod}
+                      style={[styles.periodButton, { backgroundColor: alarmPeriod === 'AM' ? colors.primary : colors.primaryLight }]}
+                    >
+                      <Text style={[styles.periodText, { color: alarmPeriod === 'AM' ? '#FFFFFF' : colors.text }]}>AM</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={toggleAlarmPeriod}
+                      style={[styles.periodButton, { backgroundColor: alarmPeriod === 'PM' ? colors.primary : colors.primaryLight, marginTop: 8 }]}
+                    >
+                      <Text style={[styles.periodText, { color: alarmPeriod === 'PM' ? '#FFFFFF' : colors.text }]}>PM</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.alarmButton, { backgroundColor: alarmSet ? colors.success : colors.primary }]}
+                  onPress={setAlarm}
+                >
+                  <MaterialIcons name={alarmSet ? 'alarm-on' : 'alarm'} size={20} color="#FFF" />
+                  <Text style={styles.alarmButtonText}>
+                    {alarmSet ? 'Alarm Set' : 'Set Alarm'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </Card>
+          </Card>
+        </View>
 
         {/* Daily Progress Bar */}
         <View style={[styles.progressContainer, { backgroundColor: colors.surface }]}>
@@ -884,44 +917,40 @@ export default function RoutineScreen() {
         </View>
 
         {/* Today's Schedule */}
-        <Card
-          title={t('todaysSchedule')}
-          icon="schedule"
-          iconColor={colors.accentBlue}
-        >
-          <FlatList
-            data={routines}
-            renderItem={renderRoutineItem}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-          />
-        </Card>
+        <View style={styles.cardShadow}>
+          <Card title={t('todaysSchedule')} icon="schedule" iconColor={colors.accentBlue}>
+            <FlatList
+              data={routines}
+              renderItem={renderRoutineItem}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+            />
+          </Card>
+        </View>
 
         {/* Calming Corner */}
-        <Card
-          title={t('calmingCorner') || 'Calming Corner'}
-          icon="self-care"
-          iconColor={colors.accentPink}
-        >
-          {calmingSchedule.length > 0 ? (
-            calmingSchedule.map(item => renderCalmingScheduleItem(item))
-          ) : (
-            <Text style={[styles.calmingPlaceholder, { color: colors.textLight }]}>
-              {t('noCalmingActivities') || 'No calming activities yet. Add up to 5!'}
-            </Text>
-          )}
-          {calmingSchedule.length < 5 && (
-            <TouchableOpacity
-              style={[styles.calmingAddButton, { borderColor: colors.primary }]}
-              onPress={() => setCalmingModalVisible(true)}
-            >
-              <MaterialIcons name="add" size={24} color={colors.primary} />
-              <Text style={[styles.calmingAddButtonText, { color: colors.primary }]}>
-                {t('addCalmingActivity') || 'Add Calming Activity'}
+        <View style={styles.cardShadow}>
+          <Card title={t('calmingCorner')} icon="self-care" iconColor={colors.accentPink}>
+            {calmingSchedule.length > 0 ? (
+              calmingSchedule.map(item => renderCalmingScheduleItem(item))
+            ) : (
+              <Text style={[styles.calmingPlaceholder, { color: colors.textLight }]}>
+                {t('noCalmingActivities')}
               </Text>
-            </TouchableOpacity>
-          )}
-        </Card>
+            )}
+            {calmingSchedule.length < 5 && (
+              <TouchableOpacity
+                style={[styles.calmingAddButton, { borderColor: colors.primary }]}
+                onPress={() => setCalmingModalVisible(true)}
+              >
+                <MaterialIcons name="add" size={24} color={colors.primary} />
+                <Text style={[styles.calmingAddButtonText, { color: colors.primary }]}>
+                  {t('addCalmingActivity')}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </Card>
+        </View>
 
         {/* Add Custom Routine Button */}
         <TouchableOpacity
@@ -935,20 +964,22 @@ export default function RoutineScreen() {
         </TouchableOpacity>
 
         {/* Routine Tips */}
-        <Card
-          title={t('routineTips')}
-          icon="lightbulb"
-          iconColor={colors.accentYellow}
-          backgroundColor={colors.softYellow}
-        >
-          <View style={styles.tipsContainer}>
-            {routineTips.map((tip: string, index: number) => (
-              <Text key={index} style={[styles.tipText, { color: colors.text }]}>
-                • {tip}
-              </Text>
-            ))}
-          </View>
-        </Card>
+        <View style={styles.cardShadow}>
+          <Card
+            title={t('routineTips')}
+            icon="lightbulb"
+            iconColor={colors.accentYellow}
+            backgroundColor={colors.softYellow}
+          >
+            <View style={styles.tipsContainer}>
+              {routineTips.map((tip: string, index: number) => (
+                <Text key={index} style={[styles.tipText, { color: colors.text }]}>
+                  • {tip}
+                </Text>
+              ))}
+            </View>
+          </Card>
+        </View>
       </ScrollView>
 
       {/* ─── MODAL: Add Custom Routine ─────────────────────────── */}
@@ -966,14 +997,14 @@ export default function RoutineScreen() {
 
             <TextInput
               style={[styles.input, { color: colors.text, borderColor: colors.primaryLight, backgroundColor: colors.surface }]}
-              placeholder={t('activityName') || 'Activity name'}
+              placeholder={t('activityName')}
               placeholderTextColor={colors.textLight}
               value={newTitle}
               onChangeText={setNewTitle}
             />
 
             <Text style={[styles.pickerLabel, { color: colors.text, marginBottom: Spacing.sm }]}>
-              {t('time') || 'Time'}
+              {t('time')}
             </Text>
             <View style={styles.timePickerContainer}>
               <View style={styles.timeColumn}>
@@ -1019,7 +1050,7 @@ export default function RoutineScreen() {
             </View>
 
             <Text style={[styles.pickerLabel, { color: colors.text, marginTop: Spacing.md }]}>
-              {t('chooseIcon') || 'Choose icon'}
+              {t('chooseIcon')}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconRow}>
               {AVAILABLE_ICONS.map(icon => (
@@ -1040,7 +1071,7 @@ export default function RoutineScreen() {
             </ScrollView>
 
             <Text style={[styles.pickerLabel, { color: colors.text, marginTop: Spacing.md }]}>
-              {t('chooseColor') || 'Choose color'}
+              {t('chooseColor')}
             </Text>
             <View style={styles.colorRow}>
               {AVAILABLE_COLORS.map(color => (
@@ -1083,7 +1114,7 @@ export default function RoutineScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {t('selectCalmingActivity') || 'Select Calming Activity'}
+              {t('selectCalmingActivity')}
             </Text>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.calmingList}>
@@ -1110,7 +1141,7 @@ export default function RoutineScreen() {
             </ScrollView>
 
             <Text style={[styles.pickerLabel, { color: colors.text, marginTop: Spacing.md }]}>
-              {t('time') || 'Time'}
+              {t('time')}
             </Text>
             <View style={styles.timePickerContainer}>
               <View style={styles.timeColumn}>
@@ -1191,7 +1222,6 @@ export default function RoutineScreen() {
               {selectedPlayActivity?.title || 'Calming Activity'}
             </Text>
 
-            {/* Breathing Animation */}
             {isBreathingVisible && selectedPlayActivity?.title === 'Deep Breathing' ? (
               <View style={styles.breathingContainer}>
                 <Animated.View
@@ -1213,33 +1243,30 @@ export default function RoutineScreen() {
               </View>
             )}
 
-            {/* Timer display */}
             <Text style={[styles.modalTimerText, { color: colors.primary }]}>
               {Math.floor(calmingTimerSeconds / 60)}:{(calmingTimerSeconds % 60).toString().padStart(2, '0')}
             </Text>
 
-            {/* Timer minutes input */}
             {!isCalmingTimerRunning && (
               <View style={styles.timerInputContainer}>
                 <TouchableOpacity
                   onPress={() => setCalmingTimerMinutes(prev => Math.max(1, prev - 1))}
-                  style={styles.timerAdjustButton}
+                  style={[styles.timerAdjustButton, { backgroundColor: colors.primaryLight }]}
                 >
-                  <MaterialIcons name="remove" size={20} color={colors.text} />
+                  <MaterialIcons name="remove" size={20} color={colors.primary} />
                 </TouchableOpacity>
                 <Text style={[styles.timerInputText, { color: colors.text, borderColor: colors.primaryLight }]}>
                   {calmingTimerMinutes} min
                 </Text>
                 <TouchableOpacity
                   onPress={() => setCalmingTimerMinutes(prev => prev + 1)}
-                  style={styles.timerAdjustButton}
+                  style={[styles.timerAdjustButton, { backgroundColor: colors.primaryLight }]}
                 >
-                  <MaterialIcons name="add" size={20} color={colors.text} />
+                  <MaterialIcons name="add" size={20} color={colors.primary} />
                 </TouchableOpacity>
               </View>
             )}
 
-            {/* Start / Cancel buttons */}
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalButton, { backgroundColor: colors.primaryLight }]}
@@ -1275,11 +1302,33 @@ export default function RoutineScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ─── CUSTOM POPUP MODAL (Timer / Alarm) ────────────────── */}
+      <Modal
+        visible={popupVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closePopup}
+      >
+        <View style={styles.popupOverlay}>
+          <View style={[styles.popupContainer, { backgroundColor: colors.background }]}>
+            <Text style={styles.popupEmoji}>{popupEmoji}</Text>
+            <Text style={[styles.popupTitle, { color: colors.text }]}>{popupTitle}</Text>
+            <Text style={[styles.popupMessage, { color: colors.textLight }]}>{popupMessage}</Text>
+            <TouchableOpacity
+              style={[styles.popupButton, { backgroundColor: colors.primary }]}
+              onPress={closePopup}
+            >
+              <Text style={styles.popupButtonText}>Yay! 🎈</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
 
-// ─── STYLES (with breathing animation additions) ────────────────
+// ─── STYLES ──────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, padding: Spacing.md },
   header: { marginBottom: Spacing.lg },
@@ -1294,6 +1343,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     alignSelf: 'flex-start',
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   starText: { fontWeight: 'bold', fontSize: Typography.fontSize.lg },
   musicButton: {
@@ -1305,11 +1359,24 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: Spacing.md,
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   musicButtonText: {
     color: '#FFF',
     fontWeight: 'bold',
     fontSize: Typography.fontSize.md,
+  },
+  cardShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    marginBottom: Spacing.md,
   },
   calmingContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md },
   calmingIcon: {
@@ -1323,6 +1390,11 @@ const styles = StyleSheet.create({
   calmingButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 12, borderRadius: 12, gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   calmingButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: Typography.fontSize.md },
   calmingPlaceholder: { textAlign: 'center', paddingVertical: Spacing.md },
@@ -1360,7 +1432,7 @@ const styles = StyleSheet.create({
   timerLabel: { fontSize: Typography.fontSize.md, fontWeight: '600' },
   timerInputContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   timerAdjustButton: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: '#f0f0f0',
+    width: 36, height: 36, borderRadius: 18,
     justifyContent: 'center', alignItems: 'center',
   },
   timerInputText: {
@@ -1381,20 +1453,29 @@ const styles = StyleSheet.create({
     borderRadius: 65,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
   },
   timerText: { fontSize: 32, fontWeight: 'bold' },
   timerControls: { flexDirection: 'row', gap: 20, marginTop: Spacing.md },
   timerControlButton: {
     width: 60, height: 60, borderRadius: 30,
     justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   timerMiniButton: {
-    marginRight: 8, padding: 4, borderRadius: 12, backgroundColor: '#f0f0f0',
+    marginRight: 8, padding: 4, borderRadius: 12,
   },
   progressContainer: {
     borderRadius: 12, padding: Spacing.lg,
     marginVertical: Spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   progressTitle: { fontWeight: 'bold', fontSize: Typography.fontSize.lg, marginBottom: Spacing.sm },
   progressBar: { height: 10, borderRadius: 5, overflow: 'hidden', marginVertical: Spacing.sm },
@@ -1403,8 +1484,12 @@ const styles = StyleSheet.create({
   routineItem: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: Spacing.sm, marginBottom: Spacing.sm,
-    borderWidth: 2, borderRadius: 10,
+    borderWidth: 2, borderRadius: 12,
     paddingHorizontal: Spacing.md,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 1,
   },
   timeContainer: { width: 70, alignItems: 'center' },
   timeText: { fontWeight: 'bold', fontSize: Typography.fontSize.sm },
@@ -1426,12 +1511,10 @@ const styles = StyleSheet.create({
   addButtonText: { fontWeight: 'bold', fontSize: Typography.fontSize.md, marginLeft: Spacing.md },
   tipsContainer: { marginTop: Spacing.sm },
   tipText: { fontSize: Typography.fontSize.md, marginBottom: Spacing.sm, lineHeight: 24 },
-  // Alarm styles
   alarmSection: {
     marginTop: Spacing.lg,
     padding: Spacing.md,
     borderRadius: Spacing.md,
-    backgroundColor: '#f9f9f9',
   },
   alarmTitle: { fontSize: Typography.fontSize.md, fontWeight: 'bold', marginBottom: Spacing.sm },
   alarmButton: {
@@ -1443,15 +1526,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: Spacing.sm,
     marginTop: Spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
   alarmButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: Typography.fontSize.md },
-  // Modal styles (existing)
   modalOverlay: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  modalContent: { width: '90%', maxHeight: '90%', borderRadius: 20, padding: Spacing.xl },
-  modalTitle: { fontSize: Typography.fontSize.xl, fontWeight: 'bold', marginBottom: Spacing.lg },
+  modalContent: { width: '90%', maxHeight: '90%', borderRadius: 24, padding: Spacing.xl },
+  modalTitle: { fontSize: Typography.fontSize.xl, fontWeight: 'bold', marginBottom: Spacing.lg, textAlign: 'center' },
   input: {
     borderWidth: 1, borderRadius: 10, padding: Spacing.md,
     fontSize: Typography.fontSize.md, marginBottom: Spacing.md,
@@ -1460,7 +1547,7 @@ const styles = StyleSheet.create({
   timePickerContainer: {
     flexDirection: 'row', justifyContent: 'space-around',
     alignItems: 'center', marginBottom: Spacing.md,
-    paddingVertical: Spacing.md, backgroundColor: '#f9f9f9', borderRadius: 12,
+    paddingVertical: Spacing.md, borderRadius: 12,
   },
   timeColumn: { alignItems: 'center', width: 80 },
   timeArrowButton: { padding: 4 },
@@ -1480,9 +1567,8 @@ const styles = StyleSheet.create({
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   colorOption: { width: 40, height: 40, borderRadius: 20, borderWidth: 2 },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: Spacing.xl, gap: 10 },
-  modalButton: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: 10 },
+  modalButton: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: 12 },
   modalButtonText: { fontWeight: 'bold', fontSize: Typography.fontSize.md },
-  // Breathing animation styles
   breathingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -1504,5 +1590,56 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: 'bold',
     marginVertical: Spacing.md,
+  },
+  // ── Popup Styles ──
+  popupOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  popupContainer: {
+    width: '80%',
+    padding: Spacing.xl,
+    borderRadius: 28,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  popupEmoji: {
+    fontSize: 60,
+    marginBottom: Spacing.sm,
+  },
+  popupTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: 'bold',
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  popupMessage: {
+    fontSize: Typography.fontSize.md,
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+    lineHeight: 24,
+  },
+  popupButton: {
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderRadius: 30,
+    minWidth: 120,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  popupButtonText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: Typography.fontSize.lg,
   },
 });

@@ -1,4 +1,13 @@
-// app/(games)/NumberHuntGame.tsx (with Sinhala voice instruction)
+// app/(games)/NumberHuntGame.tsx (with plain numbers, no emojis for numerals)
+// ─────────────────────────────────────────────────────────────
+// Redesigned as an actual HUNT: a clue is shown at the top, then
+// several number tiles are scattered around the screen (with a
+// gentle random tilt/position, like a seek-and-find). The player
+// taps the tile that matches the clue before the timer runs out.
+// Wrong taps just fade out of the hunt — they don't end the round,
+// so kids can keep exploring until they find the right one.
+// Same theme/colors/hooks as the original file.
+// ─────────────────────────────────────────────────────────────
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { router } from 'expo-router';
@@ -20,79 +29,120 @@ import { useSound } from '../../hooks/useSound';
 
 const { width } = Dimensions.get('window');
 
-interface Level {
-  id: number;
-  nameKey: string;
-  numberRange: { min: number; max: number };
-  questions: Question[];
-}
+type HuntType = 'fingers' | 'digits' | 'objects' | 'word' | 'speed';
 
 interface Question {
   id: number;
   targetNumber: number;
   descKey: string;
-  emoji: string;
+  clueEmoji: string;
+  unitEmoji?: string; // only used by the 'objects' hunt type
 }
+
+interface Level {
+  id: number;
+  nameKey: string;
+  huntType: HuntType;
+  pool: number[]; // every value that may appear as a tile in this level
+  tileCount: number;
+  timeLimit: number; // seconds per round
+  questions: Question[];
+}
+
+interface HuntTile {
+  id: string;
+  value: number;
+  isTarget: boolean;
+  top: number;
+  left: number;
+  rotate: number;
+}
+
+// Emoji maps are kept but no longer used in rendering
+const FINGER_EMOJI: Record<number, string> = {
+  1: '☝️', 2: '✌️', 3: '👌', 4: '🖖', 5: '🖐️',
+};
+const DIGIT_EMOJI: Record<number, string> = {
+  1: '1️⃣', 2: '2️⃣', 3: '3️⃣', 4: '4️⃣', 5: '5️⃣',
+  6: '6️⃣', 7: '7️⃣', 8: '8️⃣', 9: '9️⃣', 10: '🔟',
+};
+
+const TILE_SIZE = 72;
 
 const levels: Level[] = [
   {
     id: 1,
     nameKey: 'numberHunt.level1.name',
-    numberRange: { min: 1, max: 5 },
+    huntType: 'fingers',
+    pool: [1, 2, 3, 4, 5],
+    tileCount: 6,
+    timeLimit: 16,
     questions: [
-      { id: 1, targetNumber: 1, descKey: 'numberHunt.level1.q1', emoji: '☝️' },
-      { id: 2, targetNumber: 2, descKey: 'numberHunt.level1.q2', emoji: '✌️' },
-      { id: 3, targetNumber: 3, descKey: 'numberHunt.level1.q3', emoji: '👌' },
-      { id: 4, targetNumber: 4, descKey: 'numberHunt.level1.q4', emoji: '🖖' },
-      { id: 5, targetNumber: 5, descKey: 'numberHunt.level1.q5', emoji: '🖐️' },
+      { id: 1, targetNumber: 1, descKey: 'numberHunt.level1.q1', clueEmoji: '☝️' },
+      { id: 2, targetNumber: 2, descKey: 'numberHunt.level1.q2', clueEmoji: '✌️' },
+      { id: 3, targetNumber: 3, descKey: 'numberHunt.level1.q3', clueEmoji: '👌' },
+      { id: 4, targetNumber: 4, descKey: 'numberHunt.level1.q4', clueEmoji: '🖖' },
+      { id: 5, targetNumber: 5, descKey: 'numberHunt.level1.q5', clueEmoji: '🖐️' },
     ],
   },
   {
     id: 2,
     nameKey: 'numberHunt.level2.name',
-    numberRange: { min: 1, max: 10 },
+    huntType: 'digits',
+    pool: [6, 7, 8, 9, 10],
+    tileCount: 7,
+    timeLimit: 14,
     questions: [
-      { id: 1, targetNumber: 6, descKey: 'numberHunt.level2.q1', emoji: '6️⃣' },
-      { id: 2, targetNumber: 7, descKey: 'numberHunt.level2.q2', emoji: '7️⃣' },
-      { id: 3, targetNumber: 8, descKey: 'numberHunt.level2.q3', emoji: '8️⃣' },
-      { id: 4, targetNumber: 9, descKey: 'numberHunt.level2.q4', emoji: '9️⃣' },
-      { id: 5, targetNumber: 10, descKey: 'numberHunt.level2.q5', emoji: '🔟' },
+      { id: 1, targetNumber: 6, descKey: 'numberHunt.level2.q1', clueEmoji: '6️⃣' },
+      { id: 2, targetNumber: 7, descKey: 'numberHunt.level2.q2', clueEmoji: '7️⃣' },
+      { id: 3, targetNumber: 8, descKey: 'numberHunt.level2.q3', clueEmoji: '8️⃣' },
+      { id: 4, targetNumber: 9, descKey: 'numberHunt.level2.q4', clueEmoji: '9️⃣' },
+      { id: 5, targetNumber: 10, descKey: 'numberHunt.level2.q5', clueEmoji: '🔟' },
     ],
   },
   {
     id: 3,
     nameKey: 'numberHunt.level3.name',
-    numberRange: { min: 1, max: 5 },
+    huntType: 'objects',
+    pool: [1, 2, 3, 4, 5],
+    tileCount: 6,
+    timeLimit: 18,
     questions: [
-      { id: 1, targetNumber: 1, descKey: 'numberHunt.level3.q1', emoji: '🍎' },
-      { id: 2, targetNumber: 2, descKey: 'numberHunt.level3.q2', emoji: '⭐⭐' },
-      { id: 3, targetNumber: 3, descKey: 'numberHunt.level3.q3', emoji: '❤️❤️❤️' },
-      { id: 4, targetNumber: 4, descKey: 'numberHunt.level3.q4', emoji: '🔴🔴🔴🔴' },
-      { id: 5, targetNumber: 5, descKey: 'numberHunt.level3.q5', emoji: '🟦🟦🟦🟦🟦' },
+      { id: 1, targetNumber: 1, descKey: 'numberHunt.level3.q1', clueEmoji: '🍎', unitEmoji: '🍎' },
+      { id: 2, targetNumber: 2, descKey: 'numberHunt.level3.q2', clueEmoji: '⭐', unitEmoji: '⭐' },
+      { id: 3, targetNumber: 3, descKey: 'numberHunt.level3.q3', clueEmoji: '❤️', unitEmoji: '❤️' },
+      { id: 4, targetNumber: 4, descKey: 'numberHunt.level3.q4', clueEmoji: '🔴', unitEmoji: '🔴' },
+      { id: 5, targetNumber: 5, descKey: 'numberHunt.level3.q5', clueEmoji: '🟦', unitEmoji: '🟦' },
     ],
   },
   {
     id: 4,
     nameKey: 'numberHunt.level4.name',
-    numberRange: { min: 1, max: 5 },
+    huntType: 'word',
+    pool: [1, 2, 3, 4, 5],
+    tileCount: 6,
+    timeLimit: 14,
     questions: [
-      { id: 1, targetNumber: 1, descKey: 'numberHunt.level4.q1', emoji: '🔢' },
-      { id: 2, targetNumber: 2, descKey: 'numberHunt.level4.q2', emoji: '🔢' },
-      { id: 3, targetNumber: 3, descKey: 'numberHunt.level4.q3', emoji: '🔢' },
-      { id: 4, targetNumber: 4, descKey: 'numberHunt.level4.q4', emoji: '🔢' },
-      { id: 5, targetNumber: 5, descKey: 'numberHunt.level4.q5', emoji: '🔢' },
+      { id: 1, targetNumber: 1, descKey: 'numberHunt.level4.q1', clueEmoji: '🔤' },
+      { id: 2, targetNumber: 2, descKey: 'numberHunt.level4.q2', clueEmoji: '🔤' },
+      { id: 3, targetNumber: 3, descKey: 'numberHunt.level4.q3', clueEmoji: '🔤' },
+      { id: 4, targetNumber: 4, descKey: 'numberHunt.level4.q4', clueEmoji: '🔤' },
+      { id: 5, targetNumber: 5, descKey: 'numberHunt.level4.q5', clueEmoji: '🔤' },
     ],
   },
   {
     id: 5,
     nameKey: 'numberHunt.level5.name',
-    numberRange: { min: 1, max: 10 },
+    huntType: 'speed',
+    pool: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    tileCount: 9,
+    timeLimit: 10,
     questions: [
-      { id: 1, targetNumber: 3, descKey: 'numberHunt.level5.q1', emoji: '🔍' },
-      { id: 2, targetNumber: 7, descKey: 'numberHunt.level5.q2', emoji: '🔍' },
-      { id: 3, targetNumber: 5, descKey: 'numberHunt.level5.q3', emoji: '🔍' },
-      { id: 4, targetNumber: 9, descKey: 'numberHunt.level5.q4', emoji: '🔍' },
-      { id: 5, targetNumber: 2, descKey: 'numberHunt.level5.q5', emoji: '🔍' },
+      { id: 1, targetNumber: 3, descKey: 'numberHunt.level5.q1', clueEmoji: '🔍' },
+      { id: 2, targetNumber: 7, descKey: 'numberHunt.level5.q2', clueEmoji: '🔍' },
+      { id: 3, targetNumber: 5, descKey: 'numberHunt.level5.q3', clueEmoji: '🔍' },
+      { id: 4, targetNumber: 9, descKey: 'numberHunt.level5.q4', clueEmoji: '🔍' },
+      { id: 5, targetNumber: 2, descKey: 'numberHunt.level5.q5', clueEmoji: '🔍' },
     ],
   },
 ];
@@ -101,6 +151,10 @@ const levels: Level[] = [
 const sinhalaAudioMap: { [key: string]: any } = {
   instruction: require('../../assets/sounds/sinhala/games/numberHuntinstruction.mp3'),
 };
+// NOTE: this audio was recorded for the old "pick from 4 options"
+// mechanic. The Sinhala fallback text below has been rewritten to
+// describe the new hunt-and-timer mechanic — the .mp3 should ideally
+// be re-recorded by a native speaker to match.
 
 export default function NumberHuntGame() {
   const { colors } = useTheme();
@@ -111,21 +165,24 @@ export default function NumberHuntGame() {
     playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled
+    isEnabled: soundEnabled,
   } = useSound();
 
   const [currentLevel, setCurrentLevel] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [options, setOptions] = useState<number[]>([]);
+  const [tiles, setTiles] = useState<HuntTile[]>([]);
+  const [fieldHeight, setFieldHeight] = useState(240);
   const [score, setScore] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [isCorrect, setIsCorrect] = useState(false);
+  const [status, setStatus] = useState<'playing' | 'correct' | 'timeout'>('playing');
+  const [wrongTileIds, setWrongTileIds] = useState<Set<string>>(new Set());
+  const [resultTileId, setResultTileId] = useState<string | null>(null);
   const [showReward, setShowReward] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [stars, setStars] = useState(3);
-  const [showHint, setShowHint] = useState(false);
+  const [hintGlowId, setHintGlowId] = useState<string | null>(null);
   const scaleAnim = useState(new Animated.Value(1))[0];
   const bounceAnim = useState(new Animated.Value(1))[0];
+  const timerAnim = useRef(new Animated.Value(1)).current;
 
   const level = levels[currentLevel];
   const currentQuestion = level.questions[currentQuestionIndex];
@@ -136,10 +193,93 @@ export default function NumberHuntGame() {
   const pendingInstruction = useRef(false);
   const isFirstRender = useRef(true);
 
-  useEffect(() => {
-    generateOptions();
+  // Per-tile shake animations, rebuilt each round
+  const shakeAnims = useRef<{ [id: string]: Animated.Value }>({});
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ─── Layout helpers ─────────────────────────────────────────
+  const shuffle = <T,>(arr: T[]): T[] => {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const buildTiles = (lvl: Level, question: Question): { tiles: HuntTile[]; height: number } => {
+    const decoyPool = lvl.pool.filter((n) => n !== question.targetNumber);
+    const values: number[] = [question.targetNumber];
+    while (values.length < lvl.tileCount) {
+      values.push(decoyPool[Math.floor(Math.random() * decoyPool.length)]);
+    }
+    const shuffledValues = shuffle(values);
+
+    const fieldWidth = width - Spacing.lg * 2;
+    const cols = lvl.tileCount >= 9 ? 4 : 3;
+    const rows = Math.ceil(lvl.tileCount / cols);
+    const cellW = fieldWidth / cols;
+    const cellH = 92;
+
+    const newTiles: HuntTile[] = shuffledValues.map((value, index) => {
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+      const centerX = col * cellW + cellW / 2;
+      const centerY = row * cellH + cellH / 2;
+      const jitterX = (Math.random() - 0.5) * cellW * 0.35;
+      const jitterY = (Math.random() - 0.5) * cellH * 0.35;
+      const rotate = (Math.random() - 0.5) * 20;
+
+      return {
+        id: `tile-${index}-${value}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        value,
+        isTarget: value === question.targetNumber,
+        left: Math.max(0, Math.min(fieldWidth - TILE_SIZE, centerX + jitterX - TILE_SIZE / 2)),
+        top: centerY + jitterY - TILE_SIZE / 2,
+        rotate,
+      };
+    });
+
+    return { tiles: newTiles, height: rows * cellH + TILE_SIZE / 2 };
+  };
+
+  const startQuestion = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    const { tiles: newTiles, height } = buildTiles(level, currentQuestion);
+    shakeAnims.current = {};
+    newTiles.forEach((tile) => {
+      shakeAnims.current[tile.id] = new Animated.Value(0);
+    });
+
+    setTiles(newTiles);
+    setFieldHeight(height);
+    setStatus('playing');
+    setWrongTileIds(new Set());
+    setResultTileId(null);
+    setHintGlowId(null);
+
+    timerAnim.setValue(1);
+    Animated.timing(timerAnim, {
+      toValue: 0,
+      duration: level.timeLimit * 1000,
+      useNativeDriver: false,
+    }).start();
+
+    timeoutRef.current = setTimeout(() => {
+      handleTimeout();
+    }, level.timeLimit * 1000);
+
     playSound('click', false);
-  }, [currentQuestionIndex]);
+  };
+
+  useEffect(() => {
+    startQuestion();
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLevel, currentQuestionIndex]);
 
   // Load Sinhala instruction audio
   useEffect(() => {
@@ -163,7 +303,7 @@ export default function NumberHuntGame() {
     loadSounds();
     return () => {
       isMounted = false;
-      Object.values(sinhalaSounds.current).forEach(sound => {
+      Object.values(sinhalaSounds.current).forEach((sound) => {
         if (sound) sound.unloadAsync();
       });
     };
@@ -204,44 +344,32 @@ export default function NumberHuntGame() {
     return () => Speech.stop();
   }, []);
 
+  const instructionText =
+    language === 'si'
+      ? 'මෙම ක්‍රීඩාවේදී, ඉහළ පෙන්වන ඉඟිය බලා, ඊට ගැලපෙන අංකය පහත ඇති කැබලි අතරින් සොයා තට්ටු කරන්න. කාලය අවසන් වීමට පෙර නිවැරදි පිළිතුර සොයාගන්න!'
+      : "In this game, look at the clue at the top, then hunt for the matching tile hiding among the choices below and tap it before time runs out!";
+
   // Speak instruction when the game opens
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      const instructionText = language === 'si'
-        ? 'මෙම ක්‍රීඩාවේදී, තිරයේ පෙන්වන ඉලක්කම් ගණන් කර, නිවැරදි පිළිතුර තෝරන්න. සෑම ප්‍රශ්නයකටම නිවැරදිව පිළිතුරු දී, ජයග්‍රහණය කිරීමට උත්සාහ කරන්න.'
-        : 'In this game, count the numbers shown on the screen and choose the correct answer. Try to answer every question correctly.';
-
       if (language === 'si' && !soundsLoaded) {
         pendingInstruction.current = true;
         return;
       }
       speak(instructionText, 'instruction');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
 
   // Pending instruction effect
   useEffect(() => {
     if (pendingInstruction.current && soundsLoaded) {
       pendingInstruction.current = false;
-      const instructionText = language === 'si'
-        ? 'මෙම ක්‍රීඩාවේදී, තිරයේ පෙන්වන ඉලක්කම් ගණන් කර, නිවැරදි පිළිතුර තෝරන්න. සෑම ප්‍රශ්නයකටම නිවැරදිව පිළිතුරු දී, ජයග්‍රහණය කිරීමට උත්සාහ කරන්න.'
-        : 'In this game, count the numbers shown on the screen and choose the correct answer. Try to answer every question correctly.';
       speak(instructionText, 'instruction');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [soundsLoaded]);
-
-  const generateOptions = () => {
-    const numbers = [];
-    for (let i = level.numberRange.min; i <= level.numberRange.max; i++) {
-      numbers.push(i);
-    }
-    for (let i = numbers.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
-    }
-    setOptions(numbers.slice(0, 4));
-  };
 
   const calculateStars = () => {
     const correctCount = Math.floor(score / 10);
@@ -250,53 +378,57 @@ export default function NumberHuntGame() {
     return 1;
   };
 
-  const getObjectsDisplay = () => {
-    const count = currentQuestion.targetNumber;
-    const emoji = currentQuestion.emoji;
-    if (level.id === 2) {
-      return <Text style={styles.numberEmoji}>{emoji}</Text>;
-    } else if (level.id === 3) {
-      return (
-        <View style={styles.objectsContainer}>
-          {Array.from({ length: count }).map((_, i) => (
-            <Text key={i} style={styles.objectEmoji}>{emoji}</Text>
-          ))}
-        </View>
-      );
-    } else if (level.id === 4) {
-      return (
-        <View style={styles.wordContainer}>
-          <Text style={[styles.wordText, { color: colors.primary }]}>
-            {t(currentQuestion.descKey)}
-          </Text>
-        </View>
-      );
+  const proceedNext = async () => {
+    if (currentQuestionIndex + 1 >= level.questions.length) {
+      const earnedStars = calculateStars();
+      setStars(earnedStars);
+
+      if (currentLevel === levels.length - 1) {
+        await playCelebration();
+        setShowComplete(true);
+      } else {
+        await playSound('levelUp', false);
+        setShowReward(true);
+      }
     } else {
-      return (
-        <View style={styles.numberDisplay}>
-          <Text style={styles.numberEmoji}>{emoji}</Text>
-          <Text style={[styles.numberDescription, { color: colors.text }]}>
-            {t(currentQuestion.descKey)}
-          </Text>
-        </View>
-      );
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
 
-  const showHintMessage = async () => {
-    setShowHint(true);
-    await playSound('click', false);
-    setTimeout(() => setShowHint(false), 3000);
+  const handleTimeout = async () => {
+    setStatus((prev) => {
+      if (prev !== 'playing') return prev;
+      return 'timeout';
+    });
+    const target = tiles.find((tile) => tile.isTarget);
+    if (target) setResultTileId(target.id);
+    await playSound('wrong', false);
+    setTimeout(() => {
+      proceedNext();
+    }, 1600);
   };
 
-  const handleAnswer = async (answer: number) => {
-    if (selectedAnswer !== null) return;
+  const triggerShake = (id: string) => {
+    const anim = shakeAnims.current[id];
+    if (!anim) return;
+    anim.setValue(0);
+    Animated.sequence([
+      Animated.timing(anim, { toValue: 1, duration: 60, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: -1, duration: 60, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 1, duration: 60, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 0, duration: 60, useNativeDriver: true }),
+    ]).start();
+  };
 
-    setSelectedAnswer(answer);
-    const correct = answer === currentQuestion.targetNumber;
-    setIsCorrect(correct);
+  const handleTilePress = async (tile: HuntTile) => {
+    if (status !== 'playing' || wrongTileIds.has(tile.id)) return;
 
-    if (correct) {
+    if (tile.isTarget) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timerAnim.stopAnimation();
+      setStatus('correct');
+      setResultTileId(tile.id);
+
       await playCorrectAnswer();
       const newScore = score + 10;
       setScore(newScore);
@@ -307,39 +439,27 @@ export default function NumberHuntGame() {
         Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
 
-      setTimeout(async () => {
-        if (currentQuestionIndex + 1 >= level.questions.length) {
-          const earnedStars = calculateStars();
-          setStars(earnedStars);
-
-          if (currentLevel === levels.length - 1) {
-            await playCelebration();
-            setShowComplete(true);
-          } else {
-            await playSound('levelUp', false);
-            setShowReward(true);
-          }
-        } else {
-          setCurrentQuestionIndex(currentQuestionIndex + 1);
-          setSelectedAnswer(null);
-          setIsCorrect(false);
-          generateOptions();
-          await playSound('click', false);
-        }
-      }, 1500);
+      setTimeout(() => {
+        proceedNext();
+      }, 1300);
     } else {
+      setWrongTileIds((prev) => new Set(prev).add(tile.id));
+      triggerShake(tile.id);
       await playSound('wrong', true);
 
       Animated.sequence([
-        Animated.timing(bounceAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
+        Animated.timing(bounceAnim, { toValue: 0.97, duration: 100, useNativeDriver: true }),
         Animated.timing(bounceAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
       ]).start();
-
-      setTimeout(() => {
-        setSelectedAnswer(null);
-        setIsCorrect(false);
-      }, 1000);
     }
+  };
+
+  const showHint = async () => {
+    const target = tiles.find((tile) => tile.isTarget);
+    if (!target) return;
+    await playSound('click', false);
+    setHintGlowId(target.id);
+    setTimeout(() => setHintGlowId(null), 1800);
   };
 
   const nextLevel = async () => {
@@ -347,8 +467,6 @@ export default function NumberHuntGame() {
     setCurrentLevel(currentLevel + 1);
     setCurrentQuestionIndex(0);
     setScore(0);
-    setSelectedAnswer(null);
-    generateOptions();
     await playSound('click', false);
   };
 
@@ -357,8 +475,6 @@ export default function NumberHuntGame() {
     setCurrentQuestionIndex(0);
     setScore(0);
     setShowComplete(false);
-    setSelectedAnswer(null);
-    generateOptions();
     await playSound('click', false);
   };
 
@@ -387,6 +503,23 @@ export default function NumberHuntGame() {
     return t('numberHunt.encouragement.champion');
   };
 
+  // ─── Clue banner (now shows the target number as a plain digit) ───────
+  const renderClue = () => {
+    return (
+      <View style={styles.clueSimpleWrap}>
+        <Text style={styles.clueNumber}>
+          {currentQuestion.targetNumber}
+        </Text>
+        <Text style={[styles.clueText, { color: colors.text }]}>{t(currentQuestion.descKey)}</Text>
+      </View>
+    );
+  };
+
+  // ─── Tile content: plain number instead of emoji ──────────────────
+  const renderTileContent = (tile: HuntTile) => {
+    return <Text style={[styles.tileNumeral, { color: colors.text }]}>{tile.value}</Text>;
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -397,7 +530,7 @@ export default function NumberHuntGame() {
         <Text style={[styles.title, { color: colors.text }]}>{t('numberHunt.title')}</Text>
 
         <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
-          <MaterialIcons name={soundEnabled ? "volume-up" : "volume-off"} size={24} color={colors.primary} />
+          <MaterialIcons name={soundEnabled ? 'volume-up' : 'volume-off'} size={24} color={colors.primary} />
         </TouchableOpacity>
 
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
@@ -422,69 +555,106 @@ export default function NumberHuntGame() {
         </Text>
       </View>
 
-      {/* Question Display */}
+      {/* Clue */}
       <Animated.View
         style={[
-          styles.questionContainer,
+          styles.clueContainer,
           { backgroundColor: colors.surface },
-          { transform: [{ scale: bounceAnim }] }
+          { transform: [{ scale: bounceAnim }] },
         ]}
       >
-        {getObjectsDisplay()}
+        <View style={styles.clueTag}>
+          <MaterialIcons name="search" size={16} color={colors.primary} />
+          <Text style={[styles.clueTagText, { color: colors.primary }]}>Your clue</Text>
+        </View>
+        {renderClue()}
       </Animated.View>
+
+      {/* Timer bar */}
+      <View style={styles.timerTrack}>
+        <Animated.View
+          style={[
+            styles.timerFill,
+            {
+              backgroundColor: colors.primary,
+              width: timerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0%', '100%'],
+              }),
+            },
+          ]}
+        />
+      </View>
 
       {/* Hint Button */}
       <TouchableOpacity
         style={[styles.hintButton, { backgroundColor: colors.primaryLight }]}
-        onPress={showHintMessage}
+        onPress={showHint}
       >
         <MaterialIcons name="lightbulb" size={20} color={colors.primary} />
         <Text style={[styles.hintButtonText, { color: colors.primary }]}>{t('numberHunt.hintButton')}</Text>
       </TouchableOpacity>
 
-      {/* Options */}
-      <View style={styles.optionsContainer}>
-        {options.map((option) => (
-          <TouchableOpacity
-            key={option}
-            style={[
-              styles.numberOption,
-              {
-                backgroundColor: colors.surface,
-                borderColor: selectedAnswer === option
-                  ? (isCorrect ? colors.success : colors.error)
-                  : colors.primaryLight,
-                borderWidth: 3,
-              },
-            ]}
-            onPress={() => handleAnswer(option)}
-            disabled={selectedAnswer !== null}
-          >
-            <Text style={[styles.numberText, { color: colors.text }]}>{option}</Text>
-            {selectedAnswer === option && (
-              <MaterialIcons
-                name={isCorrect ? "check-circle" : "cancel"}
-                size={28}
-                color={isCorrect ? colors.success : colors.error}
-                style={styles.answerIcon}
-              />
-            )}
-          </TouchableOpacity>
-        ))}
+      {/* Hunt field */}
+      <View style={[styles.huntField, { height: fieldHeight }]}>
+        {tiles.map((tile) => {
+          const isWrong = wrongTileIds.has(tile.id);
+          const isResult = resultTileId === tile.id;
+          const isHinted = hintGlowId === tile.id;
+          const shake = shakeAnims.current[tile.id] ?? new Animated.Value(0);
+
+          return (
+            <Animated.View
+              key={tile.id}
+              style={{
+                position: 'absolute',
+                top: tile.top,
+                left: tile.left,
+                opacity: isWrong ? 0.35 : 1,
+                transform: [
+                  { rotate: `${tile.rotate}deg` },
+                  {
+                    translateX: shake.interpolate({
+                      inputRange: [-1, 1],
+                      outputRange: [-8, 8],
+                    }),
+                  },
+                ],
+              }}
+            >
+              <TouchableOpacity
+                activeOpacity={0.75}
+                disabled={isWrong || status !== 'playing'}
+                onPress={() => handleTilePress(tile)}
+                style={[
+                  styles.huntTile,
+                  {
+                    width: TILE_SIZE,
+                    height: TILE_SIZE,
+                    backgroundColor: colors.surface,
+                    borderColor: isResult
+                      ? colors.success
+                      : isHinted
+                        ? colors.accentYellow || '#FFD700'
+                        : colors.primaryLight,
+                    borderWidth: isResult || isHinted ? 3 : 2,
+                  },
+                ]}
+              >
+                {renderTileContent(tile)}
+                {isResult && (
+                  <View style={styles.tileCheck}>
+                    <MaterialIcons name="check-circle" size={20} color={colors.success} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+          );
+        })}
       </View>
 
-      {/* Hint Popup */}
-      {showHint && (
-        <Animated.View style={[styles.hintPopup, { backgroundColor: colors.surface }]}>
-          <MaterialIcons name="lightbulb" size={24} color={colors.accentYellow || '#FFD700'} />
-          <Text style={[styles.hintPopupText, { color: colors.text }]}>
-            {t('numberHunt.hintMessage', { number: currentQuestion.targetNumber })}
-          </Text>
-        </Animated.View>
-      )}
-
-      {/* Feedback for wrong answer */}
-      {selectedAnswer && !isCorrect && (
+      {/* Timeout feedback */}
+      {status === 'timeout' && (
         <View style={[styles.feedbackContainer, { backgroundColor: colors.error + '20' }]}>
           <MaterialIcons name="tips-and-updates" size={20} color={colors.error} />
           <Text style={[styles.feedbackText, { color: colors.error }]}>
@@ -500,7 +670,7 @@ export default function NumberHuntGame() {
             style={[
               styles.progressFill,
               {
-                width: `${((currentQuestionIndex) / level.questions.length) * 100}%`,
+                width: `${(currentQuestionIndex / level.questions.length) * 100}%`,
                 backgroundColor: colors.primary,
               },
             ]}
@@ -610,27 +780,53 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   encouragementText: { fontSize: Typography.fontSize.sm, fontWeight: '500' },
-  questionContainer: {
+  clueContainer: {
     marginHorizontal: Spacing.lg,
-    marginVertical: Spacing.xl,
-    padding: Spacing.xl,
+    marginBottom: Spacing.sm,
+    padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     alignItems: 'center',
-    minHeight: 200,
+    minHeight: 130,
     justifyContent: 'center',
   },
-  numberDisplay: { alignItems: 'center' },
-  numberEmoji: { fontSize: 80, marginBottom: Spacing.md },
-  numberDescription: { fontSize: 24, fontWeight: 'bold' },
-  objectsContainer: {
+  clueTag: {
+    position: 'absolute',
+    top: Spacing.sm,
+    left: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  clueTagText: { fontSize: Typography.fontSize.sm, fontWeight: '700' },
+  clueSimpleWrap: { alignItems: 'center' },
+  clueNumber: {
+    fontSize: 56,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: Spacing.xs,
+  },
+  clueEmoji: { fontSize: 56, marginBottom: Spacing.sm },
+  clueText: { fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+  clueObjectsWrap: { alignItems: 'center' },
+  clueObjectsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: Spacing.md,
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
-  objectEmoji: { fontSize: 50 },
-  wordContainer: { alignItems: 'center' },
-  wordText: { fontSize: 36, fontWeight: 'bold', letterSpacing: 5 },
+  clueObjectEmoji: { fontSize: 34 },
+  clueWordWrap: { alignItems: 'center' },
+  clueWordText: { fontSize: 32, fontWeight: 'bold', letterSpacing: 4, marginTop: Spacing.xs },
+  timerTrack: {
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    overflow: 'hidden',
+  },
+  timerFill: { height: '100%', borderRadius: 4 },
   hintButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -642,45 +838,31 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   hintButtonText: { fontSize: Typography.fontSize.sm, fontWeight: '600' },
-  optionsContainer: {
+  huntField: {
+    marginHorizontal: Spacing.lg,
+    position: 'relative',
+  },
+  huntTile: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: BorderRadius.lg,
+  },
+  tileEmoji: { fontSize: 34 },
+  tileNumeral: { fontSize: 30, fontWeight: 'bold' },
+  tileClusterWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: Spacing.md,
-    padding: Spacing.md,
-  },
-  numberOption: {
-    width: (width - 80) / 2,
-    height: 100,
-    justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: BorderRadius.lg,
-    position: 'relative',
+    width: TILE_SIZE - 16,
   },
-  numberText: { fontSize: 48, fontWeight: 'bold' },
-  answerIcon: { position: 'absolute', bottom: 8, right: 8 },
-  hintPopup: {
-    position: 'absolute',
-    top: '50%',
-    left: '10%',
-    right: '10%',
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 1000,
-  },
-  hintPopupText: { fontSize: Typography.fontSize.md, fontWeight: '500', flex: 1, textAlign: 'center' },
+  tileClusterEmoji: { fontSize: 13, margin: 1 },
+  tileCheck: { position: 'absolute', top: -8, right: -8 },
   feedbackContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     gap: Spacing.sm,
