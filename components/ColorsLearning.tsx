@@ -1,4 +1,5 @@
-// components/learning/ColorsLearning.tsx (fixed overlap: instruction fully plays first)
+// components/ColorsLearning.tsx (corrected TypeScript errors)
+
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
@@ -17,6 +18,7 @@ import { BorderRadius, Spacing } from '../constants/theme';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSound } from '../hooks/useSound';
+import { updateStats } from '../services/api'; // ✅ FIXED PATH
 
 const { width } = Dimensions.get('window');
 
@@ -108,8 +110,11 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
 
     return () => {
       isMounted = false;
+      // ✅ FIX: return void, not a promise
       Object.values(sinhalaSounds.current).forEach(sound => {
-        if (sound) sound.unloadAsync();
+        if (sound) {
+          sound.unloadAsync(); // we don't await, so it's fine
+        }
       });
     };
   }, []);
@@ -134,8 +139,8 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
         language: language === 'si' ? 'si-LK' : 'en-US',
         pitch: language === 'si' ? 1.15 : 1.05,
         rate: language === 'si' ? 0.75 : 0.85,
-        onError: (error) => {
-          console.warn('TTS error:', error);
+        onError: (err: Error) => { // ✅ FIX: typed parameter
+          console.warn('TTS error:', err);
           if (language === 'si') {
             Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
           }
@@ -148,7 +153,9 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
 
   // Stop speech on unmount
   useEffect(() => {
-    return () => Speech.stop();
+    return () => {
+      Speech.stop(); // returns void
+    };
   }, []);
 
   // ✅ MAIN INSTRUCTION EFFECT – 4-second delay prevents overlap
@@ -168,7 +175,7 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
       speak(instructionText, 'instruction');
       const timer = setTimeout(() => {
         speak(t(currentColor.nameKey), currentColor.id);
-      }, 4000);  // ⏱️ Increased from 2500 to 4000
+      }, 4000);
       return () => clearTimeout(timer);
     }
 
@@ -186,12 +193,11 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
       speak(instructionText, 'instruction');
       const timer = setTimeout(() => {
         speak(t(currentColor.nameKey), currentColor.id);
-      }, 6500);  // ⏱️ Increased from 2500 to 4000
+      }, 6500);
       return () => clearTimeout(timer);
     }
   }, [soundsLoaded]);
 
-  // rest of component unchanged...
   const getRandomRewardMessageKey = () => {
     const messageKeys = [
       'reward.amazing', 'reward.greatJob', 'reward.youreAStar',
@@ -217,6 +223,10 @@ export default function ColorsLearning({ onBack, onProgress }: any) {
         Animated.timing(scaleAnim, { toValue: 1.2, duration: 200, useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
+
+      // ✅ Update backend progress after each correct answer
+      const progress = Math.round(((currentIndex + 1) / colorsData.length) * 100);
+      updateStats({ learning: progress }).catch(err => console.warn('Failed to update stats', err));
 
       setTimeout(async () => {
         setShowRewardModal(false);

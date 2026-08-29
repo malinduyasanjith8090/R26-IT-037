@@ -1,4 +1,4 @@
-// routes/profile.js
+// routes/profile.js – includes rewards update endpoint
 const express = require('express');
 const { protect } = require('../middleware/authMiddleware');
 const User = require('../models/User');
@@ -22,12 +22,14 @@ router.put('/', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
+
     if (parentName) user.parentName = parentName;
     if (email) user.email = email;
     if (phone) user.phone = phone;
     if (childName) user.childName = childName;
     if (childAge) user.childAge = childAge;
     if (childGender) user.childGender = childGender;
+
     const updatedUser = await user.save();
     res.json(updatedUser);
   } catch (error) {
@@ -36,10 +38,9 @@ router.put('/', protect, async (req, res) => {
   }
 });
 
-// ✅ PUT /api/profile/stats (with stats initialization)
+// PUT /api/profile/stats (progress percentages)
 router.put('/stats', protect, async (req, res) => {
   const { learning, games, routine, behavioral } = req.body;
-
   try {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -58,6 +59,31 @@ router.put('/stats', protect, async (req, res) => {
     res.json(user.stats);
   } catch (error) {
     console.error('Stats update error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ─── NEW: update rewards (stars, badges, streak, achievements) ──
+router.put('/rewards', protect, async (req, res) => {
+  const { stars, badges, streak, achievements } = req.body;
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (stars !== undefined) user.stars = stars;
+    if (badges !== undefined) user.badges = badges;
+    if (streak !== undefined) user.streak = streak;
+    if (achievements !== undefined) user.achievements = achievements;
+
+    await user.save();
+    res.json({
+      stars: user.stars,
+      badges: user.badges,
+      streak: user.streak,
+      achievements: user.achievements,
+    });
+  } catch (error) {
+    console.error('Rewards update error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

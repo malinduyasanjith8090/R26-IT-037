@@ -1,4 +1,4 @@
-// services/api.ts – Correct order & all exports
+// services/api.ts – add updateRewards
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
@@ -31,7 +31,6 @@ interface RequestOptions {
     auth?: boolean;
 }
 
-// ✅ Put request function FIRST
 const request = async (path: string, options: RequestOptions): Promise<any> => {
     const { method, body, auth = false } = options;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -55,20 +54,23 @@ const request = async (path: string, options: RequestOptions): Promise<any> => {
     return data;
 };
 
-// ✅ Now export functions that use request
 export const signup = (data: any) => request('/auth/signup', { method: 'POST', body: data });
 export const login = (data: any) => request('/auth/login', { method: 'POST', body: data });
 export const getProfile = () => request('/profile', { method: 'GET', auth: true });
 export const updateProfile = (data: any) => request('/profile', { method: 'PUT', body: data, auth: true });
 export const getSettings = () => request('/settings', { method: 'GET', auth: true });
 export const updateSettings = (data: any) => request('/settings', { method: 'PUT', body: data, auth: true });
-
-// ✅ Add updateStats AFTER request
 export const updateStats = (data: {
     learning?: number;
     games?: number;
     routine?: number;
     behavioral?: number;
-}): Promise<any> => {
-    return request('/profile/stats', { method: 'PUT', body: data, auth: true });
-};
+}) => request('/profile/stats', { method: 'PUT', body: data, auth: true });
+
+// ─── NEW: update rewards ────────────────────────────────────────
+export const updateRewards = (data: {
+    stars?: number;
+    badges?: number;
+    streak?: number;
+    achievements?: Array<{ title: string; icon: string; earned: boolean; date: string | null }>;
+}) => request('/profile/rewards', { method: 'PUT', body: data, auth: true });

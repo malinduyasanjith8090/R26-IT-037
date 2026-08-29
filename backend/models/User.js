@@ -1,3 +1,4 @@
+// models/User.js – includes rewards/stats/achievements
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -17,15 +18,24 @@ const userSchema = new mongoose.Schema({
     sound: { type: Boolean, default: true },
     vibration: { type: Boolean, default: true }
   },
-  // ─── NEW fields ─────────────────────────────────────────────
+  // Progress stats (percentages)
   stats: {
     learning: { type: Number, default: 0 },
     games: { type: Number, default: 0 },
     routine: { type: Number, default: 0 },
     behavioral: { type: Number, default: 0 },
   },
+  // ─── NEW reward fields ──────────────────────────────────────
+  stars: { type: Number, default: 0 },
+  badges: { type: Number, default: 0 },
+  streak: { type: Number, default: 0 },
   achievements: {
-    type: [String],
+    type: [{
+      title: { type: String, required: true },
+      icon: { type: String, default: '🏆' },
+      earned: { type: Boolean, default: true },
+      date: { type: String, default: '' },
+    }],
     default: [],
   },
 }, { timestamps: true });
