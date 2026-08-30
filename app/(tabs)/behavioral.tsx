@@ -838,7 +838,7 @@ export default function ParentDashboardScreen({
     title={t('behaviourGame')}
     subtitle={t('practiceSocialSkills')}
     tint={colors.primary}
-    onPress={() => router.push('/(games)/BehaviourGame')}
+    onPress={() => router.push('/(games)/GamesHub')}
     delay={120}
   />
   <CtaCard

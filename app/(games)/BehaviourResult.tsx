@@ -24,8 +24,7 @@ import {
   getBehaviourSessionSummary,
 } from '../../services/apiService';
 
-const { width: SW } =
-  Dimensions.get('window');
+const { width: SW } = Dimensions.get('window');
 
 const H_PAD = 20;
 const CARD_RADIUS = 28;
@@ -52,6 +51,8 @@ const C = {
   plum: '#7B5EA7',
   plumLight: '#EDE5F7',
 
+  sky: '#4A9FD4',
+
   heroA: '#2BBFA4',
   heroB: '#1A7FA8',
   heroC: '#0F4F7A',
@@ -71,19 +72,14 @@ const shadow = (depth = 8) =>
         width: 0,
         height: depth / 2,
       },
-      elevation: Math.round(
-        depth / 2,
-      ),
+      elevation: Math.round(depth / 2),
     },
   });
 
 // ---------------------------------------------------------------------------
 // RESEARCH LABELS
 // ---------------------------------------------------------------------------
-// Human-readable, parent-safe labels for the trial classification categories
-// produced by classifyTrial() on the game screen. Deliberately descriptive
-// of the *task*, never diagnostic of the *child* (per the project's ethical
-// design principle — see Section VI of the paper).
+
 const CLASSIFICATION_META = {
   mastered: {
     label: 'Confident & Correct',
@@ -91,18 +87,21 @@ const CLASSIFICATION_META = {
     color: '#2BBFA4',
     icon: 'checkmark-circle',
   },
+
   uncertain_but_correct: {
     label: 'Got There, Took Time',
     si: 'නිවැරදියි, කල් ගත විය',
     color: '#4A9FD4',
     icon: 'time-outline',
   },
+
   impulsive: {
     label: 'Quick Tap, Worth Revisiting',
     si: 'ඉක්මන් තේරීමක්',
     color: '#F5A623',
     icon: 'flash-outline',
   },
+
   confused: {
     label: 'Needs More Practice',
     si: 'තව පුහුණුවක් අවශ්‍යයි',
@@ -114,42 +113,37 @@ const CLASSIFICATION_META = {
 function AnimCount({
   target,
   suffix = '',
+}: {
+  target: number;
+  suffix?: string;
 }) {
-  const anim =
-    useRef(
-      new Animated.Value(0),
-    ).current;
+  const anim = useRef(
+    new Animated.Value(0),
+  ).current;
 
-  const [
-    display,
-    setDisplay,
-  ] = useState('0');
+  const [display, setDisplay] =
+    useState('0');
 
   useEffect(() => {
     Animated.timing(anim, {
-      toValue:
-        Number.isFinite(target)
-          ? target
-          : 0,
+      toValue: Number.isFinite(target)
+        ? target
+        : 0,
 
       duration: 1200,
 
-      easing:
-        Easing.out(Easing.exp),
+      easing: Easing.out(Easing.exp),
 
       useNativeDriver: false,
     }).start();
 
-    const id =
-      anim.addListener(
-        ({ value }) => {
-          setDisplay(
-            Math.round(
-              value,
-            ).toString(),
-          );
-        },
-      );
+    const id = anim.addListener(
+      ({ value }) => {
+        setDisplay(
+          Math.round(value).toString(),
+        );
+      },
+    );
 
     return () =>
       anim.removeListener(id);
@@ -163,14 +157,17 @@ function AnimCount({
   );
 }
 
-function Stars({ count }) {
+function Stars({
+  count,
+}: {
+  count: number;
+}) {
   return (
     <View
       style={{
         flexDirection: 'row',
         gap: 6,
-        justifyContent:
-          'center',
+        justifyContent: 'center',
         marginVertical: 12,
       }}
     >
@@ -195,25 +192,22 @@ function CategoryRow({
   accuracy,
   total,
   correct,
+}: {
+  category: string;
+  accuracy: number;
+  total: number;
+  correct: number;
 }) {
-  const anim =
-    useRef(
-      new Animated.Value(0),
-    ).current;
+  const anim = useRef(
+    new Animated.Value(0),
+  ).current;
 
   useEffect(() => {
     Animated.timing(anim, {
-      toValue:
-        accuracy / 100,
-
+      toValue: accuracy / 100,
       duration: 1000,
       delay: 300,
-
-      easing:
-        Easing.out(
-          Easing.cubic,
-        ),
-
+      easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
   }, [accuracy, anim]);
@@ -235,12 +229,8 @@ function CategoryRow({
 
   return (
     <View style={cr.row}>
-      <View
-        style={cr.rowTop}
-      >
-        <Text
-          style={cr.label}
-        >
+      <View style={cr.rowTop}>
+        <Text style={cr.label}>
           {label}
         </Text>
 
@@ -254,30 +244,21 @@ function CategoryRow({
         </Text>
       </View>
 
-      <View
-        style={cr.track}
-      >
+      <View style={cr.track}>
         <Animated.View
           style={[
             cr.fill,
             {
-              backgroundColor:
-                color,
+              backgroundColor: color,
 
               width:
-                anim.interpolate(
-                  {
-                    inputRange: [
-                      0,
-                      1,
-                    ],
-
-                    outputRange: [
-                      '0%',
-                      '100%',
-                    ],
-                  },
-                ),
+                anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [
+                    '0%',
+                    '100%',
+                  ],
+                }),
             },
           ]}
         />
@@ -290,60 +271,64 @@ function CategoryRow({
   );
 }
 
-const cr =
-  StyleSheet.create({
-    row: {
-      marginBottom: 16,
-    },
+const cr = StyleSheet.create({
+  row: {
+    marginBottom: 16,
+  },
 
-    rowTop: {
-      flexDirection:
-        'row',
+  rowTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
 
-      justifyContent:
-        'space-between',
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4A3F35',
+  },
 
-      marginBottom: 6,
-    },
+  pct: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
 
-    label: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: '#4A3F35',
-    },
+  track: {
+    height: 8,
+    backgroundColor: '#E8DFD3',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
 
-    pct: {
-      fontSize: 13,
-      fontWeight: '700',
-    },
+  fill: {
+    height: 8,
+    borderRadius: 8,
+  },
 
-    track: {
-      height: 8,
-      backgroundColor:
-        '#E8DFD3',
+  sub: {
+    fontSize: 11,
+    color: '#A89E96',
+  },
+});
 
-      borderRadius: 8,
-      overflow: 'hidden',
-      marginBottom: 4,
-    },
+// ---------------------------------------------------------------------------
+// TRIAL CLASSIFICATION ROW
+// ---------------------------------------------------------------------------
 
-    fill: {
-      height: 8,
-      borderRadius: 8,
-    },
-
-    sub: {
-      fontSize: 11,
-      color: '#A89E96',
-    },
-  });
-
-// Row for the trial-classification breakdown (mastered / uncertain /
-// impulsive / confused). Purely descriptive of *this session's* task
-// performance — never shown as a label about the child.
-function ClassificationRow({ type, count, totalTrials }) {
+function ClassificationRow({
+  type,
+  count,
+  totalTrials,
+}: {
+  type: string;
+  count: number;
+  totalTrials: number;
+}) {
   const meta =
-    CLASSIFICATION_META[type] || {
+    CLASSIFICATION_META[
+      type as keyof typeof CLASSIFICATION_META
+    ] || {
       label: type,
       si: '',
       color: C.inkFaint,
@@ -352,7 +337,9 @@ function ClassificationRow({ type, count, totalTrials }) {
 
   const pct =
     totalTrials > 0
-      ? Math.round((count / totalTrials) * 100)
+      ? Math.round(
+          (count / totalTrials) * 100,
+        )
       : 0;
 
   return (
@@ -360,22 +347,37 @@ function ClassificationRow({ type, count, totalTrials }) {
       <View
         style={[
           clr.iconWrap,
-          { backgroundColor: `${meta.color}22` },
+          {
+            backgroundColor:
+              `${meta.color}22`,
+          },
         ]}
       >
         <Ionicons
-          name={meta.icon}
+          name={meta.icon as any}
           size={18}
           color={meta.color}
         />
       </View>
 
       <View style={clr.textWrap}>
-        <Text style={clr.label}>{meta.label}</Text>
-        <Text style={clr.si}>{meta.si}</Text>
+        <Text style={clr.label}>
+          {meta.label}
+        </Text>
+
+        <Text style={clr.si}>
+          {meta.si}
+        </Text>
       </View>
 
-      <Text style={[clr.count, { color: meta.color }]}>
+      <Text
+        style={[
+          clr.count,
+          {
+            color: meta.color,
+          },
+        ]}
+      >
         {count} · {pct}%
       </Text>
     </View>
@@ -420,94 +422,109 @@ const clr = StyleSheet.create({
   },
 });
 
+// ---------------------------------------------------------------------------
+// MAIN SCREEN
+// ---------------------------------------------------------------------------
+
 export default function BehaviourResultScreen() {
   const params =
     useLocalSearchParams();
 
   const sessionId =
-    Array.isArray(
-      params.sessionId,
-    )
+    Array.isArray(params.sessionId)
       ? params.sessionId[0]
       : params.sessionId;
 
   const childName =
-    Array.isArray(
-      params.childName,
-    )
+    Array.isArray(params.childName)
       ? params.childName[0]
-      : params.childName ||
-        'Child';
-
-  const score =
-    Number(
-      Array.isArray(
-        params.score,
-      )
-        ? params.score[0]
-        : params.score,
-    ) || 0;
-
-  const total =
-    Number(
-      Array.isArray(
-        params.total,
-      )
-        ? params.total[0]
-        : params.total,
-    ) || 8;
+      : params.childName || '';
 
   // -------------------------------------------------------------------------
   // RESEARCH PARAMS
   // -------------------------------------------------------------------------
-  // Passed from BehaviourGameScreen as JSON strings via navigation params.
-  // Parsed defensively — if parsing fails or params are absent, the sections
-  // that depend on them simply don't render (graceful degradation).
-  const trialClassifications = (() => {
-    try {
-      const raw = Array.isArray(params.trialClassifications)
-        ? params.trialClassifications[0]
-        : params.trialClassifications;
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
-    }
-  })();
 
-  const generalizationResults = (() => {
-    try {
-      const raw = Array.isArray(params.generalizationResults)
-        ? params.generalizationResults[0]
-        : params.generalizationResults;
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
-    }
-  })();
+  const trialClassifications =
+    (() => {
+      try {
+        const raw =
+          Array.isArray(
+            params.trialClassifications,
+          )
+            ? params.trialClassifications[0]
+            : params.trialClassifications;
 
-  const classificationCounts = trialClassifications.reduce(
-    (acc, type) => {
-      acc[type] = (acc[type] || 0) + 1;
-      return acc;
-    },
-    {},
-  );
+        const parsed = raw
+          ? JSON.parse(raw)
+          : [];
 
-  const generalizationCorrectCount = generalizationResults.filter(
-    g => g.isCorrect,
-  ).length;
+        return Array.isArray(parsed)
+          ? parsed
+          : [];
+      } catch {
+        return [];
+      }
+    })();
+
+  const generalizationResults =
+    (() => {
+      try {
+        const raw =
+          Array.isArray(
+            params.generalizationResults,
+          )
+            ? params.generalizationResults[0]
+            : params.generalizationResults;
+
+        const parsed = raw
+          ? JSON.parse(raw)
+          : [];
+
+        return Array.isArray(parsed)
+          ? parsed
+          : [];
+      } catch {
+        return [];
+      }
+    })();
+
+  const classificationCounts =
+    trialClassifications.reduce(
+      (
+        acc: Record<string, number>,
+        type: string,
+      ) => {
+        acc[type] =
+          (acc[type] || 0) + 1;
+
+        return acc;
+      },
+      {},
+    );
+
+  const generalizationCorrectCount =
+    generalizationResults.filter(
+      g => g.isCorrect,
+    ).length;
+
+  // -------------------------------------------------------------------------
+  // REAL BACKEND SESSION SUMMARY
+  // -------------------------------------------------------------------------
 
   const [
     summary,
     setSummary,
-  ] = useState(null);
+  ] = useState<any>(null);
 
   const [
     loading,
     setLoading,
   ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState(false);
 
   const fadeAnim =
     useRef(
@@ -519,12 +536,11 @@ export default function BehaviourResultScreen() {
       new Animated.Value(0.8),
     ).current;
 
-  useEffect(() => {
-    loadSummary();
-  }, [sessionId]);
-
   const loadSummary =
     async () => {
+      setLoading(true);
+      setError(false);
+
       try {
         if (!sessionId) {
           throw new Error(
@@ -537,6 +553,15 @@ export default function BehaviourResultScreen() {
             sessionId,
           );
 
+        if (
+          !data ||
+          typeof data !== 'object'
+        ) {
+          throw new Error(
+            'Invalid session summary',
+          );
+        }
+
         setSummary(data);
       } catch (e) {
         console.log(
@@ -544,40 +569,8 @@ export default function BehaviourResultScreen() {
           e?.message,
         );
 
-        const safeTotal =
-          total > 0
-            ? total
-            : 8;
-
-        const safeScore =
-          Math.max(
-            0,
-            Math.min(
-              score,
-              safeTotal,
-            ),
-          );
-
-        setSummary({
-          totalTrials:
-            safeTotal,
-
-          correctTrials:
-            safeScore,
-
-          accuracy:
-            Math.round(
-              (safeScore /
-                safeTotal) *
-                100,
-            ),
-
-          avgResponseTimeMs:
-            0,
-
-          categoryBreakdown:
-            [],
-        });
+        setSummary(null);
+        setError(true);
       } finally {
         setLoading(false);
 
@@ -603,12 +596,29 @@ export default function BehaviourResultScreen() {
       }
     };
 
+  useEffect(() => {
+    loadSummary();
+  }, [sessionId]);
+
+  // -------------------------------------------------------------------------
+  // IMPORTANT:
+  // All headline statistics come ONLY from the backend.
+  // No old score/total fallback is used.
+  // -------------------------------------------------------------------------
+
+  const totalTrials =
+    Number(summary?.totalTrials) || 0;
+
+  const correctTrials =
+    Number(summary?.correctTrials) || 0;
+
   const accuracy =
-    summary?.accuracy ??
-    Math.round(
-      (score / total) *
-        100,
-    );
+    Number(summary?.accuracy) || 0;
+
+  const avgResponseTimeMs =
+    Number(
+      summary?.avgResponseTimeMs,
+    ) || 0;
 
   const starCount =
     accuracy >= 85
@@ -617,30 +627,28 @@ export default function BehaviourResultScreen() {
         ? 2
         : 1;
 
-  const getMessage =
-    () => {
-      if (accuracy >= 85) {
-        return {
-          en: 'Fantastic! 🌟',
-          si: 'අති විශිෂ්ටයි!',
-        };
-      }
-
-      if (accuracy >= 60) {
-        return {
-          en: 'Good job! Keep going!',
-          si: 'හොඳ වැඩ! ඉදිරියට!',
-        };
-      }
-
+  const getMessage = () => {
+    if (accuracy >= 85) {
       return {
-        en: 'Nice try! Practice more 💛',
-        si: 'හොඳ උත්සාහයක්!',
+        en: 'Fantastic! 🌟',
+        si: 'අති විශිෂ්ටයි!',
       };
-    };
+    }
 
-  const msg =
-    getMessage();
+    if (accuracy >= 60) {
+      return {
+        en: 'Good job! Keep going!',
+        si: 'හොඳ වැඩ! ඉදිරියට!',
+      };
+    }
+
+    return {
+      en: 'Nice try! Practice more 💛',
+      si: 'හොඳ උත්සාහයක්!',
+    };
+  };
+
+  const msg = getMessage();
 
   const gradColors =
     accuracy >= 85
@@ -660,6 +668,93 @@ export default function BehaviourResultScreen() {
             '#E04A2A',
             '#C03010',
           ];
+
+  // -------------------------------------------------------------------------
+  // LOADING STATE
+  // -------------------------------------------------------------------------
+
+  if (loading) {
+    return (
+      <View style={s.centerScreen}>
+        <Ionicons
+          name="sync-outline"
+          size={42}
+          color={C.teal}
+        />
+
+        <Text style={s.loadingTitle}>
+          Loading results...
+        </Text>
+
+        <Text style={s.loadingSi}>
+          ප්‍රතිඵල ලබාගනිමින්...
+        </Text>
+      </View>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // ERROR STATE
+  // -------------------------------------------------------------------------
+
+  if (error || !summary) {
+    return (
+      <View style={s.centerScreen}>
+        <Ionicons
+          name="alert-circle-outline"
+          size={52}
+          color={C.coral}
+        />
+
+        <Text style={s.errorTitle}>
+          Unable to load results
+        </Text>
+
+        <Text style={s.errorBody}>
+          The session results could not
+          be loaded from the server.
+        </Text>
+
+        <Text style={s.errorSi}>
+          ප්‍රතිඵල ලබාගැනීමට නොහැකි විය.
+        </Text>
+
+        <TouchableOpacity
+          style={s.retryButton}
+          onPress={loadSummary}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name="refresh"
+            size={20}
+            color="#fff"
+          />
+
+          <Text style={s.retryText}>
+            Try Again
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={s.backButton}
+          onPress={() =>
+            router.replace(
+              '/(tabs)/dashboard',
+            )
+          }
+          activeOpacity={0.85}
+        >
+          <Text style={s.backText}>
+            Back to Dashboard
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // REAL RESULTS UI
+  // -------------------------------------------------------------------------
 
   return (
     <View style={s.root}>
@@ -682,16 +777,13 @@ export default function BehaviourResultScreen() {
             opacity: fadeAnim,
             transform: [
               {
-                scale:
-                  scaleAnim,
+                scale: scaleAnim,
               },
             ],
           }}
         >
           <LinearGradient
-            colors={
-              gradColors
-            }
+            colors={gradColors}
             start={{
               x: 0,
               y: 0,
@@ -700,9 +792,7 @@ export default function BehaviourResultScreen() {
               x: 1,
               y: 1,
             }}
-            style={
-              s.heroCard
-            }
+            style={s.heroCard}
           >
             <View
               style={
@@ -716,18 +806,18 @@ export default function BehaviourResultScreen() {
               }
             />
 
-            <Text
-              style={
-                s.childName
-              }
-            >
-              {childName}
-            </Text>
+            {childName ? (
+              <Text
+                style={
+                  s.childName
+                }
+              >
+                {childName}
+              </Text>
+            ) : null}
 
             <Stars
-              count={
-                starCount
-              }
+              count={starCount}
             />
 
             <Text
@@ -747,6 +837,7 @@ export default function BehaviourResultScreen() {
                 s.heroStats
               }
             >
+              {/* ACCURACY */}
               <View
                 style={
                   s.heroStat
@@ -780,6 +871,7 @@ export default function BehaviourResultScreen() {
                 }
               />
 
+              {/* CORRECT / TOTAL */}
               <View
                 style={
                   s.heroStat
@@ -792,11 +884,10 @@ export default function BehaviourResultScreen() {
                 >
                   <AnimCount
                     target={
-                      summary?.correctTrials ??
-                      score
+                      correctTrials
                     }
                   />
-                  /{total}
+                  /{totalTrials}
                 </Text>
 
                 <Text
@@ -814,6 +905,7 @@ export default function BehaviourResultScreen() {
                 }
               />
 
+              {/* RESPONSE TIME */}
               <View
                 style={
                   s.heroStat
@@ -824,9 +916,10 @@ export default function BehaviourResultScreen() {
                     s.heroStatVal
                   }
                 >
-                  {summary?.avgResponseTimeMs
+                  {avgResponseTimeMs >
+                  0
                     ? `${(
-                        summary.avgResponseTimeMs /
+                        avgResponseTimeMs /
                         1000
                       ).toFixed(1)}s`
                     : '--'}
@@ -844,7 +937,9 @@ export default function BehaviourResultScreen() {
           </LinearGradient>
         </Animated.View>
 
-        {summary?.categoryBreakdown
+        {/* CATEGORY BREAKDOWN */}
+
+        {summary.categoryBreakdown
           ?.length > 0 && (
           <Animated.View
             style={[
@@ -913,82 +1008,144 @@ export default function BehaviourResultScreen() {
           </Animated.View>
         )}
 
-        {/* ------------------------------------------------------------- */}
-        {/* RESEARCH: Trial classification breakdown                      */}
-        {/* Shows mastered / uncertain / impulsive / confused counts for  */}
-        {/* this session. Purely descriptive of task performance, never   */}
-        {/* framed as a statement about the child.                        */}
-        {/* ------------------------------------------------------------- */}
-        {trialClassifications.length > 0 && (
+        {/* RESEARCH: TRIAL CLASSIFICATION */}
+
+        {trialClassifications.length >
+          0 && (
           <Animated.View
-            style={[s.panel, { opacity: fadeAnim }]}
+            style={[
+              s.panel,
+              {
+                opacity:
+                  fadeAnim,
+              },
+            ]}
           >
-            <View style={s.secHead}>
+            <View
+              style={
+                s.secHead
+              }
+            >
               <View
                 style={[
                   s.secAccent,
-                  { backgroundColor: C.plum },
+                  {
+                    backgroundColor:
+                      C.plum,
+                  },
                 ]}
               />
 
               <View>
-                <Text style={s.secTitle}>
-                  How Kavindu Responded
+                <Text
+                  style={
+                    s.secTitle
+                  }
+                >
+                  {childName
+                    ? `How ${childName} Responded`
+                    : 'How the Child Responded'}
                 </Text>
-                <Text style={s.secSub}>
-                  Response pattern this session
+
+                <Text
+                  style={
+                    s.secSub
+                  }
+                >
+                  Response pattern
+                  this session
                 </Text>
               </View>
             </View>
 
-            {Object.keys(CLASSIFICATION_META).map(type => (
+            {Object.keys(
+              CLASSIFICATION_META,
+            ).map(type => (
               <ClassificationRow
                 key={type}
                 type={type}
-                count={classificationCounts[type] || 0}
-                totalTrials={trialClassifications.length}
+                count={
+                  classificationCounts[
+                    type
+                  ] || 0
+                }
+                totalTrials={
+                  trialClassifications.length
+                }
               />
             ))}
           </Animated.View>
         )}
 
-        {/* ------------------------------------------------------------- */}
-        {/* RESEARCH: Generalization probe results                        */}
-        {/* Shows whether the child correctly handled a brand-new,        */}
-        {/* never-before-seen pairing — evidence of rule learning rather  */}
-        {/* than memorisation of specific pictures.                        */}
-        {/* ------------------------------------------------------------- */}
-        {generalizationResults.length > 0 && (
+        {/* RESEARCH: GENERALIZATION */}
+
+        {generalizationResults.length >
+          0 && (
           <Animated.View
-            style={[s.panel, { opacity: fadeAnim }]}
+            style={[
+              s.panel,
+              {
+                opacity:
+                  fadeAnim,
+              },
+            ]}
           >
-            <View style={s.secHead}>
+            <View
+              style={
+                s.secHead
+              }
+            >
               <View
                 style={[
                   s.secAccent,
-                  { backgroundColor: C.sky || '#4A9FD4' },
+                  {
+                    backgroundColor:
+                      C.sky,
+                  },
                 ]}
               />
 
               <View>
-                <Text style={s.secTitle}>
+                <Text
+                  style={
+                    s.secTitle
+                  }
+                >
                   New Situation Check
                 </Text>
-                <Text style={s.secSub}>
-                  නව අවස්ථාවක් හඳුනාගැනීම
+
+                <Text
+                  style={
+                    s.secSub
+                  }
+                >
+                  නව අවස්ථාවක්
+                  හඳුනාගැනීම
                 </Text>
               </View>
             </View>
 
-            <Text style={s.genBody}>
+            <Text
+              style={
+                s.genBody
+              }
+            >
               {generalizationCorrectCount}/
-              {generalizationResults.length} correct on a
-              scenario {childName} hadn't practiced before —
-              a good sign of understanding the idea, not just
-              memorising a picture.
+              {generalizationResults.length}{' '}
+              correct on a
+              scenario{' '}
+              {childName
+                ? `${childName} hadn't practiced`
+                : "the child hadn't practiced"}{' '}
+              before — a good sign of
+              understanding the idea,
+              not just memorising a
+              picture.
             </Text>
           </Animated.View>
         )}
+
+        {/* ENCOURAGEMENT */}
 
         <Animated.View
           style={{
@@ -1040,6 +1197,8 @@ export default function BehaviourResultScreen() {
             </Text>
           </LinearGradient>
         </Animated.View>
+
+        {/* ACTIONS */}
 
         <Animated.View
           style={[
@@ -1142,9 +1301,95 @@ const s =
       paddingBottom: 16,
     },
 
+    // -----------------------------------------------------------------------
+    // LOADING / ERROR
+    // -----------------------------------------------------------------------
+
+    centerScreen: {
+      flex: 1,
+      backgroundColor: C.bg,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 32,
+    },
+
+    loadingTitle: {
+      marginTop: 16,
+      fontSize: 19,
+      fontWeight: '800',
+      color: C.ink,
+      textAlign: 'center',
+    },
+
+    loadingSi: {
+      marginTop: 6,
+      fontSize: 13,
+      color: C.inkFaint,
+      textAlign: 'center',
+    },
+
+    errorTitle: {
+      marginTop: 16,
+      fontSize: 21,
+      fontWeight: '800',
+      color: C.ink,
+      textAlign: 'center',
+    },
+
+    errorBody: {
+      marginTop: 10,
+      fontSize: 14,
+      lineHeight: 21,
+      color: C.inkMid,
+      textAlign: 'center',
+    },
+
+    errorSi: {
+      marginTop: 6,
+      fontSize: 13,
+      color: C.inkFaint,
+      textAlign: 'center',
+    },
+
+    retryButton: {
+      marginTop: 24,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 9,
+      paddingHorizontal: 28,
+      paddingVertical: 15,
+      borderRadius: 18,
+      backgroundColor: C.teal,
+      ...shadow(8),
+    },
+
+    retryText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '800',
+    },
+
+    backButton: {
+      marginTop: 12,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderRadius: 18,
+      backgroundColor: C.tealLight,
+    },
+
+    backText: {
+      color: C.teal,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+
+    // -----------------------------------------------------------------------
+    // HERO
+    // -----------------------------------------------------------------------
+
     heroCard: {
-      marginHorizontal:
-        H_PAD,
+      marginHorizontal: H_PAD,
 
       marginTop:
         Platform.OS === 'ios'
@@ -1156,43 +1401,31 @@ const s =
 
       padding: 28,
 
-      alignItems:
-        'center',
+      alignItems: 'center',
 
-      overflow:
-        'hidden',
+      overflow: 'hidden',
 
       ...shadow(20),
     },
 
     heroBubble1: {
-      position:
-        'absolute',
-
+      position: 'absolute',
       width: 160,
       height: 160,
-
       borderRadius: 80,
-
       backgroundColor:
         'rgba(255,255,255,0.07)',
-
       top: -40,
       right: -30,
     },
 
     heroBubble2: {
-      position:
-        'absolute',
-
+      position: 'absolute',
       width: 100,
       height: 100,
-
       borderRadius: 50,
-
       backgroundColor:
         'rgba(255,255,255,0.05)',
-
       bottom: -20,
       left: 40,
     },
@@ -1200,10 +1433,8 @@ const s =
     childName: {
       color:
         'rgba(255,255,255,0.8)',
-
       fontSize: 14,
       fontWeight: '600',
-
       marginBottom: 4,
     },
 
@@ -1211,41 +1442,30 @@ const s =
       color: '#fff',
       fontSize: 24,
       fontWeight: '800',
-
-      textAlign:
-        'center',
-
+      textAlign: 'center',
       marginTop: 4,
     },
 
     msgSi: {
       color:
         'rgba(255,255,255,0.8)',
-
       fontSize: 14,
       marginTop: 6,
     },
 
     heroStats: {
-      flexDirection:
-        'row',
-
+      flexDirection: 'row',
       marginTop: 22,
-
       backgroundColor:
         'rgba(255,255,255,0.15)',
-
       borderRadius: 18,
-
       padding: 14,
-
       gap: 4,
     },
 
     heroStat: {
       flex: 1,
-      alignItems:
-        'center',
+      alignItems: 'center',
     },
 
     heroStatVal: {
@@ -1257,19 +1477,20 @@ const s =
     heroStatLabel: {
       color:
         'rgba(255,255,255,0.75)',
-
       fontSize: 11,
       marginTop: 3,
     },
 
     heroStatDivider: {
       width: 1,
-
       backgroundColor:
         'rgba(255,255,255,0.25)',
-
       marginHorizontal: 4,
     },
+
+    // -----------------------------------------------------------------------
+    // PANELS
+    // -----------------------------------------------------------------------
 
     panel: {
       backgroundColor:
@@ -1289,14 +1510,9 @@ const s =
     },
 
     secHead: {
-      flexDirection:
-        'row',
-
-      alignItems:
-        'center',
-
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: 10,
-
       marginBottom: 16,
     },
 
@@ -1324,6 +1540,10 @@ const s =
       lineHeight: 20,
     },
 
+    // -----------------------------------------------------------------------
+    // ENCOURAGEMENT
+    // -----------------------------------------------------------------------
+
     encCard: {
       marginHorizontal:
         H_PAD,
@@ -1335,24 +1555,18 @@ const s =
 
       padding: 22,
 
-      overflow:
-        'hidden',
+      overflow: 'hidden',
 
       ...shadow(12),
     },
 
     encBubble: {
-      position:
-        'absolute',
-
+      position: 'absolute',
       width: 140,
       height: 140,
-
       borderRadius: 70,
-
       backgroundColor:
         'rgba(255,255,255,0.1)',
-
       top: -40,
       right: -30,
     },
@@ -1366,13 +1580,14 @@ const s =
     encBody: {
       color:
         'rgba(255,255,255,0.85)',
-
       fontSize: 13,
-
       marginTop: 8,
-
       lineHeight: 20,
     },
+
+    // -----------------------------------------------------------------------
+    // ACTIONS
+    // -----------------------------------------------------------------------
 
     actions: {
       marginHorizontal:
@@ -1386,22 +1601,14 @@ const s =
     btnPrimary: {
       borderRadius: 20,
       overflow: 'hidden',
-
       ...shadow(10),
     },
 
     btnGrad: {
-      flexDirection:
-        'row',
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
       gap: 10,
-
       paddingVertical: 18,
     },
 
@@ -1412,24 +1619,14 @@ const s =
     },
 
     btnSecondary: {
-      flexDirection:
-        'row',
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
       gap: 10,
-
       paddingVertical: 16,
-
       borderRadius: 20,
-
       backgroundColor:
         C.tealLight,
-
       ...shadow(4),
     },
 
