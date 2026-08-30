@@ -1,16 +1,18 @@
-// app/(tabs)/learning.tsx (real-time rewards from backend)
+// app/(tabs)/learning.tsx (local storage – real-time rewards & progress + AR)
 import { MaterialIcons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
+  DeviceEventEmitter,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import AnimalsLearning from '../../components/AnimalsLearning';
+import ARLearning from '../../components/ARLearning'; // ✅ new import
 import ColorsLearning from '../../components/ColorsLearning';
 import FruitsLearning from '../../components/FruitsLearning';
 import ShapesLearning from '../../components/ShapesLearning';
@@ -19,62 +21,243 @@ import WordsLearning from '../../components/WordsLearning';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
-import { getProfile } from '../../services/api';
+
+// ─── LOCAL STORAGE KEYS ─────────────────────────────────────────
+const STORAGE_KEYS = {
+  stars: 'bloom_stars',
+  badges: 'bloom_badges',
+  streak: 'bloom_streak',
+  achievements: 'bloom_achievements',
+  progressLetters: 'progress_letters',
+  progressSinhala: 'progress_sinhala',
+  progressNumbers: 'progress_numbers',
+  progressColors: 'progress_colors',
+  progressShapes: 'progress_shapes',
+  progressAnimals: 'progress_animals',
+  progressFruits: 'progress_fruits',
+  progressWords: 'progress_words',
+  progressAR: 'progress_ar', // ✅ new key for AR progress
+};
 
 export default function LearningScreen() {
   const { colors } = useTheme();
   const { t, language } = useLanguage();
   const [selectedType, setSelectedType] = useState<'letters' | 'sinhala' | 'numbers' | null>(null);
-  const [selectedPractice, setSelectedPractice] = useState<'colors' | 'shapes' | 'animals' | 'fruits' | 'words' | null>(null);
-  const [learningProgress, setLearningProgress] = useState(0);
+  // ✅ updated union type to include 'ar'
+  const [selectedPractice, setSelectedPractice] = useState<'colors' | 'shapes' | 'animals' | 'fruits' | 'words' | 'ar' | null>(null);
 
-  const [userData, setUserData] = useState({
-    stars: 0,
-    badges: 0,
-    streak: 0,
-    achievements: [] as Array<{ title: string; icon: string; earned: boolean; date: string | null }>,
-  });
+  // ─── User stats (local) ───────────────────────────────────────
+  const [stars, setStars] = useState(0);
+  const [badges, setBadges] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [achievements, setAchievements] = useState<Array<{ title: string; icon: string; earned: boolean; date: string | null }>>([]);
 
-  const loadUserProfile = useCallback(async () => {
+  // ─── Progress values for each activity (0–100) ────────────────
+  const [progressLetters, setProgressLetters] = useState(0);
+  const [progressSinhala, setProgressSinhala] = useState(0);
+  const [progressNumbers, setProgressNumbers] = useState(0);
+  const [progressColors, setProgressColors] = useState(0);
+  const [progressShapes, setProgressShapes] = useState(0);
+  const [progressAnimals, setProgressAnimals] = useState(0);
+  const [progressFruits, setProgressFruits] = useState(0);
+  const [progressWords, setProgressWords] = useState(0);
+  const [progressAR, setProgressAR] = useState(0); // ✅ AR progress
+
+  // ─── Load local storage on mount and focus ────────────────────
+  const loadLocalData = useCallback(async () => {
     try {
-      const data = await getProfile();
-      setUserData({
-        stars: data.stars || 0,
-        badges: data.badges || 0,
-        streak: data.streak || 0,
-        achievements: data.achievements?.length
-          ? data.achievements
-          : [], // if empty, we'll show default empty state below
-      });
-    } catch (error) {
-      Alert.alert('Session expired', 'Please sign in again.');
-      router.replace('/login');
-    }
-  }, []);
+      const [
+        savedStars, savedBadges, savedStreak, savedAchievements,
+        savedLetters, savedSinhala, savedNumbers,
+        savedColors, savedShapes, savedAnimals, savedFruits, savedWords, savedAR
+      ] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.stars),
+        AsyncStorage.getItem(STORAGE_KEYS.badges),
+        AsyncStorage.getItem(STORAGE_KEYS.streak),
+        AsyncStorage.getItem(STORAGE_KEYS.achievements),
+        AsyncStorage.getItem(STORAGE_KEYS.progressLetters),
+        AsyncStorage.getItem(STORAGE_KEYS.progressSinhala),
+        AsyncStorage.getItem(STORAGE_KEYS.progressNumbers),
+        AsyncStorage.getItem(STORAGE_KEYS.progressColors),
+        AsyncStorage.getItem(STORAGE_KEYS.progressShapes),
+        AsyncStorage.getItem(STORAGE_KEYS.progressAnimals),
+        AsyncStorage.getItem(STORAGE_KEYS.progressFruits),
+        AsyncStorage.getItem(STORAGE_KEYS.progressWords),
+        AsyncStorage.getItem(STORAGE_KEYS.progressAR), // ✅ AR
+      ]);
 
+      setStars(savedStars ? parseInt(savedStars, 10) : 0);
+      setBadges(savedBadges ? parseInt(savedBadges, 10) : 0);
+      setStreak(savedStreak ? parseInt(savedStreak, 10) : 0);
+
+      if (savedAchievements) {
+        setAchievements(JSON.parse(savedAchievements));
+      } else {
+        setAchievements([
+          { title: language === 'en' ? 'First Trace' : 'පළමු ලුහුබැඳීම', icon: '🏆', earned: false, date: null },
+          { title: language === 'en' ? 'English Letter Master' : 'ඉංග්‍රීසි අකුරු ප්‍රවීණයා', icon: '🔤', earned: false, date: null },
+          { title: language === 'en' ? 'Color Explorer' : 'වර්ණ ගවේෂකයා', icon: '🎨', earned: false, date: null },
+          { title: language === 'en' ? 'Sinhala Letter Master' : 'සිංහල අකුරු ප්‍රවීණයා', icon: '🕉️', earned: false, date: null },
+          { title: language === 'en' ? 'Number Ninja' : 'අංක නින්ජා', icon: '🔢', earned: false, date: null },
+          { title: language === 'en' ? 'Shape Master' : 'හැඩතල ප්‍රවීණයා', icon: '🔷', earned: false, date: null },
+          { title: language === 'en' ? 'Word Wizard' : 'වචන මායාකාරයා', icon: '📚', earned: false, date: null },
+          { title: language === 'en' ? 'Vocabulary Star' : 'වචන තරුව', icon: '⭐', earned: false, date: null },
+          { title: language === 'en' ? 'AR Explorer' : 'AR ගවේෂකයා', icon: '👓', earned: false, date: null }, // ✅ added
+        ]);
+      }
+
+      setProgressLetters(savedLetters ? parseInt(savedLetters, 10) : 0);
+      setProgressSinhala(savedSinhala ? parseInt(savedSinhala, 10) : 0);
+      setProgressNumbers(savedNumbers ? parseInt(savedNumbers, 10) : 0);
+      setProgressColors(savedColors ? parseInt(savedColors, 10) : 0);
+      setProgressShapes(savedShapes ? parseInt(savedShapes, 10) : 0);
+      setProgressAnimals(savedAnimals ? parseInt(savedAnimals, 10) : 0);
+      setProgressFruits(savedFruits ? parseInt(savedFruits, 10) : 0);
+      setProgressWords(savedWords ? parseInt(savedWords, 10) : 0);
+      setProgressAR(savedAR ? parseInt(savedAR, 10) : 0); // ✅ AR
+    } catch (error) {
+      console.error('Error loading local data:', error);
+    }
+  }, [language]);
+
+  // Reload on every screen focus
   useFocusEffect(
     useCallback(() => {
-      loadUserProfile();
-    }, [loadUserProfile])
+      loadLocalData();
+    }, [loadLocalData])
   );
 
-  // Fallback achievements if user has none (show locked placeholders)
-  const defaultAchievements = [
-    { title: language === 'en' ? 'First Trace' : 'පළමු ලුහුබැඳීම', icon: '🏆', earned: false, date: null },
-    { title: language === 'en' ? 'English Letter Master' : 'ඉංග්‍රීසි අකුරු ප්‍රවීණයා', icon: '🔤', earned: false, date: null },
-    { title: language === 'en' ? 'Color Explorer' : 'වර්ණ ගවේෂකයා', icon: '🎨', earned: false, date: null },
-    { title: language === 'en' ? 'Sinhala Letter Master' : 'සිංහල අකුරු ප්‍රවීණයා', icon: '🕉️', earned: false, date: null },
-    { title: language === 'en' ? 'Number Ninja' : 'අංක නින්ජා', icon: '🔢', earned: false, date: null },
-    { title: language === 'en' ? 'Shape Master' : 'හැඩතල ප්‍රවීණයා', icon: '🔷', earned: false, date: null },
-    { title: language === 'en' ? 'Word Wizard' : 'වචන මායාකාරයා', icon: '📚', earned: false, date: null },
-    { title: language === 'en' ? 'Vocabulary Star' : 'වචන තරුව', icon: '⭐', earned: false, date: null },
-  ];
+  // ─── Save functions ───────────────────────────────────────────
+  const saveStars = async (value: number) => {
+    setStars(value);
+    await AsyncStorage.setItem(STORAGE_KEYS.stars, String(value));
+  };
 
-  const achievementsToDisplay = userData.achievements.length > 0
-    ? userData.achievements
-    : defaultAchievements;
+  const saveBadges = async (value: number) => {
+    setBadges(value);
+    await AsyncStorage.setItem(STORAGE_KEYS.badges, String(value));
+  };
 
-  // Handle Tracing Game (Letters/Numbers)
+  const saveStreak = async (value: number) => {
+    setStreak(value);
+    await AsyncStorage.setItem(STORAGE_KEYS.streak, String(value));
+  };
+
+  const saveAchievements = async (list: any[]) => {
+    setAchievements(list);
+    await AsyncStorage.setItem(STORAGE_KEYS.achievements, JSON.stringify(list));
+  };
+
+  const saveProgress = async (key: string, value: number) => {
+    await AsyncStorage.setItem(key, String(value));
+  };
+
+  // ─── Helper to unlock achievement ─────────────────────────────
+  const unlockAchievement = (index: number, date: string) => {
+    setAchievements(prev => {
+      const updated = prev.map((a, i) =>
+        i === index ? { ...a, earned: true, date } : a
+      );
+      saveAchievements(updated);
+      return updated;
+    });
+  };
+
+  // ─── Real-time event listeners ────────────────────────────────
+  useEffect(() => {
+    const onStarEarned = () => {
+      setStars(prev => {
+        const newVal = prev + 1;
+        AsyncStorage.setItem(STORAGE_KEYS.stars, String(newVal));
+        return newVal;
+      });
+    };
+
+    const onBadgeEarned = () => {
+      setBadges(prev => {
+        const newVal = prev + 1;
+        AsyncStorage.setItem(STORAGE_KEYS.badges, String(newVal));
+        return newVal;
+      });
+    };
+
+    const onStreakUpdate = (value: number) => {
+      setStreak(value);
+      AsyncStorage.setItem(STORAGE_KEYS.streak, String(value));
+    };
+
+    const onProgressUpdate = ({ key, value }: { key: string; value: number }) => {
+      AsyncStorage.setItem(key, String(value));
+    };
+
+    const starSub = DeviceEventEmitter.addListener('starEarned', onStarEarned);
+    const badgeSub = DeviceEventEmitter.addListener('badgeEarned', onBadgeEarned);
+    const streakSub = DeviceEventEmitter.addListener('streakUpdate', onStreakUpdate);
+    const progressSub = DeviceEventEmitter.addListener('progressUpdate', onProgressUpdate);
+
+    return () => {
+      starSub.remove();
+      badgeSub.remove();
+      streakSub.remove();
+      progressSub.remove();
+    };
+  }, []);
+
+  // ─── Completion handlers that update local stats ──────────────
+  const handleTracingComplete = async (type: 'letters' | 'sinhala' | 'numbers') => {
+    await saveStars(stars + 10);
+    await saveBadges(badges + 1);
+    await saveStreak(streak + 1);
+
+    const today = new Date().toLocaleDateString();
+    if (type === 'letters') {
+      await saveProgress(STORAGE_KEYS.progressLetters, 100);
+      unlockAchievement(1, today);
+    } else if (type === 'sinhala') {
+      await saveProgress(STORAGE_KEYS.progressSinhala, 100);
+      unlockAchievement(3, today);
+    } else {
+      await saveProgress(STORAGE_KEYS.progressNumbers, 100);
+      unlockAchievement(4, today);
+    }
+    unlockAchievement(0, today);
+  };
+
+  const handlePracticeComplete = async (practice: string) => {
+    await saveStars(stars + 10);
+    await saveBadges(badges + 1);
+    await saveStreak(streak + 1);
+
+    const today = new Date().toLocaleDateString();
+    switch (practice) {
+      case 'colors':
+        await saveProgress(STORAGE_KEYS.progressColors, 100);
+        unlockAchievement(2, today);
+        break;
+      case 'shapes':
+        await saveProgress(STORAGE_KEYS.progressShapes, 100);
+        unlockAchievement(5, today);
+        break;
+      case 'animals':
+        await saveProgress(STORAGE_KEYS.progressAnimals, 100);
+        break;
+      case 'fruits':
+        await saveProgress(STORAGE_KEYS.progressFruits, 100);
+        break;
+      case 'words':
+        await saveProgress(STORAGE_KEYS.progressWords, 100);
+        unlockAchievement(6, today);
+        unlockAchievement(7, today);
+        break;
+      case 'ar': // ✅ new case for AR
+        await saveProgress(STORAGE_KEYS.progressAR, 100);
+        unlockAchievement(8, today); // ✅ unlock AR Explorer achievement
+        break;
+    }
+    unlockAchievement(0, today);
+  };
+
+  // ─── If tracing game selected ─────────────────────────────────
   if (selectedType) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -88,6 +271,7 @@ export default function LearningScreen() {
         <TracingGame
           type={selectedType}
           onComplete={() => {
+            handleTracingComplete(selectedType);
             if (selectedType === 'letters') {
               alert(`🎉 Congratulations! You mastered all English letters! 🎉`);
             } else if (selectedType === 'sinhala') {
@@ -96,13 +280,17 @@ export default function LearningScreen() {
               alert(`🎉 Congratulations! You mastered all numbers! 🎉`);
             }
           }}
-          onProgress={(progress: number) => setLearningProgress(progress)}
+          onProgress={(progress: number) => {
+            if (selectedType === 'letters') saveProgress(STORAGE_KEYS.progressLetters, progress);
+            else if (selectedType === 'sinhala') saveProgress(STORAGE_KEYS.progressSinhala, progress);
+            else saveProgress(STORAGE_KEYS.progressNumbers, progress);
+          }}
         />
       </View>
     );
   }
 
-  // Handle Practice Modules
+  // ─── If practice module selected ──────────────────────────────
   if (selectedPractice) {
     const PracticeComponent = {
       colors: ColorsLearning,
@@ -110,18 +298,27 @@ export default function LearningScreen() {
       animals: AnimalsLearning,
       fruits: FruitsLearning,
       words: WordsLearning,
+      ar: ARLearning, // ✅ added AR
     }[selectedPractice];
 
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <PracticeComponent
           onBack={() => setSelectedPractice(null)}
-          onProgress={(progress: number) => console.log('Practice progress:', progress)}
+          onProgress={(progress: number) => {
+            if (selectedPractice === 'colors') saveProgress(STORAGE_KEYS.progressColors, progress);
+            else if (selectedPractice === 'shapes') saveProgress(STORAGE_KEYS.progressShapes, progress);
+            else if (selectedPractice === 'animals') saveProgress(STORAGE_KEYS.progressAnimals, progress);
+            else if (selectedPractice === 'fruits') saveProgress(STORAGE_KEYS.progressFruits, progress);
+            else if (selectedPractice === 'words') saveProgress(STORAGE_KEYS.progressWords, progress);
+            else if (selectedPractice === 'ar') saveProgress(STORAGE_KEYS.progressAR, progress); // ✅ AR
+          }}
         />
       </View>
     );
   }
 
+  // ─── Main learning screen ─────────────────────────────────────
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -134,11 +331,11 @@ export default function LearningScreen() {
         </Text>
       </View>
 
-      {/* Stats Card – real user data */}
+      {/* Stats Card – local values */}
       <View style={[styles.statsCard, { backgroundColor: colors.surface }]}>
         <View style={styles.statItem}>
           <MaterialIcons name="stars" size={32} color={colors.accentYellow} />
-          <Text style={[styles.statValue, { color: colors.text }]}>{userData.stars}</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{stars}</Text>
           <Text style={[styles.statLabel, { color: colors.textLight }]}>
             {language === 'en' ? 'Stars Earned' : 'තරු උපයා ඇත'}
           </Text>
@@ -146,7 +343,7 @@ export default function LearningScreen() {
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <MaterialIcons name="emoji-events" size={32} color={colors.accentOrange} />
-          <Text style={[styles.statValue, { color: colors.text }]}>{userData.badges}</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{badges}</Text>
           <Text style={[styles.statLabel, { color: colors.textLight }]}>
             {language === 'en' ? 'Badges' : 'පදක්කම්'}
           </Text>
@@ -154,7 +351,7 @@ export default function LearningScreen() {
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <MaterialIcons name="local-fire-department" size={32} color={colors.accentPink} />
-          <Text style={[styles.statValue, { color: colors.text }]}>{userData.streak}</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{streak}</Text>
           <Text style={[styles.statLabel, { color: colors.textLight }]}>
             {language === 'en' ? 'Day Streak' : 'දින අඛණ්ඩතාව'}
           </Text>
@@ -179,16 +376,14 @@ export default function LearningScreen() {
             {language === 'en' ? 'English Letters A-Z' : 'ඉංග්‍රීසි අකුරු A-Z'}
           </Text>
           <Text style={[styles.cardDescription, { color: colors.textLight }]}>
-            {language === 'en'
-              ? 'Trace uppercase English letters from A to Z with guided dotted lines'
-              : 'මඟ පෙන්වන තිත් රේඛා සමඟ A සිට Z දක්වා ඉංග්‍රීසි ලොකු අකුරු සොයා ගන්න'}
+            {language === 'en' ? 'Trace uppercase English letters from A to Z with guided dotted lines' : 'මඟ පෙන්වන තිත් රේඛා සමඟ A සිට Z දක්වා ඉංග්‍රීසි ලොකු අකුරු සොයා ගන්න'}
           </Text>
           <View style={styles.cardProgress}>
             <View style={[styles.progressBar, { backgroundColor: colors.primaryLight }]}>
-              <View style={[styles.progressFill, { width: '60%', backgroundColor: '#FF6B6B' }]} />
+              <View style={[styles.progressFill, { width: `${progressLetters}%`, backgroundColor: '#FF6B6B' }]} />
             </View>
             <Text style={[styles.progressText, { color: colors.textLight }]}>
-              {language === 'en' ? '15/26 Completed' : '15/26 සම්පූර්ණයි'}
+              {language === 'en' ? `${Math.round(progressLetters / 100 * 26)}/26 Completed` : `${Math.round(progressLetters / 100 * 26)}/26 සම්පූර්ණයි`}
             </Text>
           </View>
         </View>
@@ -208,16 +403,14 @@ export default function LearningScreen() {
             {language === 'en' ? 'Sinhala Letters' : 'සිංහල අකුරු'}
           </Text>
           <Text style={[styles.cardDescription, { color: colors.textLight }]}>
-            {language === 'en'
-              ? 'Trace Sinhala letters including vowels and consonants with guided dotted lines'
-              : 'මඟ පෙන්වන තිත් රේඛා සමඟ ස්වර සහ ව්‍යාංජන ඇතුළු සිංහල අකුරු සොයා ගන්න'}
+            {language === 'en' ? 'Trace Sinhala letters including vowels and consonants with guided dotted lines' : 'මඟ පෙන්වන තිත් රේඛා සමඟ ස්වර සහ ව්‍යාංජන ඇතුළු සිංහල අකුරු සොයා ගන්න'}
           </Text>
           <View style={styles.cardProgress}>
             <View style={[styles.progressBar, { backgroundColor: colors.primaryLight }]}>
-              <View style={[styles.progressFill, { width: '30%', backgroundColor: '#9C27B0' }]} />
+              <View style={[styles.progressFill, { width: `${progressSinhala}%`, backgroundColor: '#9C27B0' }]} />
             </View>
             <Text style={[styles.progressText, { color: colors.textLight }]}>
-              {language === 'en' ? '18/60 Completed' : '18/60 සම්පූර්ණයි'}
+              {language === 'en' ? `${Math.round(progressSinhala / 100 * 60)}/60 Completed` : `${Math.round(progressSinhala / 100 * 60)}/60 සම්පූර්ණයි`}
             </Text>
           </View>
         </View>
@@ -237,16 +430,14 @@ export default function LearningScreen() {
             {language === 'en' ? 'Numbers 0-9' : 'අංක 0-9'}
           </Text>
           <Text style={[styles.cardDescription, { color: colors.textLight }]}>
-            {language === 'en'
-              ? 'Trace numbers with fun animations and voice guidance'
-              : 'විනෝදජනක සජීවිකරණ සහ හඬ මඟ පෙන්වීම් සමඟ අංක සොයා ගන්න'}
+            {language === 'en' ? 'Trace numbers with fun animations and voice guidance' : 'විනෝදජනක සජීවිකරණ සහ හඬ මඟ පෙන්වීම් සමඟ අංක සොයා ගන්න'}
           </Text>
           <View style={styles.cardProgress}>
             <View style={[styles.progressBar, { backgroundColor: colors.primaryLight }]}>
-              <View style={[styles.progressFill, { width: '40%', backgroundColor: '#4ECDC4' }]} />
+              <View style={[styles.progressFill, { width: `${progressNumbers}%`, backgroundColor: '#4ECDC4' }]} />
             </View>
             <Text style={[styles.progressText, { color: colors.textLight }]}>
-              {language === 'en' ? '4/10 Completed' : '4/10 සම්පූර්ණයි'}
+              {language === 'en' ? `${Math.round(progressNumbers / 100 * 10)}/10 Completed` : `${Math.round(progressNumbers / 100 * 10)}/10 සම්පූර්ණයි`}
             </Text>
           </View>
         </View>
@@ -338,6 +529,21 @@ export default function LearningScreen() {
             <Text style={styles.practiceButtonText}>{language === 'en' ? 'Start' : 'ආරම්භ කරන්න'}</Text>
           </TouchableOpacity>
         </TouchableOpacity>
+
+        {/* ✅ AR Explorer Card (new) */}
+        <TouchableOpacity
+          style={[styles.practiceCard, { backgroundColor: colors.surface }]}
+          onPress={() => setSelectedPractice('ar')}
+        >
+          <View style={[styles.practiceIcon, { backgroundColor: '#118AB220' }]}>
+            <MaterialIcons name="view-in-ar" size={40} color="#118AB2" />
+          </View>
+          <Text style={[styles.practiceName, { color: colors.text }]}>{language === 'en' ? 'AR Explorer' : 'AR ගවේෂකයා'}</Text>
+          <Text style={[styles.practiceDesc, { color: colors.textLight }]}>{language === 'en' ? 'See things in real life' : 'සැබෑ ලෝකයේ දැක ගන්න'}</Text>
+          <TouchableOpacity style={[styles.practiceButton, { backgroundColor: '#118AB2' }]}>
+            <Text style={styles.practiceButtonText}>{language === 'en' ? 'Start' : 'ආරම්භ කරන්න'}</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </View>
 
       {/* Bilingual Learning Banner */}
@@ -348,18 +554,16 @@ export default function LearningScreen() {
           <Text style={styles.flagEmoji}>🇱🇰</Text>
         </View>
         <Text style={[styles.bilingualText, { color: colors.text }]}>
-          {language === 'en'
-            ? 'Learn both English and Sinhala words!'
-            : 'ඉංග්‍රීසි සහ සිංහල වචන දෙකම ඉගෙන ගන්න!'}
+          {language === 'en' ? 'Learn both English and Sinhala words!' : 'ඉංග්‍රීසි සහ සිංහල වචන දෙකම ඉගෙන ගන්න!'}
         </Text>
       </View>
 
-      {/* Achievements – real user data */}
+      {/* Achievements – local values */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         {language === 'en' ? 'Recent Achievements' : 'මෑත ජයග්‍රහණ'}
       </Text>
       <View style={styles.achievementsContainer}>
-        {achievementsToDisplay.map((achievement, index) => (
+        {achievements.map((achievement, index) => (
           <View
             key={index}
             style={[
@@ -385,7 +589,7 @@ export default function LearningScreen() {
   );
 }
 
-// Styles (unchanged from original)
+// Styles remain exactly the same as in the original file
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backButton: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, paddingTop: Spacing.xl },
