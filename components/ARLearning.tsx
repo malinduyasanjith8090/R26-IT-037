@@ -1,281 +1,239 @@
-// components/ARLearning.tsx (Updated with type safety)
+// components/ARLearning.tsx (unchanged)
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { BorderRadius, Spacing, Typography } from '../constants/theme';
+import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
+import ARCameraView from './ARCameraView';
 
-const { width, height } = Dimensions.get('window');
+export interface ARItem {
+  nameEn: string;
+  nameSi: string;
+  emoji: string;
+}
 
-// Define the item type
-interface LetterItem {
+interface ARCategory {
   id: string;
-  letter: string;
-  word: string;
-  image: string;
+  nameEn: string;
+  nameSi: string;
+  icon: string;
   color: string;
-  difficulty: number;
+  items: ARItem[];
 }
 
-interface NumberItem {
-  id: number;
-  number: string;
-  word: string;
-  image: string;
-  color: string;
-  difficulty: number;
-  count: number;
-}
-
-type LearningItem = LetterItem | NumberItem;
+const AR_CATEGORIES: ARCategory[] = [
+  {
+    id: 'toys',
+    nameEn: 'Toys',
+    nameSi: 'සෙල්ලම් බඩු',
+    icon: '🧸',
+    color: '#FF6B6B',
+    items: [
+      { nameEn: 'Teddy Bear', nameSi: 'මොළොක් වලසා', emoji: '🧸' },
+      { nameEn: 'Car', nameSi: 'මෝටර් රථය', emoji: '🚗' },
+      { nameEn: 'Ball', nameSi: 'පන්දුව', emoji: '⚽' },
+      { nameEn: 'Robot', nameSi: 'රොබෝ', emoji: '🤖' },
+      { nameEn: 'Kite', nameSi: 'රවුම', emoji: '🪁' },
+      { nameEn: 'Balloon', nameSi: 'බැලූනය', emoji: '🎈' },
+    ],
+  },
+  {
+    id: 'animals',
+    nameEn: 'Animals',
+    nameSi: 'සතුන්',
+    icon: '🐶',
+    color: '#FFD166',
+    items: [
+      { nameEn: 'Dog', nameSi: 'බල්ලා', emoji: '🐶' },
+      { nameEn: 'Cat', nameSi: 'පූසා', emoji: '🐱' },
+      { nameEn: 'Elephant', nameSi: 'අලියා', emoji: '🐘' },
+      { nameEn: 'Lion', nameSi: 'සිංහයා', emoji: '🦁' },
+      { nameEn: 'Rabbit', nameSi: 'හාවා', emoji: '🐰' },
+      { nameEn: 'Bird', nameSi: 'කුරුල්ලා', emoji: '🐦' },
+    ],
+  },
+  {
+    id: 'fruits',
+    nameEn: 'Fruits',
+    nameSi: 'පලතුරු',
+    icon: '🍎',
+    color: '#06D6A0',
+    items: [
+      { nameEn: 'Apple', nameSi: 'ඇපල්', emoji: '🍎' },
+      { nameEn: 'Banana', nameSi: 'කෙසෙල්', emoji: '🍌' },
+      { nameEn: 'Orange', nameSi: 'දොඩම්', emoji: '🍊' },
+      { nameEn: 'Grapes', nameSi: 'මිදි', emoji: '🍇' },
+      { nameEn: 'Watermelon', nameSi: 'පැණි කොමඩු', emoji: '🍉' },
+      { nameEn: 'Pineapple', nameSi: 'අන්නාසි', emoji: '🍍' },
+    ],
+  },
+  {
+    id: 'objects',
+    nameEn: 'Objects',
+    nameSi: 'වස්තු',
+    icon: '🪑',
+    color: '#4ECDC4',
+    items: [
+      { nameEn: 'Chair', nameSi: 'පුටුව', emoji: '🪑' },
+      { nameEn: 'Lamp', nameSi: 'ලාම්පුව', emoji: '💡' },
+      { nameEn: 'Clock', nameSi: 'ඔරලෝසුව', emoji: '🕐' },
+      { nameEn: 'Book', nameSi: 'පොත', emoji: '📖' },
+      { nameEn: 'Cup', nameSi: 'කෝප්පය', emoji: '☕' },
+      { nameEn: 'Umbrella', nameSi: 'කුඩය', emoji: '☂️' },
+    ],
+  },
+  {
+    id: 'vehicles',
+    nameEn: 'Vehicles',
+    nameSi: 'වාහන',
+    icon: '🚌',
+    color: '#9C27B0',
+    items: [
+      { nameEn: 'Bus', nameSi: 'බස් රථය', emoji: '🚌' },
+      { nameEn: 'Bicycle', nameSi: 'බයිසිකලය', emoji: '🚲' },
+      { nameEn: 'Airplane', nameSi: 'ගුවන් යානය', emoji: '✈️' },
+      { nameEn: 'Boat', nameSi: 'බෝට්ටුව', emoji: '⛵' },
+      { nameEn: 'Train', nameSi: 'දුම්රිය', emoji: '🚂' },
+      { nameEn: 'Fire Truck', nameSi: 'ගිනි නිවන රථය', emoji: '🚒' },
+    ],
+  },
+];
 
 interface ARLearningProps {
-  item: LearningItem;
-  onClose: () => void;
+  onBack: () => void;
+  onProgress?: (progress: number) => void;
 }
 
-// Type guard functions
-function isLetterItem(item: LearningItem): item is LetterItem {
-  return (item as LetterItem).letter !== undefined;
-}
+export default function ARLearning({ onBack, onProgress }: ARLearningProps) {
+  const { colors } = useTheme();
+  const { language } = useLanguage();
+  const [selectedCategory, setSelectedCategory] = useState<ARCategory | null>(null);
+  const [selectedItem, setSelectedItem] = useState<ARItem | null>(null);
+  const [viewedCount, setViewedCount] = useState(0);
 
-function isNumberItem(item: LearningItem): item is NumberItem {
-  return (item as NumberItem).number !== undefined;
-}
-
-export default function ARLearning({ item, onClose }: ARLearningProps) {
-  const [isAnimating, setIsAnimating] = useState(true);
-  const scaleAnim = useState(new Animated.Value(0))[0];
-  const rotateAnim = useState(new Animated.Value(0))[0];
-
-  // Get display text based on type
-  const getDisplayText = () => {
-    if (isLetterItem(item)) {
-      return item.letter;
-    }
-    return item.number;
+  const handleSelectItem = (item: ARItem) => {
+    setSelectedItem(item);
+    const newCount = viewedCount + 1;
+    setViewedCount(newCount);
+    onProgress?.(Math.min(100, newCount * 10));
   };
 
-  useEffect(() => {
-    // Start AR animation
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 3,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(rotateAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(rotateAnim, {
-            toValue: 0,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ),
-    ]).start();
+  if (selectedItem) {
+    return (
+      <ARCameraView
+        item={selectedItem}
+        language={language}
+        onBack={() => setSelectedItem(null)}
+      />
+    );
+  }
 
-    return () => {
-      // Cleanup
-    };
-  }, []);
+  if (selectedCategory) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => setSelectedCategory(null)}>
+          <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
+          <Text style={[styles.backText, { color: colors.primary }]}>
+            {language === 'en' ? 'Categories' : 'ප්‍රවර්ග'}
+          </Text>
+        </TouchableOpacity>
 
-  const rotateInterpolate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+        <Text style={[styles.title, { color: colors.text }]}>
+          {language === 'en' ? selectedCategory.nameEn : selectedCategory.nameSi}
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textLight }]}>
+          {language === 'en' ? 'Tap an item to see it in your room' : 'ඔබේ කාමරයේ දැකීමට අයිතමයක් තට්ටු කරන්න'}
+        </Text>
+
+        <ScrollView contentContainerStyle={styles.itemGrid}>
+          {selectedCategory.items.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[styles.itemCard, { backgroundColor: colors.surface }]}
+              onPress={() => handleSelectItem(item)}
+            >
+              <Text style={styles.itemEmoji}>{item.emoji}</Text>
+              <Text style={[styles.itemName, { color: colors.text }]}>
+                {language === 'en' ? item.nameEn : item.nameSi}
+              </Text>
+              <View style={[styles.arBadge, { backgroundColor: selectedCategory.color }]}>
+                <MaterialIcons name="view-in-ar" size={12} color="#FFF" />
+                <Text style={styles.arBadgeText}>AR</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
-    <Modal
-      visible={true}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        <View style={styles.arContainer}>
-          {/* Close Button */}
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <MaterialIcons name="close" size={24} color="#FFF" />
-          </TouchableOpacity>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
+        <Text style={[styles.backText, { color: colors.primary }]}>
+          {language === 'en' ? 'Back to Learning' : 'ඉගෙනීමට ආපසු'}
+        </Text>
+      </TouchableOpacity>
 
-          {/* 3D Object Animation */}
-          <Animated.View
-            style={[
-              styles.arObject,
-              {
-                transform: [
-                  { scale: scaleAnim },
-                  { rotate: rotateInterpolate },
-                ],
-              },
-            ]}
-          >
-            <Text style={styles.arLetter}>{getDisplayText()}</Text>
-            <Text style={styles.arWord}>{item.word}</Text>
-          </Animated.View>
-
-          {/* 3D Model Representation */}
-          <View style={styles.arModel}>
-            <View style={styles.modelBase}>
-              <Text style={styles.modelLetter}>{getDisplayText()}</Text>
-              <View style={[styles.modelGlow, { backgroundColor: item.color + '40' }]} />
-            </View>
-            <View style={styles.particlesContainer}>
-              {[...Array(12)].map((_, i) => (
-                <Animated.View
-                  key={i}
-                  style={[
-                    styles.particle,
-                    {
-                      backgroundColor: item.color,
-                      transform: [
-                        {
-                          translateX: new Animated.Value(Math.sin(Date.now() / 1000 + i) * 20),
-                        },
-                        {
-                          translateY: new Animated.Value(Math.cos(Date.now() / 1000 + i) * 20),
-                        },
-                      ],
-                    },
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-
-          {/* AR Instructions */}
-          <View style={styles.arInstructions}>
-            <MaterialIcons name="camera-alt" size={24} color="#FFF" />
-            <Text style={styles.arInstructionText}>
-              Point camera at flat surface to see 3D model
-            </Text>
-          </View>
-
-          {/* Fun Facts */}
-          <View style={[styles.funFact, { backgroundColor: item.color + 'CC' }]}>
-            <Text style={styles.funFactText}>
-              Did you know? {item.word} starts with {getDisplayText()}!
-            </Text>
-          </View>
-        </View>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          {language === 'en' ? 'AR Explorer' : 'AR ගවේෂකයා'}
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textLight }]}>
+          {language === 'en'
+            ? 'Choose something to see in the real world!'
+            : 'සැබෑ ලෝකයේ දැකීමට යමක් තෝරන්න!'}
+        </Text>
       </View>
-    </Modal>
+
+      <ScrollView contentContainerStyle={styles.categoryGrid}>
+        {AR_CATEGORIES.map((category) => (
+          <TouchableOpacity
+            key={category.id}
+            style={[styles.categoryCard, { backgroundColor: colors.surface }]}
+            onPress={() => setSelectedCategory(category)}
+          >
+            <View style={[styles.categoryIcon, { backgroundColor: `${category.color}20` }]}>
+              <Text style={styles.categoryEmoji}>{category.icon}</Text>
+            </View>
+            <Text style={[styles.categoryName, { color: colors.text }]}>
+              {language === 'en' ? category.nameEn : category.nameSi}
+            </Text>
+            <Text style={[styles.categoryCount, { color: colors.textLight }]}>
+              {category.items.length} {language === 'en' ? 'items' : 'අයිතම'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-  },
-  arContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 20,
-    padding: 8,
-  },
-  arObject: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  arLetter: {
-    fontSize: 120,
-    fontWeight: 'bold',
-    color: '#FFF',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 10,
-  },
-  arWord: {
-    fontSize: 32,
-    color: '#FFF',
-    marginTop: 10,
-    fontWeight: '600',
-  },
-  arModel: {
-    width: width - 80,
-    height: height * 0.4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modelBase: {
-    position: 'relative',
-  },
-  modelLetter: {
-    fontSize: 180,
-    fontWeight: 'bold',
-    color: '#FFF',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 3, height: 3 },
-    textShadowRadius: 15,
-  },
-  modelGlow: {
-    position: 'absolute',
-    top: -20,
-    left: -20,
-    right: -20,
-    bottom: -20,
-    borderRadius: 100,
-    opacity: 0.5,
-  },
-  particlesContainer: {
-    position: 'absolute',
-    top: -50,
-    left: -50,
-    right: -50,
-    bottom: -50,
-  },
-  particle: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    top: '50%',
-    left: '50%',
-  },
-  arInstructions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    padding: 12,
-    borderRadius: 25,
-    marginTop: 20,
-    gap: 10,
-  },
-  arInstructionText: {
-    color: '#FFF',
-    fontSize: 14,
-  },
-  funFact: {
-    padding: 15,
-    borderRadius: 15,
-    marginTop: 20,
-    maxWidth: width - 60,
-  },
-  funFactText: {
-    color: '#FFF',
-    fontSize: 16,
-    textAlign: 'center',
-  },
+  container: { flex: 1 },
+  backButton: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, paddingTop: Spacing.xl },
+  backText: { fontSize: 16, marginLeft: Spacing.sm },
+  header: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm },
+  title: { fontWeight: 'bold', fontSize: Typography.fontSize.xxl, paddingHorizontal: Spacing.lg },
+  subtitle: { fontSize: Typography.fontSize.md, marginTop: Spacing.xs, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing.xxl },
+  categoryCard: { width: '47%', padding: Spacing.md, borderRadius: BorderRadius.lg, alignItems: 'center' },
+  categoryIcon: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.sm },
+  categoryEmoji: { fontSize: 34 },
+  categoryName: { fontWeight: 'bold', fontSize: 16, marginTop: Spacing.xs, textAlign: 'center' },
+  categoryCount: { fontSize: 12, marginTop: 2 },
+  itemGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing.xxl },
+  itemCard: { width: '30%', padding: Spacing.md, borderRadius: BorderRadius.lg, alignItems: 'center' },
+  itemEmoji: { fontSize: 40, marginBottom: Spacing.xs },
+  itemName: { fontSize: 13, fontWeight: '600', textAlign: 'center', marginBottom: Spacing.xs },
+  arBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.sm },
+  arBadgeText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
 });

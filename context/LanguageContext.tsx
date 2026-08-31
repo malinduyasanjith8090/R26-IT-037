@@ -1,4 +1,3 @@
-// context/LanguageContext.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Localization from 'expo-localization';
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -11,7 +10,6 @@ interface LanguageContextType {
   setLanguage: (lang: LanguageType) => void;
 }
 
-// Complete translations for all screens
 const translations = {
   en: {
     // Common
@@ -28,7 +26,7 @@ const translations = {
     no: 'No',
     ok: 'OK',
     
-    
+
     // Auth
     login: 'Login',
     signup: 'Sign Up',
@@ -42,7 +40,7 @@ const translations = {
     dontHaveAccount: "Don't have an account?",
     alreadyHaveAccountYes: 'Already have an account?',
     register: 'Register',
-    
+
     // Onboarding
     personalizedLearning: 'Personalized Learning',
     personalizedLearningDesc: 'Adaptive lessons that match your child\'s unique abilities and interests',
@@ -52,7 +50,7 @@ const translations = {
     dailyRoutineSupportDesc: 'Visual schedules and gentle reminders for smooth daily transitions',
     funEducationalGames: 'Fun Educational Games',
     funEducationalGamesDesc: 'Engaging games that build confidence and cognitive skills',
-    
+
     // Dashboard
     dashboard: 'Dashboard',
     hello: 'Hello',
@@ -78,7 +76,7 @@ const translations = {
     dayStreak: '7 Day Streak',
     parentTip: 'Parent Tip of the Day',
     parentTipText: '"Remember to celebrate small victories! Each step forward, no matter how small, is progress worth acknowledging."',
-    
+
     // Learning Screen
     learningJourney: 'Learning Journey',
     exploreLessons: 'Explore lessons at your own pace',
@@ -102,7 +100,7 @@ const translations = {
     startArExperience: 'Start AR Experience',
     lessons: 'Lessons',
     completed: 'Completed',
-    
+
     // Games Screen
     funGames: 'Fun Games',
     playLearnGrow: 'Play, learn, and grow!',
@@ -139,7 +137,9 @@ const translations = {
     easy: 'Easy',
     medium: 'Medium',
     hard: 'Hard',
-    'heroGreeting': 'Hi, {childName} baby',
+    // Added missing keys
+    completeThreeGames: 'Complete 3 Games',
+'heroGreeting': 'Hi, {childName} baby',
     // Game Messages
     gameUnderDevelopment: 'This game is under development. Stay tuned!',
     comingSoon: 'Coming Soon!',
@@ -151,7 +151,7 @@ const translations = {
     tryAgain: 'Try Again!',
     correct: 'Correct!',
     incorrect: 'Incorrect!',
-    
+
     // More additions for games
     oddOneOut: 'Odd One Out',
     whatComesNext: 'What Comes Next?',
@@ -160,7 +160,7 @@ const translations = {
     traceLetter: 'Trace Letter',
     traceNumber: 'Trace Number',
     arExperience: 'AR Experience',
-    
+
     // Rewards and Feedback
     greatJob: 'Great Job!',
     excellentWork: 'Excellent Work!',
@@ -168,7 +168,7 @@ const translations = {
     youCanDoIt: 'You can do it!',
     almostThere: 'Almost there!',
     perfectScoreMessage: 'Perfect score! You mastered this!',
-    
+
     // Routine Screen
     dailyRoutineTitle: 'Daily Routine',
     todaysSchedule: 'Today\'s Schedule',
@@ -194,7 +194,19 @@ const translations = {
     minuteWarnings: 'Give 5-minute warnings before activity changes',
     celebrateCompleting: 'Celebrate completing each task with praise',
     keepRoutinesConsistent: 'Keep routines consistent but flexible',
-    
+    // Added missing keys
+    calmingActivityOfDay: 'Calming Activity of the Day',
+    startCalming: 'Start Activity',
+    focusTimer: 'Focus Timer',
+    addCalmingActivity: 'Add Calming Activity',
+    noCalmingActivities: 'No calming activities yet. Add up to 5!',
+    selectCalmingActivity: 'Select Calming Activity',
+    chooseIcon: 'Choose icon',
+    chooseColor: 'Choose color',
+    activityName: 'Activity name',
+    time: 'Time',
+    calmingCorner: 'Calming Corner',
+
     // Behavioral Screen
     socialSkillsTraining: 'Social Skills Training',
     practiceVirtualEnvironments: 'Practice in safe virtual environments',
@@ -376,7 +388,7 @@ const translations = {
     version: 'Version',
     areYouSureLogout: 'Are you sure you want to logout?',
     profileUpdated: 'Profile updated successfully!',
-    
+
     // Profile
     changePhoto: 'Change Photo',
     childInformation: 'Child Information',
@@ -385,7 +397,469 @@ const translations = {
     years: 'years',
     appSettings: 'App Settings',
     manageSettings: 'Manage notifications, language, theme and more',
+
+    // ─── ADDITIONAL KEYS FOR LEARNING SCREENS ───
+    alreadyHaveAccount: 'Already have an account?',
+    colors: 'Colors',
+    'progress.of': '{current} of {total} {item}',
+
+    // Color instruction & names
+    'color.instruction': 'Choose the color shown below',
+    'color.red': 'Red',
+    'color.blue': 'Blue',
+    'color.green': 'Green',
+    'color.yellow': 'Yellow',
+    'color.orange': 'Orange',
+    'color.purple': 'Purple',
+    'color.pink': 'Pink',
+    'color.brown': 'Brown',
+    'color.black': 'Black',
+    'color.white': 'White',
+
+    // Additional color names
+    'color.sky': 'Sky Blue',
+    'color.mint': 'Mint Green',
+    'color.gold': 'Gold',
+    'color.deepPink': 'Deep Pink',
+    'color.aqua': 'Aqua',
+    'color.redOrange': 'Red Orange',
+    'color.cerulean': 'Cerulean',
+    'color.lime': 'Lime',
+    'color.olive': 'Olive',
+    'color.tan': 'Tan',
+    'color.fern': 'Fern Green',
+    'color.sienna': 'Sienna',
+    'color.violet': 'Violet',
+    'color.ruby': 'Ruby',
+    'color.sapphire': 'Sapphire',
+    'color.emerald': 'Emerald',
+    'color.amethyst': 'Amethyst',
+    'color.topaz': 'Topaz',
+    'color.hotPink': 'Hot Pink',
+    'color.turquoise': 'Turquoise',
+    'color.tomato': 'Tomato',
+    'color.dodger': 'Dodger Blue',
+    'color.crimson': 'Crimson',
+    'color.spring': 'Spring Green',
+    'color.dOrange': 'Dark Orange',
+    'color.dOrchid': 'Dark Orchid',
+    'color.seaGreen': 'Sea Green',
+    'color.orchid': 'Orchid',
+    'color.indian': 'Indian Red',
+    'color.tangerine': 'Tangerine',
+
+    // Objects
+    'object.apple': 'Apple',
+    'object.rose': 'Rose',
+    'object.ball': 'Ball',
+    'object.sky': 'Sky',
+    'object.ocean': 'Ocean',
+    'object.blueberry': 'Blueberry',
+    'object.grass': 'Grass',
+    'object.tree': 'Tree',
+    'object.leaf': 'Leaf',
+    'object.sun': 'Sun',
+    'object.banana': 'Banana',
+    'object.star': 'Star',
+    'object.orangeFruit': 'Orange',
+    'object.pumpkin': 'Pumpkin',
+    'object.carrot': 'Carrot',
+    'object.grapes': 'Grapes',
+    'object.eggplant': 'Eggplant',
+    'object.lavender': 'Lavender',
+    'object.flower': 'Flower',
+    'object.cottonCandy': 'Cotton Candy',
+    'object.pig': 'Pig',
+    'object.chocolate': 'Chocolate',
+    'object.treeTrunk': 'Tree Trunk',
+    'object.bear': 'Bear',
+    'object.nightSky': 'Night Sky',
+    'object.penguin': 'Penguin',
+    'object.tire': 'Tire',
+    'object.cloud': 'Cloud',
+    'object.snow': 'Snow',
+    'object.milk': 'Milk',
+
+    // Color UI
+    'color.thingsThatAre': 'Things that are {color}:',
+    'color.whatColorIsThis': 'What color is this?',
+    'color.tryAgainCorrectIs': 'Try again! The correct color is {color}!',
+
+    // Reward messages (colors)
+    'reward.amazing': '🌟 Amazing! 🌟',
+    'reward.greatJob': '🎉 Great Job! 🎉',
+    'reward.youreAStar': '⭐ You\'re a Star! ⭐',
+    'reward.fantastic': '🎈 Fantastic! 🎈',
+    'reward.excellent': '🏆 Excellent! 🏆',
+    'reward.keepGoing': '💪 Keep Going! 💪',
+    'reward.beautiful': '🌈 Beautiful! 🌈',
+    'reward.completeAllColors': '🎉 Complete! You mastered all colors! 🎉',
+    'reward.youAreColorMaster': '🎉 You are a Color Master! 🎉',
+    'reward.pointsForColor': '+{points} points for {color}!',
+    'reward.greatProgress': 'Great progress! Keep going!',
+
+    // Common UI
+    'common.backToMenu': 'Back to Menu',
+    'common.continue': 'Continue',
+
+    // Animal instruction & names
+    'animal.instruction': 'Choose the animal shown below',
+    'animal.lion': 'Lion',
+    'animal.elephant': 'Elephant',
+    'animal.monkey': 'Monkey',
+    'animal.giraffe': 'Giraffe',
+    'animal.panda': 'Panda',
+    'animal.dolphin': 'Dolphin',
+
+    // Shape instruction & names
+    'shape.instruction': 'Choose the shape shown below',
+    'shape.circle': 'Circle',
+    'shape.square': 'Square',
+    'shape.triangle': 'Triangle',
+    'shape.rectangle': 'Rectangle',
+    'shape.oval': 'Oval',
+    'shape.heart': 'Heart',
+    'shape.star': 'Star',
+
+    // Shape descriptions
+    'shape.circle.desc': 'A round shape with no corners',
+    'shape.square.desc': 'Four equal sides and four corners',
+    'shape.triangle.desc': 'Three sides and three corners',
+    'shape.rectangle.desc': 'Four sides, opposite sides equal',
+    'shape.oval.desc': 'An elongated circle, like an egg',
+    'shape.heart.desc': 'A symbol of love and friendship',
+    'shape.star.desc': 'A shining star with five points',
+
+    // Shape examples
+    'shape.circle.ex1': 'Ball',
+    'shape.circle.ex2': 'Sun',
+    'shape.circle.ex3': 'Clock',
+    'shape.circle.ex4': 'Wheel',
+    'shape.square.ex1': 'Window',
+    'shape.square.ex2': 'Book',
+    'shape.square.ex3': 'Tile',
+    'shape.square.ex4': 'Board',
+    'shape.triangle.ex1': 'Roof',
+    'shape.triangle.ex2': 'Pyramid',
+    'shape.triangle.ex3': 'Sail',
+    'shape.triangle.ex4': 'Mountain',
+    'shape.rectangle.ex1': 'Door',
+    'shape.rectangle.ex2': 'Phone',
+    'shape.rectangle.ex3': 'Table',
+    'shape.rectangle.ex4': 'Book',
+    'shape.oval.ex1': 'Egg',
+    'shape.oval.ex2': 'Balloon',
+    'shape.oval.ex3': 'Mirror',
+    'shape.oval.ex4': 'Leaf',
+    'shape.heart.ex1': 'Valentine',
+    'shape.heart.ex2': 'Candy',
+    'shape.heart.ex3': 'Pillow',
+    'shape.heart.ex4': 'Pendant',
+    'shape.star.ex1': 'Starfish',
+    'shape.star.ex2': 'Badge',
+    'shape.star.ex3': 'Sticker',
+    'shape.star.ex4': 'Decoration',
+
+    // Shape UI
+    'shape.corners': '{count} corners',
+    'shape.difficulty.easy': 'Easy',
+    'shape.difficulty.medium': 'Medium',
+    'shape.difficulty.challenge': 'Challenge',
+    'shape.thingsThatAre': 'Things that are {shape}:',
+    'shape.whatShapeIsThis': 'What shape is this?',
+    'shape.tryAgainCorrectIs': 'Try again! The correct shape is {shape}!',
+    'shape.drawInAir': 'Draw a {shape} in the air! ✋',
+
+    // Reward (shapes)
+    'reward.shapeTastic': '🌟 Shape-tastic! 🌟',
+    'reward.perfectShape': '🎉 Perfect Shape! 🎉',
+    'reward.shapeMaster': '⭐ Shape Master! ⭐',
+    'reward.wellRounded': '🎈 Well Rounded! 🎈',
+    'reward.sharpSkills': '🏆 Sharp Skills! 🏆',
+    'reward.completeAllShapes': '🎉 Complete! You mastered all shapes! 🎉',
+    'reward.youAreShapeExpert': '🎉 You are a Shape Expert! 🎉',
+    'reward.pointsForShape': '+{points} points for {shape}!',
+    'reward.greatProgressShape': 'Great progress! You\'re becoming a shape expert!',
+
+    // Fruits
+    'fruits': 'Fruits',
+    'fruit.apple': 'Apple',
+    'fruit.banana': 'Banana',
+    'fruit.orange': 'Orange',
+    'fruit.strawberry': 'Strawberry',
+    'fruit.grape': 'Grape',
+    'fruit.watermelon': 'Watermelon',
+    'fruit.pineapple': 'Pineapple',
+    'fruit.mango': 'Mango',
+    'fruit.peach': 'Peach',
+    'fruit.cherry': 'Cherry',
+
+    'fruit.apple.taste': 'sweet and crispy',
+    'fruit.banana.taste': 'soft and sweet',
+    'fruit.orange.taste': 'juicy and tangy',
+    'fruit.strawberry.taste': 'sweet and juicy',
+    'fruit.grape.taste': 'sweet and fun to eat',
+    'fruit.watermelon.taste': 'refreshing and sweet',
+    'fruit.pineapple.taste': 'sweet and tropical',
+    'fruit.mango.taste': 'sweet and creamy',
+    'fruit.peach.taste': 'soft and sweet',
+    'fruit.cherry.taste': 'sweet and tart',
+
+    'fruit.apple.benefit': '🍎 An apple a day keeps the doctor away!',
+    'fruit.banana.benefit': '⚡ Gives energy to play all day!',
+    'fruit.orange.benefit': '💪 Vitamin C makes you strong!',
+    'fruit.strawberry.benefit': '❤️ Good for your heart!',
+    'fruit.grape.benefit': '🧠 Helps you remember things!',
+    'fruit.watermelon.benefit': '💧 Keeps you hydrated on sunny days!',
+    'fruit.pineapple.benefit': '🦷 Helps digestion!',
+    'fruit.mango.benefit': '👀 Good for eyesight!',
+    'fruit.peach.benefit': '✨ Makes your skin healthy and glowing!',
+    'fruit.cherry.benefit': '😴 Helps you sleep well at night!',
+
+    'fruit.whatFruitIsThis': 'What fruit is this?',
+    'fruit.tryAgainCorrectIs': 'Try again! The correct fruit is {fruit}!',
+    'fruit.nutritionFact': '{fruit} is {taste}!',
+
+    'reward.yummy': '🌟 Yummy! 🌟',
+    'reward.fruitMaster': '🎉 Fruit Master! 🎉',
+    'reward.sweetJob': '⭐ Sweet Job! ⭐',
+    'reward.delicious': '🎈 Delicious! 🎈',
+    'reward.berryGood': '🏆 Berry Good! 🏆',
+    'reward.completeAllFruits': '🎉 Complete! You mastered all fruits! 🎉',
+    'reward.youAreFruitExpert': '🎉 You are a Fruit Expert! 🎉',
+    'reward.pointsForFruit': '+{points} points for {fruit}!',
+    'reward.greatProgressFruit': 'Great progress! You\'re becoming a fruit expert!',
+
+    // Number Hunt keys
+    'numberHunt.title': 'Number Hunt',
+    'numberHunt.hintButton': 'Need a Hint?',
+    'numberHunt.hintMessage': 'Count carefully! The answer is {number}',
+    'numberHunt.feedbackWrong': 'Try again! Count carefully. The correct answer is {number}',
+    'numberHunt.nextLevel': 'Next Level',
+    'numberHunt.level1.name': 'Numbers 1-5',
+    'numberHunt.level2.name': 'Numbers 1-10',
+    'numberHunt.level3.name': 'Count the Objects',
+    'numberHunt.level4.name': 'Number Words',
+    'numberHunt.level5.name': 'Number Hunt',
+    'numberHunt.level1.q1': 'Find the number one',
+    'numberHunt.level1.q2': 'Find the number two',
+    'numberHunt.level1.q3': 'Find the number three',
+    'numberHunt.level1.q4': 'Find the number four',
+    'numberHunt.level1.q5': 'Find the number five',
+    'numberHunt.level2.q1': 'Find the number six',
+    'numberHunt.level2.q2': 'Find the number seven',
+    'numberHunt.level2.q3': 'Find the number eight',
+    'numberHunt.level2.q4': 'Find the number nine',
+    'numberHunt.level2.q5': 'Find the number ten',
+    'numberHunt.level3.q1': 'How many apples are there?',
+    'numberHunt.level3.q2': 'How many stars are there?',
+    'numberHunt.level3.q3': 'How many hearts are there?',
+    'numberHunt.level3.q4': 'How many circles are there?',
+    'numberHunt.level3.q5': 'How many squares are there?',
+    'numberHunt.level4.q1': 'One',
+    'numberHunt.level4.q2': 'Two',
+    'numberHunt.level4.q3': 'Three',
+    'numberHunt.level4.q4': 'Four',
+    'numberHunt.level4.q5': 'Five',
+    'numberHunt.level5.q1': 'Find the hidden number 3',
+    'numberHunt.level5.q2': 'Find the hidden number 7',
+    'numberHunt.level5.q3': 'Find the hidden number 5',
+    'numberHunt.level5.q4': 'Find the hidden number 9',
+    'numberHunt.level5.q5': 'Find the hidden number 2',
+    'numberHunt.encouragement.start': 'Let\'s start counting! 🌟',
+    'numberHunt.encouragement.greatStart': 'Great start! Keep going! 🎉',
+    'numberHunt.encouragement.amazing': 'You are doing amazing! ⭐',
+    'numberHunt.encouragement.champion': 'Number champion in the making! 🏆',
+    'numberHunt.reward.title': 'Great Counting!',
+    'numberHunt.reward.message': 'You completed {levelName}!',
+    'numberHunt.complete.title': 'Number Champion!',
+    'numberHunt.complete.message': 'You mastered all the numbers!',
+
+    // Thinking games
+    'thinkingGames.mainTitle': 'Thinking Games',
+    'thinkingGames.brainBanner': '🧠 Train your brain with fun logic puzzles! 🧠',
+    'thinkingGames.playNow': 'Play Now',
+    'thinkingGames.comingSoon': 'Coming Soon!',
+    'thinkingGames.comingSoonMessage': 'More thinking games are on the way',
+    'thinkingGames.tip': '💡 Tip: Take your time and look for patterns. Each puzzle helps strengthen your brain!',
+    'thinkingGames.hint': 'Hint',
+    'thinkingGames.oddOneOut.title': 'Odd One Out',
+    'thinkingGames.oddOneOut.desc': 'Find the item that doesn\'t belong',
+    'thinkingGames.sequence.title': 'What Comes Next?',
+    'thinkingGames.sequence.desc': 'Complete the sequence',
+    'thinkingGames.sorting.title': 'Sorting Game',
+    'thinkingGames.sorting.desc': 'Categorize items',
+    'thinkingGames.analogy.title': 'Word Analogies',
+    'thinkingGames.analogy.desc': 'Complete the analogy',
+    'thinkingGames.oddOneOut.question': 'Which one is different?',
+    'thinkingGames.oddOneOut.explain.fruit': 'The car is not a fruit',
+    'thinkingGames.oddOneOut.explain.animal': 'The airplane is not an animal',
+    'thinkingGames.oddOneOut.explain.color': 'The apple is not a color',
+    'thinkingGames.oddOneOut.explain.emotion': 'The car is not an emotion',
+    'thinkingGames.oddOneOut.explain.letter': 'A is a letter, not a number',
+    'thinkingGames.oddOneOut.explain.pet': 'The pizza is not a pet',
+    'thinkingGames.oddOneOut.explain.school': 'The burger is not a school supply',
+    'thinkingGames.sequence.question': 'What comes next in the pattern?',
+    'thinkingGames.sequence.hint': 'Look at the pattern! It repeats every two items.',
+    'thinkingGames.reward.oddOneOut.title': 'Great thinking!',
+    'thinkingGames.reward.oddOneOut.message': 'You found the odd one out!',
+    'thinkingGames.reward.sequence.title': 'Pattern Master!',
+    'thinkingGames.reward.sequence.message': 'You completed the sequence!',
+    'thinkingGames.complete.title': 'Challenge Complete!',
+    'thinkingGames.complete.message': 'You are getting smarter every day!',
+
+    // Memory Match
+    'game.memoryMatch.title': 'Memory Match',
+    'game.memoryMatch.subtitle': 'Match pairs of cards',
+    'game.memoryMatch.levelComplete': 'Level Complete!',
+    'game.memoryMatch.gameComplete': 'Congratulations!',
+    'game.memoryMatch.playAgain': 'Play Again',
+    'game.memoryMatch.backToMenu': 'Back to Menu',
+
+    // Pattern Maker
+    'game.patternMaker.title': 'Pattern Maker',
+    'game.patternMaker.subtitle': 'Create patterns',
+    'game.patternMaker.complete': 'Pattern Master!',
+    'game.patternMaker.champion': 'Pattern Champion!',
+
+    // Shape Puzzle
+    'game.shapePuzzle.title': 'Shape Puzzle',
+    'game.shapePuzzle.subtitle': 'Complete shape puzzles',
+    'game.shapePuzzle.complete': 'Level Complete!',
+    'game.shapePuzzle.master': 'Shape Master!',
+
+    // Simple Puzzle
+    'game.simplePuzzle.title': 'Simple Puzzle',
+    'game.simplePuzzle.completePuzzle': 'Complete this puzzle:',
+    'game.simplePuzzle.hint': 'Tap a piece, then tap another piece to swap them!',
+    'game.simplePuzzle.perfectMatch': 'Perfect Match!',
+    'game.simplePuzzle.greatJob': 'Great Job!',
+    'game.simplePuzzle.levelComplete': 'You completed {level} in {moves} moves!',
+    'game.simplePuzzle.nextLevel': 'Next Level →',
+    'game.simplePuzzle.master': 'Puzzle Master!',
+    'game.simplePuzzle.allSolved': 'You solved all the puzzles!',
+    'game.simplePuzzle.playAgain': 'Play Again',
+    'game.simplePuzzle.backToMenu': 'Back to Menu',
+    'game.simplePuzzle.level1': 'Fruit Puzzle',
+    'game.simplePuzzle.level2': 'Animal Puzzle',
+    'game.simplePuzzle.level3': 'Shape Puzzle',
+    'game.simplePuzzle.level4': 'Emoji Puzzle',
+    'game.simplePuzzle.level5': 'Transport Puzzle',
+
+    // Word Match
+    'game.wordMatch.title': 'Word Match',
+    'game.wordMatch.subtitle': 'Learn words in two languages',
+    'game.wordMatch.mode1': 'English → සිංහල',
+    'game.wordMatch.mode2': 'සිංහල → English',
+    'game.wordMatch.mode3': '🎯 Picture Match',
+    'game.wordMatch.greatJob': 'Great Job!',
+    'game.wordMatch.levelComplete': 'You completed {level}!',
+    'game.wordMatch.nextLevel': 'Next Level →',
+    'game.wordMatch.master': 'Word Master!',
+    'game.wordMatch.masterMessage': 'You learned so many words in both languages!',
+    'game.wordMatch.totalScore': 'Total Score: {score} points',
+    'game.wordMatch.scorePoints': 'Score: {score} points',
+    'game.wordMatch.encouragement': '🎉 Amazing progress! Keep learning! 🎉',
+
+    // Color Sorting Game
+    'game.level': 'Level',
+    'game.levelComplete': 'Level Complete!',
+    'game.timesUp': 'Time is up!',
+    'game.nextLevel': 'Next Level',
+    'game.playAgain': 'Play Again',
+    'game.tryAgain': 'Try Again',
+    'game.backToGames': 'Back to Games',
+    'game.exitGame': 'Exit Game',
+    'game.exitConfirm': 'Are you sure? Progress will be lost.',
+    'game.cancel': 'Cancel',
+    'game.exit': 'Exit',
+    'game.colorSorting.dropHint': 'Drop into the matching bin below ↓',
+    'game.colorSorting.dragHint': 'Drag the circle  ·  remaining {remaining}',
+    'game.colorSorting.sortingBins': 'Sorting Bins',
+    'game.colorSorting.instruction': 'Drag each circle to its matching color bin',
+    'game.colorSorting.completeMessage': 'All {total} items in "{levelName}" sorted!',
+    'game.colorSorting.failedMessage': 'You sorted {score}/{total} — almost there!',
+    'game.colorSorting.level1.name': 'Basic Colors',
+    'game.colorSorting.level2.name': 'Warm Tones',
+    'game.colorSorting.level3.name': 'Cool Tones',
+    'game.colorSorting.level4.name': 'Pastels',
+    'game.colorSorting.level5.name': 'Neon',
+    'game.colorSorting.level6.name': 'Earth Tones',
+    'game.colorSorting.level7.name': 'Rainbow',
+    'game.colorSorting.level8.name': 'Gems',
+    'game.colorSorting.level9.name': 'Mixed Challenge',
+    'game.colorSorting.level10.name': 'Master',
+    'game.colorSorting.level1.desc': 'Drag all items to the matching bin',
+    'game.colorSorting.level2.desc': 'Drag all warm-colored items to their bins',
+    'game.colorSorting.level3.desc': 'Drag all cool-colored items to their bins',
+    'game.colorSorting.level4.desc': 'Drag all pastel items to their bins',
+    'game.colorSorting.level5.desc': 'Drag all neon items to their bins',
+    'game.colorSorting.level6.desc': 'Drag all earth-toned items to their bins',
+    'game.colorSorting.level7.desc': 'Drag all rainbow items to their bins',
+    'game.colorSorting.level8.desc': 'Drag all gem-colored items to their bins',
+    'game.colorSorting.level9.desc': 'Drag all mixed items to their bins',
+    'game.colorSorting.level10.desc': 'Master drag-and-drop — sort everything!',
+
+    // Emotion Match Game
+    'game.emotionMatch.title': 'Emotion Match',
+    'game.emotionMatch.question': 'How is this person feeling?',
+    'game.emotionMatch.tip': 'Look at the face and think about how they feel!',
+    'game.emotionMatch.greatJob': 'Great Job!',
+    'game.emotionMatch.understandLevel': 'You understand {levelName} well!',
+    'game.emotionMatch.scorePoints': 'Score: {score}',
+    'game.emotionMatch.nextLevel': 'Next Level →',
+    'game.emotionMatch.emotionMaster': 'Emotion Master!',
+    'game.emotionMatch.understandAll': 'You understand all emotions!',
+    'game.emotionMatch.totalScore': 'Total Score: {score}',
+    'game.emotionMatch.playAgain': 'Play Again',
+    'game.emotionMatch.backToMenu': 'Back to Menu',
+    'emotion.level.basic': 'Basic Emotions',
+    'emotion.level.more': 'More Emotions',
+    'emotion.level.advanced': 'Advanced Emotions',
+    'emotion.happy': 'Happy',
+    'emotion.sad': 'Sad',
+    'emotion.angry': 'Angry',
+    'emotion.surprised': 'Surprised',
+    'emotion.loved': 'Loved',
+    'emotion.scared': 'Scared',
+    'emotion.tired': 'Tired',
+    'emotion.excited': 'Excited',
+    'emotion.calm': 'Calm',
+    'emotion.silly': 'Silly',
+    'emotion.proud': 'Proud',
+    'emotion.lonely': 'Lonely',
+    'emotion.desc.happy': 'Feeling good and smiling',
+    'emotion.desc.sad': 'Feeling down with tears',
+    'emotion.desc.angry': 'Feeling upset and frustrated',
+    'emotion.desc.surprised': 'Unexpected surprise!',
+    'emotion.desc.loved': 'Feeling cared for',
+    'emotion.desc.scared': 'Feeling afraid',
+    'emotion.desc.tired': 'Needing rest',
+    'emotion.desc.excited': 'Can\'t wait!',
+    'emotion.desc.calm': 'Peaceful and relaxed',
+    'emotion.desc.silly': 'Playful and fun',
+    'emotion.desc.proud': 'Happy about achievement',
+    'emotion.desc.lonely': 'Needing company',
+    'coping.shareHappiness': 'Share your happiness with someone! 😊',
+    'coping.cryAndTalk': 'It\'s okay to cry. Talk to someone you trust. 🤗',
+    'coping.deepBreaths': 'Take deep breaths. Count to 10. 🧘',
+    'coping.embraceSurprise': 'Embrace the surprise! It\'s okay to be surprised. ✨',
+    'coping.youAreLoved': 'You are loved! Give someone a hug. 💕',
+    'coping.youAreSafe': 'You are safe. Ask for help if you need it. 🛡️',
+    'coping.restImportant': 'Rest is important. Take a break. 😴',
+    'coping.enjoyExcitement': 'Enjoy the excitement! Share it with others. 🎉',
+    'coping.peacefulMoments': 'Peaceful moments are wonderful. 🕊️',
+    'coping.sillyFun': 'Being silly is fun and healthy! 🤪',
+    'coping.celebrateAchievements': 'Celebrate your achievements! You deserve it. 🏆',
+    'coping.notAlone': 'You are not alone. Reach out to someone. 💌',
+    'coping.default': 'Take a moment to understand your feelings. 💭',
+    'of': 'of',
+    'points': 'points',
+    'totalScore': 'Total Score',
+    'playAgain': 'Play Again',
+    'backToMenu': 'Back to Menu',
   },
+
   si: {
     // Common
     welcome: 'සාදරයෙන් පිළිගනිමු',
@@ -400,7 +874,7 @@ const translations = {
     yes: 'ඔව්',
     no: 'නැත',
     ok: 'හරි',
-    
+
     // Auth
     login: 'පිවිසෙන්න',
     signup: 'ලියාපදිංචි වන්න',
@@ -414,7 +888,7 @@ const translations = {
     dontHaveAccount: 'ගිණුමක් නැද්ද?',
     alreadyHaveAccountYes: 'දැනටමත් ගිණුමක් තිබේද?',
     register: 'ලියාපදිංචි වන්න',
-    
+
     // Onboarding
     personalizedLearning: 'පුද්ගලීකරණය කළ ඉගෙනීම',
     personalizedLearningDesc: 'ඔබේ දරුවාගේ සුවිශේෂී හැකියාවන්ට සහ උනන්දුවන්ට ගැලපෙන අනුවර්තී පාඩම්',
@@ -424,7 +898,7 @@ const translations = {
     dailyRoutineSupportDesc: 'සුමට දෛනික සංක්‍රමණ සඳහා දෘශ්‍ය කාලසටහන් සහ මෘදු මතක් කිරීම්',
     funEducationalGames: 'විනෝදජනක අධ්‍යාපනික ක්‍රීඩා',
     funEducationalGamesDesc: 'විශ්වාසය සහ සංජානන කුසලතා ගොඩනඟන ආකර්ශනීය ක්‍රීඩා',
-    
+
     // Dashboard
     dashboard: 'උපකරණ පුවරුව',
     hello: 'ආයුබෝවන්',
@@ -450,7 +924,7 @@ const translations = {
     dayStreak: 'දින 7 ක අඛණ්ඩ පැවැත්ම',
     parentTip: 'අද දින දෙමාපිය ඉඟිය',
     parentTipText: '“කුඩා ජයග්‍රහණ සැමරීමට මතක තබා ගන්න! එක් එක් පියවර ඉදිරියට, කුඩා වුවත්, පිළිගැනීම වටිනා ප්‍රගතියකි.”',
-    
+
     // Learning Screen
     learningJourney: 'ඉගෙනුම් ගමන',
     exploreLessons: 'ඔබේම වේගයෙන් පාඩම් ගවේෂණය කරන්න',
@@ -474,7 +948,7 @@ const translations = {
     startArExperience: 'AR අත්දැකීම ආරම්භ කරන්න',
     lessons: 'පාඩම්',
     completed: 'සම්පූර්ණයි',
-    
+
     // Games Screen
     funGames: 'විනෝදජනක ක්‍රීඩා',
     playLearnGrow: 'ක්‍රීඩා කරන්න, ඉගෙන ගන්න, වර්ධනය වන්න!',
@@ -550,7 +1024,7 @@ const translations = {
     tryAgain: 'නැවත උත්සාහ කරන්න!',
     correct: 'නිවැරදියි!',
     incorrect: 'වැරදියි!',
-    
+
     // More additions for games
     oddOneOut: 'වෙනස් එක සොයන්න',
     whatComesNext: 'ඊළඟට එන්නේ කුමක්ද?',
@@ -559,7 +1033,7 @@ const translations = {
     traceLetter: 'අකුරු සොයාගැනීම',
     traceNumber: 'අංක සොයාගැනීම',
     arExperience: 'AR අත්දැකීම',
-    
+
     // Rewards and Feedback
     greatJob: 'නියමයි!',
     excellentWork: 'විශිෂ්ට කාර්යයක්!',
@@ -567,7 +1041,7 @@ const translations = {
     youCanDoIt: 'ඔබට එය කළ හැකියි!',
     almostThere: 'බොහෝ දුරට එහි!',
     perfectScoreMessage: 'පරිපූර්ණ ලකුණු! ඔබ මෙය ප්‍රගුණ කළා!',
-    
+
     // Routine Screen
     dailyRoutineTitle: 'දෛනික දිනචර්යාව',
     todaysSchedule: 'අද දින කාලසටහන',
@@ -593,7 +1067,19 @@ const translations = {
     minuteWarnings: 'ක්‍රියාකාරකම් වෙනස්වීමට පෙර විනාඩි 5 අනතුරු ඇඟවීම් දෙන්න',
     celebrateCompleting: 'සෑම කාර්යයක්ම ප්‍රශංසාවෙන් සමරන්න',
     keepRoutinesConsistent: 'දිනචර්යාවන් ස්ථාවර නමුත් නම්‍යශීලීව තබා ගන්න',
-    
+    // Added missing keys
+    calmingActivityOfDay: 'අද දින සන්සුන් ක්‍රියාකාරකම',
+    startCalming: 'සන්සුන් ක්‍රියාකාරකම ආරම්භ කරන්න',
+    focusTimer: 'අවධානය ටයිමරය',
+    addCalmingActivity: 'සන්සුන් ක්‍රියාකාරකමක් එක් කරන්න',
+    noCalmingActivities: 'සන්සුන් ක්‍රියාකාරකම් නොමැත. උපරිම 5 ක් එක් කරන්න!',
+    selectCalmingActivity: 'සන්සුන් ක්‍රියාකාරකම තෝරන්න',
+    chooseIcon: 'නිරූපකය තෝරන්න',
+    chooseColor: 'වර්ණය තෝරන්න',
+    activityName: 'ක්‍රියාකාරකමේ නම',
+    time: 'වේලාව',
+    calmingCorner: 'සන්සුන් කොන',
+
     // Behavioral Screen
     socialSkillsTraining: 'සමාජ කුසලතා පුහුණුව',
     practiceVirtualEnvironments: 'ආරක්ෂිත අතථ්‍ය පරිසරවල පුහුණු වන්න',
@@ -750,7 +1236,7 @@ parentsGuideDescription: 'ඔබේ දරුවාට උපකාර කිර
     version: 'අනුවාදය',
     areYouSureLogout: 'ඔබට නික්මීමට විශ්වාසද?',
     profileUpdated: 'පැතිකඩ සාර්ථකව යාවත්කාලීන කරන ලදී!',
-    
+
     // Profile
     changePhoto: 'ඡායාරූපය වෙනස් කරන්න',
     childInformation: 'ළමා තොරතුරු',
@@ -760,10 +1246,411 @@ parentsGuideDescription: 'ඔබේ දරුවාට උපකාර කිර
     appSettings: 'යෙදුම් සැකසුම්',
     manageSettings: 'දැනුම්දීම්, භාෂාව, තේමාව සහ තවත් දේ කළමනාකරණය කරන්න',
 
-    // ========== EMOTION MATCH GAME (Sinhala) ==========
+    // ─── ADDITIONAL KEYS FOR LEARNING SCREENS ───
+    alreadyHaveAccount: 'දැනටමත් ගිණුමක් තිබේද?',
+    colors: 'වර්ණ',
+    'progress.of': '{current} / {total} {item}',
+
+    // Color instruction & names
+    'color.instruction': 'පහත දැක්වෙන වර්ණය තෝරන්න',
+    'color.red': 'රතු',
+    'color.blue': 'නිල්',
+    'color.green': 'කොළ',
+    'color.yellow': 'කහ',
+    'color.orange': 'තැඹිලි',
+    'color.purple': 'දම්',
+    'color.pink': 'රෝස',
+    'color.brown': 'දුඹුරු',
+    'color.black': 'කළු',
+    'color.white': 'සුදු',
+
+    'color.sky': 'අහස් නිල්',
+    'color.mint': 'මින්ට් කොළ',
+    'color.gold': 'රන්වන්',
+    'color.deepPink': 'තද රෝස',
+    'color.aqua': 'ජල නිල්',
+    'color.redOrange': 'රතු-තැඹිලි',
+    'color.cerulean': 'සෙරුලියන් නිල්',
+    'color.lime': 'ලයිම් කොළ',
+    'color.olive': 'ඔලිව් කොළ',
+    'color.tan': 'ලා දුඹුරු',
+    'color.fern': 'පර්ණ කොළ',
+    'color.sienna': 'සියෙනා දුඹුරු',
+    'color.violet': 'වයලට්',
+    'color.ruby': 'රූබි රතු',
+    'color.sapphire': 'නිල් මැණික්',
+    'color.emerald': 'මරකත කොළ',
+    'color.amethyst': 'ඇමතිස්ට් දම්',
+    'color.topaz': 'ටෝපාස් කහ',
+    'color.hotPink': 'උණුසුම් රෝස',
+    'color.turquoise': 'ටර්කියුයිස්',
+    'color.tomato': 'තක්කාලි රතු',
+    'color.dodger': 'ඩොජර් නිල්',
+    'color.crimson': 'ක්‍රිම්සන් රතු',
+    'color.spring': 'වසන්ත කොළ',
+    'color.dOrange': 'තද තැඹිලි',
+    'color.dOrchid': 'තද ඕකිඩ් දම්',
+    'color.seaGreen': 'මුහුදු කොළ',
+    'color.orchid': 'ඕකිඩ් දම්',
+    'color.indian': 'ඉන්දියානු රතු',
+    'color.tangerine': 'ටැන්ජරීන් තැඹිලි',
+
+    // Objects
+    'object.apple': 'ඇපල්',
+    'object.rose': 'රෝස මල',
+    'object.ball': 'බෝලය',
+    'object.sky': 'අහස',
+    'object.ocean': 'සාගරය',
+    'object.blueberry': 'බ්ලූබෙරි',
+    'object.grass': 'තණකොළ',
+    'object.tree': 'ගස',
+    'object.leaf': 'කොළය',
+    'object.sun': 'හිරු',
+    'object.banana': 'කෙසෙල්',
+    'object.star': 'තරුව',
+    'object.orangeFruit': 'දොඩම් ගෙඩිය',
+    'object.pumpkin': 'වට්ටක්කා',
+    'object.carrot': 'කැරට්',
+    'object.grapes': 'මිදි',
+    'object.eggplant': 'වම්බටු',
+    'object.lavender': 'ලැවෙන්ඩර්',
+    'object.flower': 'මල',
+    'object.cottonCandy': 'කපු කැන්ඩි',
+    'object.pig': 'ඌරා',
+    'object.chocolate': 'චොකලට්',
+    'object.treeTrunk': 'ගස් කඳ',
+    'object.bear': 'වලසා',
+    'object.nightSky': 'රාත්‍රී අහස',
+    'object.penguin': 'පෙන්ගුවින්',
+    'object.tire': 'ටයරය',
+    'object.cloud': 'වලාකුළ',
+    'object.snow': 'හිම',
+    'object.milk': 'කිරි',
+
+    // Color UI
+    'color.thingsThatAre': '{color} වර්ණයෙන් යුත් දේවල්',
+    'color.whatColorIsThis': 'මෙය කුමන වර්ණයද?',
+    'color.tryAgainCorrectIs': 'නැවත උත්සාහ කරන්න! නිවැරදි වර්ණය {color} වේ!',
+
+    // Reward messages (colors)
+    'reward.amazing': '🌟 පුදුමයි! 🌟',
+    'reward.greatJob': '🎉 නියමයි! 🎉',
+    'reward.youreAStar': '⭐ ඔබ තරුවක්! ⭐',
+    'reward.fantastic': '🎈 අපූරුයි! 🎈',
+    'reward.excellent': '🏆 විශිෂ්ටයි! 🏆',
+    'reward.keepGoing': '💪 දිගටම යන්න! 💪',
+    'reward.beautiful': '🌈 ලස්සනයි! 🌈',
+    'reward.completeAllColors': '🎉 සම්පූර්ණයි! ඔබ සියලු වර්ණ ප්‍රගුණ කළා! 🎉',
+    'reward.youAreColorMaster': '🎉 ඔබ වර්ණ ප්‍රවීණයෙක්! 🎉',
+    'reward.pointsForColor': '{color} සඳහා +{points} ලකුණු!',
+    'reward.greatProgress': 'නියම ප්‍රගතියක්! දිගටම යන්න!',
+
+    // Common UI
+    'common.backToMenu': 'මෙනුවට ආපසු',
+    'common.continue': 'දිගටම',
+
+    // Animal instruction & names
+    'animal.instruction': 'පහත දැක්වෙන සත්වයා තෝරන්න',
+    'animal.lion': 'සිංහයා',
+    'animal.elephant': 'අලියා',
+    'animal.monkey': 'වඳුරා',
+    'animal.giraffe': 'ජිරාෆ්',
+    'animal.panda': 'පැන්ඩා',
+    'animal.dolphin': 'ඩොල්ෆින්',
+
+    // Shape instruction & names
+    'shape.instruction': 'පහත දැක්වෙන හැඩය තෝරන්න',
+    'shape.circle': 'රවුම',
+    'shape.square': 'චතුරස්‍රය',
+    'shape.triangle': 'ත්‍රිකෝණය',
+    'shape.rectangle': 'සෘජුකෝණාස්‍රය',
+    'shape.oval': 'ඕවලාකාර',
+    'shape.heart': 'හදවත',
+    'shape.star': 'තරුව',
+
+    // Shape descriptions
+    'shape.circle.desc': 'කොන් නැති වටකුරු හැඩය',
+    'shape.square.desc': 'සමාන පැති හතරක් සහ කොන් හතරක්',
+    'shape.triangle.desc': 'පැති තුනක් සහ කොන් තුනක්',
+    'shape.rectangle.desc': 'පැති හතරක්, ප්‍රතිවිරුද්ධ පැති සමාන වේ',
+    'shape.oval.desc': 'දිගටි රවුම, බිත්තරයක් වගේ',
+    'shape.heart.desc': 'ආදරයේ සහ මිත්‍රත්වයේ සංකේතය',
+    'shape.star.desc': 'පැති පහක් සහිත බබළන තරුව',
+
+    // Shape examples
+    'shape.circle.ex1': 'බෝලය',
+    'shape.circle.ex2': 'හිරු',
+    'shape.circle.ex3': 'ඔරලෝසුව',
+    'shape.circle.ex4': 'රෝදය',
+    'shape.square.ex1': 'ජනේලය',
+    'shape.square.ex2': 'පොත',
+    'shape.square.ex3': 'ටයිල්',
+    'shape.square.ex4': 'පුවරුව',
+    'shape.triangle.ex1': 'වහලය',
+    'shape.triangle.ex2': 'පිරමීඩය',
+    'shape.triangle.ex3': 'රුවල්',
+    'shape.triangle.ex4': 'කන්ද',
+    'shape.rectangle.ex1': 'දොර',
+    'shape.rectangle.ex2': 'දුරකථනය',
+    'shape.rectangle.ex3': 'මේසය',
+    'shape.rectangle.ex4': 'පොත',
+    'shape.oval.ex1': 'බිත්තරය',
+    'shape.oval.ex2': 'බැලූනය',
+    'shape.oval.ex3': 'කණ්ණාඩිය',
+    'shape.oval.ex4': 'කොළය',
+    'shape.heart.ex1': 'වැලන්ටයින්',
+    'shape.heart.ex2': 'කැන්ඩි',
+    'shape.heart.ex3': 'කොට්ටය',
+    'shape.heart.ex4': 'පෙන්ඩන්ට්',
+    'shape.star.ex1': 'මුහුදු තරුව',
+    'shape.star.ex2': 'බැජ්',
+    'shape.star.ex3': 'ස්ටිකරය',
+    'shape.star.ex4': 'සැරසිලි',
+
+    // Shape UI
+    'shape.corners': 'කොන් {count}',
+    'shape.difficulty.easy': 'පහසු',
+    'shape.difficulty.medium': 'මධ්‍යම',
+    'shape.difficulty.challenge': 'අභියෝගය',
+    'shape.thingsThatAre': '{shape} හැඩයෙන් යුත් දේවල්',
+    'shape.whatShapeIsThis': 'මෙය කුමන හැඩයද?',
+    'shape.tryAgainCorrectIs': 'නැවත උත්සාහ කරන්න! නිවැරදි හැඩය {shape} වේ!',
+    'shape.drawInAir': 'අහසේ {shape} හැඩයක් අඳින්න! ✋',
+
+    // Reward (shapes)
+    'reward.shapeTastic': '🌟 හැඩයක් නියමයි! 🌟',
+    'reward.perfectShape': '🎉 පරිපූර්ණ හැඩය! 🎉',
+    'reward.shapeMaster': '⭐ හැඩයේ ප්‍රවීණයා! ⭐',
+    'reward.wellRounded': '🎈 වටකුරු කුසලතා! 🎈',
+    'reward.sharpSkills': '🏆 තියුණු කුසලතා! 🏆',
+    'reward.completeAllShapes': '🎉 සම්පූර්ණයි! ඔබ සියලු හැඩතල ප්‍රගුණ කළා! 🎉',
+    'reward.youAreShapeExpert': '🎉 ඔබ හැඩතල විශේෂඥයෙක්! 🎉',
+    'reward.pointsForShape': '{shape} ඉගෙනීම සඳහා +{points} ලකුණු!',
+    'reward.greatProgressShape': 'නියම ප්‍රගතියක්! ඔබ හැඩතල ප්‍රවීණයෙක් වෙමින්!',
+
+    // Fruits
+    'fruits': 'පලතුරු',
+    'fruit.apple': 'ඇපල්',
+    'fruit.banana': 'කෙසෙල්',
+    'fruit.orange': 'දොඩම්',
+    'fruit.strawberry': 'ස්ට්‍රෝබෙරි',
+    'fruit.grape': 'මිදි',
+    'fruit.watermelon': 'කොමඩු',
+    'fruit.pineapple': 'අන්නාසි',
+    'fruit.mango': 'අඹ',
+    'fruit.peach': 'පීච්',
+    'fruit.cherry': 'චෙරි',
+
+    'fruit.apple.taste': 'මිහිරි සහ හැපෙනසුළු',
+    'fruit.banana.taste': 'මෘදු සහ මිහිරි',
+    'fruit.orange.taste': 'යුෂ සහිත සහ ඇඹුල්',
+    'fruit.strawberry.taste': 'මිහිරි සහ යුෂ සහිත',
+    'fruit.grape.taste': 'මිහිරි සහ කන්න විනෝදජනක',
+    'fruit.watermelon.taste': 'ප්‍රබෝධමත් සහ මිහිරි',
+    'fruit.pineapple.taste': 'මිහිරි සහ නිවර්තන',
+    'fruit.mango.taste': 'මිහිරි සහ ක්‍රීම්',
+    'fruit.peach.taste': 'මෘදු සහ මිහිරි',
+    'fruit.cherry.taste': 'මිහිරි සහ ඇඹුල්',
+
+    'fruit.apple.benefit': '🍎 දිනකට ඇපල් ගෙඩියක් ඔබව වෛද්‍යවරයාගෙන් ඈත් කරයි!',
+    'fruit.banana.benefit': '⚡ දවස පුරා සෙල්ලම් කිරීමට ශක්තිය ලබා දෙයි!',
+    'fruit.orange.benefit': '💪 විටමින් සී ඔබව ශක්තිමත් කරයි!',
+    'fruit.strawberry.benefit': '❤️ ඔබේ හදවතට හොඳයි!',
+    'fruit.grape.benefit': '🧠 දේවල් මතක තබා ගැනීමට උපකාරී වේ!',
+    'fruit.watermelon.benefit': '💧 අව්ව දිනවල ඔබව සජලනය කරයි!',
+    'fruit.pineapple.benefit': '🦷 ආහාර ජීර්ණයට උපකාරී වේ!',
+    'fruit.mango.benefit': '👀 පෙනීමට හොඳයි!',
+    'fruit.peach.benefit': '✨ ඔබේ සම නිරෝගී සහ දීප්තිමත් කරයි!',
+    'fruit.cherry.benefit': '😴 රාත්‍රියේ හොඳින් නිදා ගැනීමට උපකාරී වේ!',
+
+    'fruit.whatFruitIsThis': 'මෙය කුමන පලතුරද?',
+    'fruit.tryAgainCorrectIs': 'නැවත උත්සාහ කරන්න! නිවැරදි පලතුර {fruit} වේ!',
+    'fruit.nutritionFact': '{fruit} {taste} වේ!',
+
+    'reward.yummy': '🌟 රසයි! 🌟',
+    'reward.fruitMaster': '🎉 පලතුරු ප්‍රවීණයා! 🎉',
+    'reward.sweetJob': '⭐ මිහිරි කාර්යයක්! ⭐',
+    'reward.delicious': '🎈 රසවත්! 🎈',
+    'reward.berryGood': '🏆 බෙරී හොඳයි! 🏆',
+    'reward.completeAllFruits': '🎉 සම්පූර්ණයි! ඔබ සියලු පලතුරු ප්‍රගුණ කළා! 🎉',
+    'reward.youAreFruitExpert': '🎉 ඔබ පලතුරු විශේෂඥයෙක්! 🎉',
+    'reward.pointsForFruit': '{fruit} සඳහා +{points} ලකුණු!',
+    'reward.greatProgressFruit': 'නියම ප්‍රගතියක්! ඔබ පලතුරු විශේෂඥයෙක් වෙමින්!',
+
+    // Number Hunt keys
+    'numberHunt.title': 'අංක දඩයම',
+    'numberHunt.hintButton': 'ඉඟියක් අවශ්‍යද?',
+    'numberHunt.hintMessage': 'ප්‍රවේශමෙන් ගණන් කරන්න! පිළිතුර {number} වේ',
+    'numberHunt.feedbackWrong': 'නැවත උත්සාහ කරන්න! ප්‍රවේශමෙන් ගණන් කරන්න. නිවැරදි පිළිතුර {number} වේ',
+    'numberHunt.nextLevel': 'ඊළඟ මට්ටම',
+    'numberHunt.level1.name': 'අංක 1-5',
+    'numberHunt.level2.name': 'අංක 1-10',
+    'numberHunt.level3.name': 'වස්තු ගණන් කිරීම',
+    'numberHunt.level4.name': 'අංක වචන',
+    'numberHunt.level5.name': 'අංක සොයාගැනීම',
+    'numberHunt.level1.q1': 'අංක එක සොයන්න',
+    'numberHunt.level1.q2': 'අංක දෙක සොයන්න',
+    'numberHunt.level1.q3': 'අංක තුන සොයන්න',
+    'numberHunt.level1.q4': 'අංක හතර සොයන්න',
+    'numberHunt.level1.q5': 'අංක පහ සොයන්න',
+    'numberHunt.level2.q1': 'අංක හය සොයන්න',
+    'numberHunt.level2.q2': 'අංක හත සොයන්න',
+    'numberHunt.level2.q3': 'අංක අට සොයන්න',
+    'numberHunt.level2.q4': 'අංක නවය සොයන්න',
+    'numberHunt.level2.q5': 'අංක දහය සොයන්න',
+    'numberHunt.level3.q1': 'ඇපල් කීයක් තිබේද?',
+    'numberHunt.level3.q2': 'තරු කීයක් තිබේද?',
+    'numberHunt.level3.q3': 'හදවත් කීයක් තිබේද?',
+    'numberHunt.level3.q4': 'රවුම් කීයක් තිබේද?',
+    'numberHunt.level3.q5': 'චතුරස්‍ර කීයක් තිබේද?',
+    'numberHunt.level4.q1': 'එක',
+    'numberHunt.level4.q2': 'දෙක',
+    'numberHunt.level4.q3': 'තුන',
+    'numberHunt.level4.q4': 'හතර',
+    'numberHunt.level4.q5': 'පහ',
+    'numberHunt.level5.q1': 'සැඟවුණු අංක 3 සොයන්න',
+    'numberHunt.level5.q2': 'සැඟවුණු අංක 7 සොයන්න',
+    'numberHunt.level5.q3': 'සැඟවුණු අංක 5 සොයන්න',
+    'numberHunt.level5.q4': 'සැඟවුණු අංක 9 සොයන්න',
+    'numberHunt.level5.q5': 'සැඟවුණු අංක 2 සොයන්න',
+    'numberHunt.encouragement.start': 'අපි ගණන් කිරීම ආරම්භ කරමු! 🌟',
+    'numberHunt.encouragement.greatStart': 'නියම ආරම්භයක්! දිගටම යන්න! 🎉',
+    'numberHunt.encouragement.amazing': 'ඔබ පුදුම සහගත ලෙස කරනවා! ⭐',
+    'numberHunt.encouragement.champion': 'අංක ශූරයෙක් බිහිවෙමින්! 🏆',
+    'numberHunt.reward.title': 'නියම ගණන් කිරීමක්!',
+    'numberHunt.reward.message': 'ඔබ {levelName} සම්පූර්ණ කළා!',
+    'numberHunt.complete.title': 'අංක ශූරයා!',
+    'numberHunt.complete.message': 'ඔබ සියලු අංක ප්‍රගුණ කළා!',
+
+    // Thinking games
+    'thinkingGames.mainTitle': 'චින්තන ක්‍රීඩා',
+    'thinkingGames.brainBanner': '🧠 විනෝදජනක තාර්කික ප්‍රහේලිකා සමඟ ඔබේ මොළය පුහුණු කරන්න! 🧠',
+    'thinkingGames.playNow': 'දැන් ක්‍රීඩා කරන්න',
+    'thinkingGames.comingSoon': 'ඉක්මනින් එනවා!',
+    'thinkingGames.comingSoonMessage': 'තවත් චින්තන ක්‍රීඩා සංවර්ධනය වෙමින් පවතී',
+    'thinkingGames.tip': '💡 ඉඟිය: ඔබේ කාලය ගන්න සහ රටා සොයන්න. සෑම ප්‍රහේලිකාවක්ම ඔබේ මොළය ශක්තිමත් කිරීමට උපකාරී වේ!',
+    'thinkingGames.hint': 'ඉඟිය',
+    'thinkingGames.oddOneOut.title': 'වෙනස් එක සොයන්න',
+    'thinkingGames.oddOneOut.desc': 'නොගැලපෙන අයිතමය සොයන්න',
+    'thinkingGames.sequence.title': 'ඊළඟට එන්නේ කුමක්ද?',
+    'thinkingGames.sequence.desc': 'අනුක්‍රමය සම්පූර්ණ කරන්න',
+    'thinkingGames.sorting.title': 'වර්ගීකරණ ක්‍රීඩාව',
+    'thinkingGames.sorting.desc': 'අයිතම කාණ්ඩගත කරන්න',
+    'thinkingGames.analogy.title': 'වචන සාදෘශ්‍ය',
+    'thinkingGames.analogy.desc': 'සාදෘශ්‍යය සම්පූර්ණ කරන්න',
+    'thinkingGames.oddOneOut.question': 'වෙනස් එක කුමක්ද?',
+    'thinkingGames.oddOneOut.explain.fruit': 'කාර් එක පළතුරක් නොවේ',
+    'thinkingGames.oddOneOut.explain.animal': 'ගුවන් යානය සත්වයෙක් නොවේ',
+    'thinkingGames.oddOneOut.explain.color': 'ඇපල් ගෙඩිය වර්ණයක් නොවේ',
+    'thinkingGames.oddOneOut.explain.emotion': 'කාර් එක හැඟීමක් නොවේ',
+    'thinkingGames.oddOneOut.explain.letter': 'A යනු අකුරක් මිස අංකයක් නොවේ',
+    'thinkingGames.oddOneOut.explain.pet': 'පිස්සා සුරතලෙක් නොවේ',
+    'thinkingGames.oddOneOut.explain.school': 'බර්ගර් පාසල් උපකරණයක් නොවේ',
+    'thinkingGames.sequence.question': 'රටාවේ ඊළඟට එන්නේ කුමක්ද?',
+    'thinkingGames.sequence.hint': 'රටාව දෙස බලන්න! එය සෑම අයිතම දෙකකටම වරක් පුනරාවර්තනය වේ.',
+    'thinkingGames.reward.oddOneOut.title': 'නියම සිතීමක්!',
+    'thinkingGames.reward.oddOneOut.message': 'ඔබ වෙනස් එක සොයා ගත්තා!',
+    'thinkingGames.reward.sequence.title': 'රටා ප්‍රවීණයා!',
+    'thinkingGames.reward.sequence.message': 'ඔබ අනුක්‍රමය සම්පූර්ණ කළා!',
+    'thinkingGames.complete.title': 'අභියෝගය සම්පූර්ණයි!',
+    'thinkingGames.complete.message': 'ඔබ දවසින් දවස බුද්ධිමත් වෙමින්!',
+
+    // Memory Match
+    'game.memoryMatch.title': 'මතක ගැලපීම',
+    'game.memoryMatch.subtitle': 'කාඩ් යුගල ගලපන්න',
+    'game.memoryMatch.levelComplete': 'මට්ටම සම්පූර්ණයි!',
+    'game.memoryMatch.gameComplete': 'සුභ පැතුම්!',
+    'game.memoryMatch.playAgain': 'නැවත සෙල්ලම් කරන්න',
+    'game.memoryMatch.backToMenu': 'මෙනුවට ආපසු',
+
+    // Pattern Maker
+    'game.patternMaker.title': 'රටා සාදන්නා',
+    'game.patternMaker.subtitle': 'රටා සාදන්න',
+    'game.patternMaker.complete': 'රටා ප්‍රවීණයා!',
+    'game.patternMaker.champion': 'රටා ශූරයා!',
+
+    // Shape Puzzle
+    'game.shapePuzzle.title': 'හැඩතල ප්‍රහේලිකාව',
+    'game.shapePuzzle.subtitle': 'හැඩතල ප්‍රහේලිකා සම්පූර්ණ කරන්න',
+    'game.shapePuzzle.complete': 'මට්ටම සම්පූර්ණයි!',
+    'game.shapePuzzle.master': 'හැඩතල ප්‍රවීණයා!',
+
+    // Simple Puzzle
+    'game.simplePuzzle.title': 'සරල ප්‍රහේලිකාව',
+    'game.simplePuzzle.completePuzzle': 'මෙම ප්‍රහේලිකාව සම්පූර්ණ කරන්න:',
+    'game.simplePuzzle.hint': 'කෑල්ලක් තට්ටු කර, පසුව තවත් කෑල්ලක් තට්ටු කර ඒවා මාරු කරන්න!',
+    'game.simplePuzzle.perfectMatch': 'පරිපූර්ණ ගැලපීම!',
+    'game.simplePuzzle.greatJob': 'නියමයි!',
+    'game.simplePuzzle.levelComplete': 'ඔබ {level} මට්ටම {moves} චලනයන්ගෙන් සම්පූර්ණ කළා!',
+    'game.simplePuzzle.nextLevel': 'ඊළඟ මට්ටම →',
+    'game.simplePuzzle.master': 'ප්‍රහේලිකා ප්‍රවීණයා!',
+    'game.simplePuzzle.allSolved': 'ඔබ සියලුම ප්‍රහේලිකා විසඳුවා!',
+    'game.simplePuzzle.playAgain': 'නැවත සෙල්ලම් කරන්න',
+    'game.simplePuzzle.backToMenu': 'මෙනුවට ආපසු',
+    'game.simplePuzzle.level1': 'පලතුරු ප්‍රහේලිකාව',
+    'game.simplePuzzle.level2': 'සත්ව ප්‍රහේලිකාව',
+    'game.simplePuzzle.level3': 'හැඩතල ප්‍රහේලිකාව',
+    'game.simplePuzzle.level4': 'ඉමෝජි ප්‍රහේලිකාව',
+    'game.simplePuzzle.level5': 'ප්‍රවාහන ප්‍රහේලිකාව',
+
+    // Word Match
+    'game.wordMatch.title': 'වචන ගැලපීම',
+    'game.wordMatch.subtitle': 'භාෂා දෙකෙන් වචන ඉගෙන ගන්න',
+    'game.wordMatch.mode1': 'English → සිංහල',
+    'game.wordMatch.mode2': 'සිංහල → English',
+    'game.wordMatch.mode3': '🎯 පින්තූර ගැලපීම',
+    'game.wordMatch.greatJob': 'නියමයි!',
+    'game.wordMatch.levelComplete': 'ඔබ {level} සම්පූර්ණ කළා!',
+    'game.wordMatch.nextLevel': 'ඊළඟ මට්ටම →',
+    'game.wordMatch.master': 'වචන ප්‍රවීණයා!',
+    'game.wordMatch.masterMessage': 'ඔබ භාෂා දෙකෙහිම බොහෝ වචන ඉගෙන ගත්තා!',
+    'game.wordMatch.totalScore': 'මුළු ලකුණු: {score}',
+    'game.wordMatch.scorePoints': 'ලකුණු: {score}',
+    'game.wordMatch.encouragement': '🎉 නියම ප්‍රගතියක්! දිගටම ඉගෙන ගන්න! 🎉',
+
+    // Color Sorting Game
+    'game.level': 'මට්ටම',
+    'game.levelComplete': 'මට්ටම සම්පූර්ණයි!',
+    'game.timesUp': 'වේලාව අවසන්!',
+    'game.nextLevel': 'ඊළඟ මට්ටම',
+    'game.playAgain': 'නැවත ක්‍රීඩා කරන්න',
+    'game.tryAgain': 'නැවත උත්සාහ කරන්න',
+    'game.backToGames': 'ක්‍රීඩා වෙත ආපසු',
+    'game.exitGame': 'ක්‍රීඩාවෙන් පිටවන්න',
+    'game.exitConfirm': 'ඔබට විශ්වාසද? ප්‍රගතිය අහිමි වේ.',
+    'game.cancel': 'අවලංගු කරන්න',
+    'game.exit': 'පිටවන්න',
+    'game.colorSorting.dropHint': 'පහළ ඇති ගැලපෙන බඳුනට දමන්න ↓',
+    'game.colorSorting.dragHint': 'රවුම අල්ලා ඇදගෙන යන්න  ·  ඉතිරිව ඇති ගණන {remaining}',
+    'game.colorSorting.sortingBins': 'වර්ග කිරීමේ බඳුන්',
+    'game.colorSorting.instruction': 'සෑම රවුමක්ම ඇදගෙන ගොස් ගැලපෙන වර්ණ බඳුනට දමන්න',
+    'game.colorSorting.completeMessage': '"{levelName}" හි ඇති අයිතම {total} සියල්ල වර්ග කරන ලදි!',
+    'game.colorSorting.failedMessage': 'ඔබ {score} න් {total} ක් වර්ග කළා — බොහෝ දුරට එහි!',
+    'game.colorSorting.level1.name': 'මූලික වර්ණ',
+    'game.colorSorting.level2.name': 'උණුසුම් නාද',
+    'game.colorSorting.level3.name': 'සිසිල් නාද',
+    'game.colorSorting.level4.name': 'පැස්ටල්',
+    'game.colorSorting.level5.name': 'නියොන්',
+    'game.colorSorting.level6.name': 'පෘථිවි වර්ණ',
+    'game.colorSorting.level7.name': 'දේදුන්න',
+    'game.colorSorting.level8.name': 'මැණික්',
+    'game.colorSorting.level9.name': 'මිශ්‍ර අභියෝගය',
+    'game.colorSorting.level10.name': 'ප්‍රවීණ',
+    'game.colorSorting.level1.desc': 'සියලුම අයිතම ගැලපෙන බඳුනට ඇදගෙන යන්න',
+    'game.colorSorting.level2.desc': 'සියලුම උණුසුම් වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
+    'game.colorSorting.level3.desc': 'සියලුම සිසිල් වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
+    'game.colorSorting.level4.desc': 'සියලුම පැස්ටල් අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
+    'game.colorSorting.level5.desc': 'සියලුම නියොන් අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
+    'game.colorSorting.level6.desc': 'සියලුම පෘථිවි වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
+    'game.colorSorting.level7.desc': 'සියලුම දේදුන්න වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
+    'game.colorSorting.level8.desc': 'සියලුම මැණික් වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
+    'game.colorSorting.level9.desc': 'සියලුම මිශ්‍ර වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
+    'game.colorSorting.level10.desc': 'ප්‍රවීණ ඇදගෙන යන්න — සියල්ල වර්ග කරන්න!',
+
+    // Emotion Match Game
     'game.emotionMatch.title': 'හැඟීම් ගැලපීම',
     'game.emotionMatch.question': 'මෙම පුද්ගලයාට දැනෙන්නේ කෙසේද?',
-    'game.emotionMatch.tip': 'ඉඟිය: මුහුණ දෙස බලා ඔවුන්ට දැනෙන ආකාරය ගැන සිතන්න!',
+    'game.emotionMatch.tip': 'මුහුණ දෙස බලා ඔවුන්ට දැනෙන ආකාරය ගැන සිතන්න!',
     'game.emotionMatch.greatJob': 'නියමයි!',
     'game.emotionMatch.understandLevel': 'ඔබ {levelName} හොඳින් තේරුම් ගෙන ඇත!',
     'game.emotionMatch.scorePoints': 'ලකුණු: {score}',
@@ -773,13 +1660,9 @@ parentsGuideDescription: 'ඔබේ දරුවාට උපකාර කිර
     'game.emotionMatch.totalScore': 'මුළු ලකුණු: {score}',
     'game.emotionMatch.playAgain': 'නැවත ක්‍රීඩා කරන්න',
     'game.emotionMatch.backToMenu': 'මෙනුවට ආපසු',
-
-    // Level names
     'emotion.level.basic': 'මූලික හැඟීම්',
     'emotion.level.more': 'තවත් හැඟීම්',
     'emotion.level.advanced': 'උසස් හැඟීම්',
-
-    // Emotion names
     'emotion.happy': 'සතුටුයි',
     'emotion.sad': 'දුකයි',
     'emotion.angry': 'තරහයි',
@@ -792,8 +1675,6 @@ parentsGuideDescription: 'ඔබේ දරුවාට උපකාර කිර
     'emotion.silly': 'විකාර',
     'emotion.proud': 'ආඩම්බරයි',
     'emotion.lonely': 'තනිකමයි',
-
-    // Emotion descriptions
     'emotion.desc.happy': 'හොඳක් දැනෙනවා සහ සිනාසෙනවා',
     'emotion.desc.sad': 'කඳුළු සමග පහළට දැනෙනවා',
     'emotion.desc.angry': 'නොසන්සුන් සහ කලකිරීම',
@@ -806,8 +1687,6 @@ parentsGuideDescription: 'ඔබේ දරුවාට උපකාර කිර
     'emotion.desc.silly': 'සෙල්ලක්කාර සහ විනෝදජනක',
     'emotion.desc.proud': 'ජයග්‍රහණය ගැන සතුටුයි',
     'emotion.desc.lonely': 'යමෙකුගේ සමාගම අවශ්‍යයි',
-
-    // Coping strategies
     'coping.shareHappiness': 'ඔබේ සතුට යමෙකු සමඟ බෙදාගන්න! 😊',
     'coping.cryAndTalk': 'අඬන්න හරි. ඔබ විශ්වාස කරන කෙනෙකු සමඟ කතා කරන්න. 🤗',
     'coping.deepBreaths': 'ගැඹුරු හුස්මක් ගන්න. 10 දක්වා ගණන් කරන්න. 🧘',
@@ -821,334 +1700,16 @@ parentsGuideDescription: 'ඔබේ දරුවාට උපකාර කිර
     'coping.celebrateAchievements': 'ඔබේ ජයග්‍රහණ සමරන්න! ඔබ එයට සුදුසුයි. 🏆',
     'coping.notAlone': 'ඔබ තනිවම නොවේ. යමෙකු අමතන්න. 💌',
     'coping.default': 'ඔබේ හැඟීම් තේරුම් ගැනීමට මොහොතක් ගන්න. 💭',
-
-    // Sinhala translations for ColorSortingGame
-'game.level': 'මට්ටම',
-'game.levelComplete': 'මට්ටම සම්පූර්ණයි!',
-'game.timesUp': 'වේලාව අවසන්!',
-'game.nextLevel': 'ඊළඟ මට්ටම',
-'game.playAgain': 'නැවත ක්‍රීඩා කරන්න',
-'game.tryAgain': 'නැවත උත්සාහ කරන්න',
-'game.backToGames': 'ක්‍රීඩා වෙත ආපසු',
-'game.exitGame': 'ක්‍රීඩාවෙන් පිටවන්න',
-'game.exitConfirm': 'ඔබට විශ්වාසද? ප්‍රගතිය අහිමි වේ.',
-'game.cancel': 'අවලංගු කරන්න',
-'game.exit': 'පිටවන්න',
-
-'game.colorSorting.dropHint': 'පහළ ඇති ගැලපෙන බඳුනට දමන්න ↓',
-'game.colorSorting.dragHint': 'රවුම අල්ලා ඇදගෙන යන්න  ·  ඉතිරිව ඇති ගණන {remaining}',
-'game.colorSorting.sortingBins': 'වර්ග කිරීමේ බඳුන්',
-'game.colorSorting.instruction': 'සෑම රවුමක්ම ඇදගෙන ගොස් ගැලපෙන වර්ණ බඳුනට දමන්න',
-'game.colorSorting.completeMessage': '"{levelName}" හි ඇති අයිතම {total} සියල්ල වර්ග කරන ලදි!',
-'game.colorSorting.failedMessage': 'ඔබ {score} න් {total} ක් වර්ග කළා — බොහෝ දුරට එහි!',
-
-// Color names (Sinhala)
-'color.red': 'රතු',
-'color.green': 'කොළ',
-'color.blue': 'නිල්',
-'color.orange': 'තැඹිලි',
-'color.pink': 'රෝස',
-'color.yellow': 'කහ',
-'color.sky': 'අහස් නිල්',
-'color.purple': 'දම්',
-'color.mint': 'මින්ට්',
-'color.gold': 'රන්',
-'color.deepPink': 'ගැඹුරු රෝස',
-'color.aqua': 'ජල වර්ණ',
-'color.redOrange': 'රතු-තැඹිලි',
-'color.cerulean': 'සෙරුලියන්',
-'color.lime': 'ලයිම්',
-'color.brown': 'දුඹුරු',
-'color.olive': 'ඔලිව්',
-'color.tan': 'ටෑන්',
-'color.fern': 'ෆර්න්',
-'color.sienna': 'සියෙනා',
-'color.violet': 'වයලට්',
-'color.ruby': 'රූබි',
-'color.sapphire': 'නිල් මැණික්',
-'color.emerald': 'මරකත',
-'color.amethyst': 'ඇමතිස්ට්',
-'color.topaz': 'ටොපාස්',
-'color.hotPink': 'උණුසුම් රෝස',
-'color.turquoise': 'ටර්කියුයිස්',
-'color.tomato': 'තක්කාලි',
-'color.dodger': 'ඩොජර්',
-'color.crimson': 'ක්‍රිම්සන්',
-'color.spring': 'වසන්ත',
-'color.dOrange': 'D-තැඹිලි',
-'color.dOrchid': 'D-ඕකිඩ්',
-'color.seaGreen': 'මුහුදු කොළ',
-'color.orchid': 'ඕකිඩ්',
-'color.indian': 'ඉන්දියන්',
-'color.tangerine': 'ටැන්ජරීන්',
-
-// Level names (Sinhala)
-'game.colorSorting.level1.name': 'මූලික වර්ණ',
-'game.colorSorting.level2.name': 'උණුසුම් නාද',
-'game.colorSorting.level3.name': 'සිසිල් නාද',
-'game.colorSorting.level4.name': 'පැස්ටල්',
-'game.colorSorting.level5.name': 'නියොන්',
-'game.colorSorting.level6.name': 'පෘථිවි වර්ණ',
-'game.colorSorting.level7.name': 'දේදුන්න',
-'game.colorSorting.level8.name': 'මැණික්',
-'game.colorSorting.level9.name': 'මිශ්‍ර අභියෝගය',
-'game.colorSorting.level10.name': 'ප්‍රවීණ',
-
-// Level descriptions (Sinhala)
-'game.colorSorting.level1.desc': 'සියලුම අයිතම ගැලපෙන බඳුනට ඇදගෙන යන්න',
-'game.colorSorting.level2.desc': 'සියලුම උණුසුම් වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
-'game.colorSorting.level3.desc': 'සියලුම සිසිල් වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
-'game.colorSorting.level4.desc': 'සියලුම පැස්ටල් අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
-'game.colorSorting.level5.desc': 'සියලුම නියොන් අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
-'game.colorSorting.level6.desc': 'සියලුම පෘථිවි වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
-'game.colorSorting.level7.desc': 'සියලුම දේදුන්න වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
-'game.colorSorting.level8.desc': 'සියලුම මැණික් වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
-'game.colorSorting.level9.desc': 'සියලුම මිශ්‍ර වර්ණ අයිතම ඔවුන්ගේ බඳුන්වලට ඇදගෙන යන්න',
-'game.colorSorting.level10.desc': 'ප්‍රවීණ ඇදගෙන යන්න — සියල්ල වර්ග කරන්න!',
-
-// Objects (Sinhala)
-'object.apple': 'ඇපල්',
-'object.rose': 'රෝස මල',
-'object.ball': 'බෝලය',
-'object.sky': 'අහස',
-'object.ocean': 'සාගරය',
-'object.blueberry': 'බ්ලූබෙරි',
-'object.grass': 'තණකොළ',
-'object.tree': 'ගස',
-'object.leaf': 'කොළය',
-'object.sun': 'හිරු',
-'object.banana': 'කෙසෙල්',
-'object.house': 'ගෙදර',
-'object.star': 'තරුව',
-'object.orangeFruit': 'දොඩම් ගෙඩිය',
-'object.pumpkin': 'වට්ටක්කා',
-'object.carrot': 'කැරට්',
-'object.grapes': 'මිදි',
-'object.eggplant': 'වම්බටු',
-'object.lavender': 'ලැවෙන්ඩර්',
-'object.flower': 'මල',
-'object.cottonCandy': 'කපු කැන්ඩි',
-'object.pig': 'ඌරා',
-'object.chocolate': 'චොකලට්',
-'object.treeTrunk': 'ගස් කඳ',
-'object.bear': 'වලසා',
-'object.nightSky': 'රාත්‍රී අහස',
-'object.penguin': 'පෙන්ගුවින්',
-'object.tire': 'ටයරය',
-'object.cloud': 'වලාකුළ',
-'object.snow': 'හිම',
-'object.milk': 'කිරි',
-
-// Color learning UI (Sinhala)
-'color.thingsThatAre': '{color} වර්ණයෙන් යුත් දේවල්',
-'color.whatColorIsThis': 'මෙය කුමන වර්ණයද?',
-'color.tryAgainCorrectIs': 'නැවත උත්සාහ කරන්න! නිවැරදි වර්ණය {color} වේ!',
-
-// Reward messages (Sinhala)
-'reward.amazing': '🌟 පුදුමයි! 🌟',
-'reward.greatJob': '🎉 නියමයි! 🎉',
-'reward.youreAStar': '⭐ ඔබ තරුවක්! ⭐',
-'reward.fantastic': '🎈 අපූරුයි! 🎈',
-'reward.excellent': '🏆 විශිෂ්ටයි! 🏆',
-'reward.keepGoing': '💪 දිගටම යන්න! 💪',
-'reward.beautiful': '🌈 ලස්සනයි! 🌈',
-'reward.completeAllColors': '🎉 සම්පූර්ණයි! ඔබ සියලු වර්ණ ප්‍රගුණ කළා! 🎉',
-'reward.youAreColorMaster': '🎉 ඔබ වර්ණ ප්‍රවීණයෙක්! 🎉',
-'reward.pointsForColor': '{color} සඳහා +{points} ලකුණු!',
-'reward.greatProgress': 'නියම ප්‍රගතියක්! දිගටම යන්න!',
-
-// Common UI (Sinhala)
-'common.backToMenu': 'මෙනුවට ආපසු',
-'common.continue': 'දිගටම',
-'colors': 'වර්ණ',
-'progress.of': '{item} {current} න් {total}',
-
-'shapes': 'හැඩතල',
-'shape.circle': 'රවුම',
-'shape.square': 'චතුරස්‍රය',
-'shape.triangle': 'ත්‍රිකෝණය',
-'shape.rectangle': 'සෘජුකෝණාස්‍රය',
-'shape.oval': 'ඕවලාකාර',
-'shape.heart': 'හදවත',
-'shape.star': 'තරුව',
-
-'shape.circle.desc': 'කොන් නැති වටකුරු හැඩය',
-'shape.square.desc': 'සමාන පැති හතරක් සහ කොන් හතරක්',
-'shape.triangle.desc': 'පැති තුනක් සහ කොන් තුනක්',
-'shape.rectangle.desc': 'පැති හතරක්, ප්‍රතිවිරුද්ධ පැති සමාන වේ',
-'shape.oval.desc': 'දිගටි රවුම, බිත්තරයක් වගේ',
-'shape.heart.desc': 'ආදරයේ සහ මිත්‍රත්වයේ සංකේතය',
-'shape.star.desc': 'පැති පහක් සහිත බබළන තරුව',
-
-// Example objects (Sinhala)
-'shape.circle.ex1': 'බෝලය',
-'shape.circle.ex2': 'හිරු',
-'shape.circle.ex3': 'ඔරලෝසුව',
-'shape.circle.ex4': 'රෝදය',
-// ... similarly translate all other examples
-
-'shape.difficulty.easy': 'පහසු',
-'shape.difficulty.medium': 'මධ්‍යම',
-'shape.difficulty.challenge': 'අභියෝගය',
-
-'shape.corners': 'කොන් {count}',
-'shape.thingsThatAre': '{shape} හැඩයෙන් යුත් දේවල්',
-'shape.whatShapeIsThis': 'මෙය කුමන හැඩයද?',
-'shape.tryAgainCorrectIs': 'නැවත උත්සාහ කරන්න! නිවැරදි හැඩය {shape} වේ!',
-'shape.drawInAir': 'අහසේ {shape} හැඩයක් අඳින්න! ✋',
-
-'reward.shapeTastic': '🌟 හැඩයක් නියමයි! 🌟',
-'reward.perfectShape': '🎉 පරිපූර්ණ හැඩය! 🎉',
-'reward.shapeMaster': '⭐ හැඩයේ ප්‍රවීණයා! ⭐',
-'reward.wellRounded': '🎈 වටකුරු කුසලතා! 🎈',
-'reward.sharpSkills': '🏆 තියුණු කුසලතා! 🏆',
-'reward.completeAllShapes': '🎉 සම්පූර්ණයි! ඔබ සියලු හැඩතල ප්‍රගුණ කළා! 🎉',
-'reward.youAreShapeExpert': '🎉 ඔබ හැඩතල විශේෂඥයෙක්! 🎉',
-'reward.pointsForShape': '{shape} ඉගෙනීම සඳහා +{points} ලකුණු!',
-'reward.greatProgressShape': 'නියම ප්‍රගතියක්! ඔබ හැඩතල ප්‍රවීණයෙක් වෙමින්!',
-
-'fruits': 'පලතුරු',
-'fruit.apple': 'ඇපල්',
-'fruit.banana': 'කෙසෙල්',
-'fruit.orange': 'දොඩම්',
-'fruit.strawberry': 'ස්ට්‍රෝබෙරි',
-'fruit.grape': 'මිදි',
-'fruit.watermelon': 'කොමඩු',
-'fruit.pineapple': 'අන්නාසි',
-'fruit.mango': 'අඹ',
-'fruit.peach': 'පීච්',
-'fruit.cherry': 'චෙරි',
-
-'fruit.apple.taste': 'මිහිරි සහ හැපෙනසුළු',
-'fruit.banana.taste': 'මෘදු සහ මිහිරි',
-'fruit.orange.taste': 'යුෂ සහිත සහ ඇඹුල්',
-'fruit.strawberry.taste': 'මිහිරි සහ යුෂ සහිත',
-'fruit.grape.taste': 'මිහිරි සහ කන්න විනෝදජනක',
-'fruit.watermelon.taste': 'ප්‍රබෝධමත් සහ මිහිරි',
-'fruit.pineapple.taste': 'මිහිරි සහ නිවර්තන',
-'fruit.mango.taste': 'මිහිරි සහ ක්‍රීම්',
-'fruit.peach.taste': 'මෘදු සහ මිහිරි',
-'fruit.cherry.taste': 'මිහිරි සහ ඇඹුල්',
-
-'fruit.apple.benefit': '🍎 දිනකට ඇපල් ගෙඩියක් ඔබව වෛද්‍යවරයාගෙන් ඈත් කරයි!',
-'fruit.banana.benefit': '⚡ දවස පුරා සෙල්ලම් කිරීමට ශක්තිය ලබා දෙයි!',
-'fruit.orange.benefit': '💪 විටමින් සී ඔබව ශක්තිමත් කරයි!',
-'fruit.strawberry.benefit': '❤️ ඔබේ හදවතට හොඳයි!',
-'fruit.grape.benefit': '🧠 දේවල් මතක තබා ගැනීමට උපකාරී වේ!',
-'fruit.watermelon.benefit': '💧 අව්ව දිනවල ඔබව සජලනය කරයි!',
-'fruit.pineapple.benefit': '🦷 ආහාර ජීර්ණයට උපකාරී වේ!',
-'fruit.mango.benefit': '👀 පෙනීමට හොඳයි!',
-'fruit.peach.benefit': '✨ ඔබේ සම නිරෝගී සහ දීප්තිමත් කරයි!',
-'fruit.cherry.benefit': '😴 රාත්‍රියේ හොඳින් නිදා ගැනීමට උපකාරී වේ!',
-
-'fruit.whatFruitIsThis': 'මෙය කුමන පලතුරද?',
-'fruit.tryAgainCorrectIs': 'නැවත උත්සාහ කරන්න! නිවැරදි පලතුර {fruit} වේ!',
-'fruit.nutritionFact': '{fruit} {taste} වේ!',
-
-'reward.yummy': '🌟 රසයි! 🌟',
-'reward.fruitMaster': '🎉 පලතුරු ප්‍රවීණයා! 🎉',
-'reward.sweetJob': '⭐ මිහිරි කාර්යයක්! ⭐',
-'reward.delicious': '🎈 රසවත්! 🎈',
-'reward.berryGood': '🏆 බෙරී හොඳයි! 🏆',
-'reward.completeAllFruits': '🎉 සම්පූර්ණයි! ඔබ සියලු පලතුරු ප්‍රගුණ කළා! 🎉',
-'reward.youAreFruitExpert': '🎉 ඔබ පලතුරු විශේෂඥයෙක්! 🎉',
-'reward.pointsForFruit': '{fruit} සඳහා +{points} ලකුණු!',
-'reward.greatProgressFruit': 'නියම ප්‍රගතියක්! ඔබ පලතුරු විශේෂඥයෙක් වෙමින්!',
-
-'numberHunt.title': 'අංක සොයාගැනීම',
-'numberHunt.hintButton': 'ඉඟියක් අවශ්‍යද?',
-'numberHunt.hintMessage': 'ප්‍රවේශමෙන් ගණන් කරන්න! පිළිතුර {number} වේ',
-'numberHunt.feedbackWrong': 'නැවත උත්සාහ කරන්න! ප්‍රවේශමෙන් ගණන් කරන්න. නිවැරදි පිළිතුර {number} වේ',
-'numberHunt.nextLevel': 'ඊළඟ මට්ටම',
-
-'numberHunt.level1.name': 'අංක 1-5',
-'numberHunt.level2.name': 'අංක 1-10',
-'numberHunt.level3.name': 'වස්තු ගණන් කිරීම',
-'numberHunt.level4.name': 'අංක වචන',
-'numberHunt.level5.name': 'අංක සොයාගැනීම',
-
-'numberHunt.level1.q1': 'අංක එක සොයන්න',
-'numberHunt.level1.q2': 'අංක දෙක සොයන්න',
-'numberHunt.level1.q3': 'අංක තුන සොයන්න',
-'numberHunt.level1.q4': 'අංක හතර සොයන්න',
-'numberHunt.level1.q5': 'අංක පහ සොයන්න',
-
-'numberHunt.level2.q1': 'අංක හය සොයන්න',
-'numberHunt.level2.q2': 'අංක හත සොයන්න',
-'numberHunt.level2.q3': 'අංක අට සොයන්න',
-'numberHunt.level2.q4': 'අංක නවය සොයන්න',
-'numberHunt.level2.q5': 'අංක දහය සොයන්න',
-
-'numberHunt.level3.q1': 'ඇපල් කීයක් තිබේද?',
-'numberHunt.level3.q2': 'තරු කීයක් තිබේද?',
-'numberHunt.level3.q3': 'හදවත් කීයක් තිබේද?',
-'numberHunt.level3.q4': 'රවුම් කීයක් තිබේද?',
-'numberHunt.level3.q5': 'චතුරස්‍ර කීයක් තිබේද?',
-
-'numberHunt.level4.q1': 'එක',
-'numberHunt.level4.q2': 'දෙක',
-'numberHunt.level4.q3': 'තුන',
-'numberHunt.level4.q4': 'හතර',
-'numberHunt.level4.q5': 'පහ',
-
-'numberHunt.level5.q1': 'සැඟවුණු අංක 3 සොයන්න',
-'numberHunt.level5.q2': 'සැඟවුණු අංක 7 සොයන්න',
-'numberHunt.level5.q3': 'සැඟවුණු අංක 5 සොයන්න',
-'numberHunt.level5.q4': 'සැඟවුණු අංක 9 සොයන්න',
-'numberHunt.level5.q5': 'සැඟවුණු අංක 2 සොයන්න',
-
-'numberHunt.encouragement.start': 'අපි ගණන් කිරීම ආරම්භ කරමු! 🌟',
-'numberHunt.encouragement.greatStart': 'නියම ආරම්භයක්! දිගටම යන්න! 🎉',
-'numberHunt.encouragement.amazing': 'ඔබ පුදුම සහගත ලෙස කරනවා! ⭐',
-'numberHunt.encouragement.champion': 'අංක ශූරයෙක් බිහිවෙමින්! 🏆',
-
-'numberHunt.reward.title': 'නියම ගණන් කිරීමක්!',
-'numberHunt.reward.message': 'ඔබ {levelName} සම්පූර්ණ කළා!',
-
-'numberHunt.complete.title': 'අංක ශූරයා!',
-'numberHunt.complete.message': 'ඔබ සියලු අංක ප්‍රගුණ කළා!',
-
-'thinkingGames.mainTitle': 'චින්තන ක්‍රීඩා',
-'thinkingGames.brainBanner': '🧠 විනෝදජනක තාර්කික ප්‍රහේලිකා සමඟ ඔබේ මොළය පුහුණු කරන්න! 🧠',
-'thinkingGames.playNow': 'දැන් ක්‍රීඩා කරන්න',
-'thinkingGames.comingSoon': 'ඉක්මනින් එනවා!',
-'thinkingGames.comingSoonMessage':'තවත් චින්තන ක්‍රීඩා සංවර්ධනය වෙමින් පවතී',
-'thinkingGames.tip': '💡 ඉඟිය: ඔබේ කාලය ගන්න සහ රටා සොයන්න. සෑම ප්‍රහේලිකාවක්ම ඔබේ මොළය ශක්තිමත් කිරීමට උපකාරී වේ!',
-'thinkingGames.hint': 'ඉඟිය',
-
-'thinkingGames.oddOneOut.title': 'වෙනස් එක සොයන්න',
-'thinkingGames.oddOneOut.desc': 'නොගැලපෙන අයිතමය සොයන්න',
-'thinkingGames.sequence.title': 'ඊළඟට එන්නේ කුමක්ද?',
-'thinkingGames.sequence.desc': 'අනුක්‍රමය සම්පූර්ණ කරන්න',
-'thinkingGames.sorting.title': 'වර්ගීකරණ ක්‍රීඩාව',
-'thinkingGames.sorting.desc': 'අයිතම කාණ්ඩගත කරන්න',
-'thinkingGames.analogy.title': 'වචන සාදෘශ්‍ය',
-'thinkingGames.analogy.desc': 'සාදෘශ්‍යය සම්පූර්ණ කරන්න',
-
-'thinkingGames.oddOneOut.question': 'වෙනස් එක කුමක්ද?',
-'thinkingGames.oddOneOut.explain.fruit': 'කාර් එක පළතුරක් නොවේ',
-'thinkingGames.oddOneOut.explain.animal': 'ගුවන් යානය සත්වයෙක් නොවේ',
-'thinkingGames.oddOneOut.explain.color': 'ඇපල් ගෙඩිය වර්ණයක් නොවේ',
-'thinkingGames.oddOneOut.explain.emotion': 'කාර් එක හැඟීමක් නොවේ',
-'thinkingGames.oddOneOut.explain.letter': 'A යනු අකුරක් මිස අංකයක් නොවේ',
-'thinkingGames.oddOneOut.explain.pet': 'පිස්සා සුරතලෙක් නොවේ',
-'thinkingGames.oddOneOut.explain.school': 'බර්ගර් පාසල් උපකරණයක් නොවේ',
-
-'thinkingGames.sequence.question': 'රටාවේ ඊළඟට එන්නේ කුමක්ද?',
-'thinkingGames.sequence.hint': 'රටාව දෙස බලන්න! එය සෑම අයිතම දෙකකටම වරක් පුනරාවර්තනය වේ.',
-
-'thinkingGames.reward.oddOneOut.title': 'නියම සිතීමක්!',
-'thinkingGames.reward.oddOneOut.message': 'ඔබ වෙනස් එක සොයා ගත්තා!',
-'thinkingGames.reward.sequence.title': 'රටා ප්‍රවීණයා!',
-'thinkingGames.reward.sequence.message': 'ඔබ අනුක්‍රමය සම්පූර්ණ කළා!',
-
-'thinkingGames.complete.title': 'අභියෝගය සම්පූර්ණයි!',
-'thinkingGames.complete.message': 'ඔබ දවසින් දවස බුද්ධිමත් වෙමින්!',
+    'of': 'න්',
+    'points': 'ලකුණු',
+    'totalScore': 'මුළු ලකුණු',
+    'playAgain': 'නැවත සෙල්ලම් කරන්න',
+    'backToMenu': 'මෙනුවට ආපසු',
   },
+
   ta: {
     welcome: 'வரவேற்கிறோம்',
     getStarted: 'தொடங்குங்கள்',
-    iAlreadyHaveAccount: 'எனக்கு ஏற்கனவே கணக்கு உள்ளது',
     skip: 'தவிர்க்கவும்',
     next: 'அடுத்தது',
     back: 'பின்செல்',
@@ -1158,16 +1719,11 @@ parentsGuideDescription: 'ඔබේ දරුවාට උපකාර කිර
     yes: 'ஆம்',
     no: 'இல்லை',
     ok: 'சரி',
-    
-    // Auth
     login: 'உள்நுழைய',
     signup: 'பதிவு செய்யவும்',
-    signIn: 'உள்நுழைய',
-    createAccount: 'கணக்கை உருவாக்கவும்',
     email: 'மின்னஞ்சல்',
     password: 'கடவுச்சொல்',
     confirmPassword: 'கடவுச்சொல்லை உறுதிப்படுத்தவும்',
-    forgotPassword: 'கடவுச்சொல் மறந்துவிட்டதா?',
     continueAsGuest: 'விருந்தினராகத் தொடரவும்',
     dontHaveAccount: 'கணக்கு இல்லையா?',
     alreadyHaveAccountYes: 'ஏற்கனவே கணக்கு உள்ளதா?',
@@ -1484,7 +2040,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (savedLang === 'en' || savedLang === 'si' || savedLang === 'ta') {
         setLanguageState(savedLang);
       } else {
-        // Auto-detect device language using expo-localization
         const locales = Localization.getLocales();
         if (locales.length > 0) {
           const deviceLang = locales[0].languageCode;
@@ -1511,24 +2066,15 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const t = (key: string, params?: Record<string, any>): string => {
-    // Get translation from current language
     const langTranslations = translations[language];
-    
-    // Check if key exists in current language
     let translation = (langTranslations as any)[key];
-    
-    // If translation not found, try English as fallback
     if (!translation && language !== 'en') {
       translation = (translations.en as any)[key];
     }
-    
-    // If still not found, return the key itself
     if (!translation) {
       console.warn(`Translation missing for key: ${key} in language: ${language}`);
       return key;
     }
-    
-    // Simple parameter replacement
     if (params && typeof translation === 'string') {
       Object.keys(params).forEach(paramKey => {
         const paramValue = params[paramKey];
@@ -1537,12 +2083,11 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       });
     }
-    
     return translation;
   };
 
   if (isLoading) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return (

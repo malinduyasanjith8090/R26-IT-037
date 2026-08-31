@@ -1,46 +1,104 @@
-// app/profile.tsx (Updated with full language support)
-import React, { useState } from 'react';
+// app/profile.tsx – Connected to backend with TypeScript fixes
+import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator,
+  Alert,
   ScrollView,
+  StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
-  Alert,
+  View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
-import { Spacing, BorderRadius } from '../constants/theme';
-import { MaterialIcons } from '@expo/vector-icons';
 import Button from '../components/Button';
+import { BorderRadius, Spacing } from '../constants/theme';
+import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
+import { getProfile, updateProfile } from '../services/api';
+
+// Helper to safely extract error message
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Something went wrong';
+};
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
   const { t } = useLanguage();
+
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState({
-    parentName: 'Sarah Johnson',
-    email: 'sarah.johnson@example.com',
-    phone: '+94 77 123 4567',
-    childName: 'Alex Johnson',
-    childAge: '7',
+    parentName: '',
+    email: '',
+    phone: '',
+    childName: '',
+    childAge: '',
     childGender: 'Male',
   });
 
-  const handleSave = () => {
-    Alert.alert(t('save'), t('profileUpdated'));
-    setIsEditing(false);
+  // Fetch profile on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const data = await getProfile();
+        setProfile({
+          parentName: data.parentName || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          childName: data.childName || '',
+          childAge: String(data.childAge || ''),
+          childGender: data.childGender || 'Male',
+        });
+      } catch (error: unknown) {
+        // No need to alert on first load; just log
+        console.warn('Error loading profile:', getErrorMessage(error));
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProfile();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateProfile({
+        parentName: profile.parentName,
+        email: profile.email,
+        phone: profile.phone,
+        childName: profile.childName,
+        childAge: Number(profile.childAge),
+        childGender: profile.childGender,
+      });
+      Alert.alert(t('save'), t('profileUpdated'));
+      setIsEditing(false);
+    } catch (error: unknown) {
+      Alert.alert('Error', getErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
   };
 
-  const updateProfile = (field: string, value: string) => {
+  const updateProfileField = (field: string, value: string) => {
     setProfile(prev => ({ ...prev, [field]: value }));
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -89,15 +147,15 @@ export default function ProfileScreen() {
 
       {/* Parent Information */}
       <View style={[styles.section, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text style={[styles.sectionTitle, { color: colors.textLight }]}>
           {t('parentName')}
         </Text>
-        
+
         {isEditing ? (
           <TextInput
             style={[styles.input, { color: colors.text, borderColor: colors.primary }]}
             value={profile.parentName}
-            onChangeText={(value) => updateProfile('parentName', value)}
+            onChangeText={(value) => updateProfileField('parentName', value)}
             placeholder={t('parentName')}
             placeholderTextColor={colors.textLight}
           />
@@ -109,15 +167,15 @@ export default function ProfileScreen() {
       </View>
 
       <View style={[styles.section, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text style={[styles.sectionTitle, { color: colors.textLight }]}>
           {t('email')}
         </Text>
-        
+
         {isEditing ? (
           <TextInput
             style={[styles.input, { color: colors.text, borderColor: colors.primary }]}
             value={profile.email}
-            onChangeText={(value) => updateProfile('email', value)}
+            onChangeText={(value) => updateProfileField('email', value)}
             placeholder={t('email')}
             placeholderTextColor={colors.textLight}
             keyboardType="email-address"
@@ -130,15 +188,15 @@ export default function ProfileScreen() {
       </View>
 
       <View style={[styles.section, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text style={[styles.sectionTitle, { color: colors.textLight }]}>
           {t('phone')}
         </Text>
-        
+
         {isEditing ? (
           <TextInput
             style={[styles.input, { color: colors.text, borderColor: colors.primary }]}
             value={profile.phone}
-            onChangeText={(value) => updateProfile('phone', value)}
+            onChangeText={(value) => updateProfileField('phone', value)}
             placeholder={t('phone')}
             placeholderTextColor={colors.textLight}
             keyboardType="phone-pad"
@@ -155,7 +213,7 @@ export default function ProfileScreen() {
         <Text style={[styles.childTitle, { color: colors.text }]}>
           {t('childInformation')}
         </Text>
-        
+
         <View style={[styles.childCard, { backgroundColor: colors.surface }]}>
           <View style={styles.childHeader}>
             <View style={[styles.childIcon, { backgroundColor: colors.secondaryLight }]}>
@@ -190,7 +248,7 @@ export default function ProfileScreen() {
                 <TextInput
                   style={[styles.childInput, { color: colors.text, borderColor: colors.primary }]}
                   value={profile.childName}
-                  onChangeText={(value) => updateProfile('childName', value)}
+                  onChangeText={(value) => updateProfileField('childName', value)}
                   placeholder={t('childName')}
                   placeholderTextColor={colors.textLight}
                 />
@@ -202,7 +260,7 @@ export default function ProfileScreen() {
                 <TextInput
                   style={[styles.childInput, { color: colors.text, borderColor: colors.primary }]}
                   value={profile.childAge}
-                  onChangeText={(value) => updateProfile('childAge', value)}
+                  onChangeText={(value) => updateProfileField('childAge', value)}
                   placeholder={t('childAge')}
                   placeholderTextColor={colors.textLight}
                   keyboardType="numeric"
@@ -240,12 +298,14 @@ export default function ProfileScreen() {
             onPress={handleCancel}
             variant="outline"
             style={styles.cancelButton}
+            disabled={saving}
           />
           <Button
             title={t('save')}
             onPress={handleSave}
             variant="primary"
             style={styles.saveButton}
+            loading={saving}
           />
         </View>
       )}

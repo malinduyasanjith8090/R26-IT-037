@@ -1,6 +1,8 @@
-// components/learning/FruitsLearning.tsx (with Full i18n)
+// components/learning/FruitsLearning.tsx (with external Sinhala voice commands)
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import { Audio } from 'expo-av';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -22,9 +24,9 @@ interface FruitLesson {
   id: string;
   emoji: string;
   color: string;
-  nameKey: string;      // translation key for fruit name
-  tasteKey: string;     // translation key for taste description
-  benefitKey: string;   // translation key for benefit message
+  nameKey: string;
+  tasteKey: string;
+  benefitKey: string;
 }
 
 const fruitsData: FruitLesson[] = [
@@ -40,18 +42,33 @@ const fruitsData: FruitLesson[] = [
   { id: 'cherry', emoji: '🍒', color: '#FF3B30', nameKey: 'fruit.cherry', tasteKey: 'fruit.cherry.taste', benefitKey: 'fruit.cherry.benefit' },
 ];
 
+// ─── Sinhala external audio mapping ─────────────────────────────
+// Add your own .mp3 files to assets/sounds/sinhala/
+const sinhalaAudioMap: { [key: string]: any } = {
+  instruction: require('../assets/sounds/sinhala/fruitinstruction.mp3'),
+  apple: require('../assets/sounds/sinhala/apple.mp3'),
+  banana: require('../assets/sounds/sinhala/banana.mp3'),
+  orange: require('../assets/sounds/sinhala/fruitorange.mp3'),
+  strawberry: require('../assets/sounds/sinhala/strawberry.mp3'),
+  grape: require('../assets/sounds/sinhala/grape.mp3'),
+  watermelon: require('../assets/sounds/sinhala/watermelon.mp3'),
+  pineapple: require('../assets/sounds/sinhala/pineapple.mp3'),
+  mango: require('../assets/sounds/sinhala/mango.mp3'),
+  peach: require('../assets/sounds/sinhala/peach.mp3'),
+};
+
 export default function FruitsLearning({ onBack, onProgress }: any) {
   const { colors } = useTheme();
-  const { t } = useLanguage();
-  const { 
-    playSound, 
-    playCelebration, 
-    playStarEarned, 
+  const { t, language } = useLanguage();
+  const {
+    playSound,
+    playCelebration,
+    playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled 
+    isEnabled: soundEnabled,
   } = useSound();
-  
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [showRewardModal, setShowRewardModal] = useState(false);
@@ -59,11 +76,123 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
   const [isCorrect, setIsCorrect] = useState(false);
   const [rewardMessage, setRewardMessage] = useState('');
   const [showNutritionTip, setShowNutritionTip] = useState(false);
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const isFirstRender = useRef(true);
+  const pendingInstruction = useRef(false);
+
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
 
   const currentFruit = fruitsData[currentIndex];
 
-  // Reward messages – use translation keys
+  // Load all Sinhala audio files and set soundsLoaded
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+
+    loadSounds();
+
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak or play external audio
+  const speak = async (text: string, audioKey?: string) => {
+    if (!soundEnabled) return;
+
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          if (language === 'si') {
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // ✅ MAIN INSTRUCTION EFFECT – waits for soundsLoaded if needed
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+
+      const instructionText = language === 'si'
+        ? t('fruit.instruction') || 'ආයුබෝවන්! අපි අද පලතුරු ගැන ඉගෙන ගමු. පහතින් පෙන්නන පලතුර තෝරන්න.'
+        : t('fruit.instruction') || 'Hello! Let\'s learn about fruits today. Choose the fruit shown below.';
+
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+
+      speak(instructionText, 'instruction');
+      const timer = setTimeout(() => {
+        speak(t(currentFruit.nameKey), currentFruit.id);
+      }, 4000); // Wait for instruction to finish
+      return () => clearTimeout(timer);
+    }
+
+    // On fruit change
+    speak(t(currentFruit.nameKey), currentFruit.id);
+  }, [currentIndex, language]);
+
+  // ✅ PENDING INSTRUCTION EFFECT – fires when sounds become ready
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? t('fruit.instruction') || 'ආයුබෝවන්! අපි අද පලතුරු ගැන ඉගෙන ගමු. පහතින් පෙන්නන පලතුර තෝරන්න.'
+        : t('fruit.instruction') || 'Hello! Let\'s learn about fruits today. Choose the fruit shown below.';
+      speak(instructionText, 'instruction');
+      const timer = setTimeout(() => {
+        speak(t(currentFruit.nameKey), currentFruit.id);
+      }, 6500);
+      return () => clearTimeout(timer);
+    }
+  }, [soundsLoaded]);
+
   const getRandomRewardMessageKey = () => {
     const messageKeys = [
       'reward.yummy',
@@ -82,12 +211,12 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
 
     if (correct) {
       await playCorrectAnswer();
-      
+
       const newScore = score + 10;
       setScore(newScore);
       setRewardMessage(t(getRandomRewardMessageKey()));
       setShowRewardModal(true);
-      
+
       await playStarEarned();
 
       Animated.sequence([
@@ -112,7 +241,7 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
       }, 2000);
     } else {
       await playSound('error', true);
-      
+
       setTimeout(() => {
         setSelectedAnswer(null);
         setIsCorrect(false);
@@ -128,7 +257,6 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
       .map(f => t(f.nameKey))
       .slice(0, 3);
     options.push(...otherNames);
-    // Shuffle
     for (let i = options.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [options[i], options[j]] = [options[j], options[i]];
@@ -158,18 +286,15 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.soundButton}
-          onPress={handleToggleSound}
-        >
-          <MaterialIcons 
-            name={soundEnabled ? "volume-up" : "volume-off"} 
-            size={24} 
-            color={colors.primary} 
+
+        <TouchableOpacity style={styles.soundButton} onPress={handleToggleSound}>
+          <MaterialIcons
+            name={soundEnabled ? "volume-up" : "volume-off"}
+            size={24}
+            color={colors.primary}
           />
         </TouchableOpacity>
-        
+
         <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.primary }]}>{score}</Text>
@@ -186,21 +311,18 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
         </Text>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
           {/* Fruit Card */}
-          <TouchableOpacity 
-            activeOpacity={0.9}
-            onPress={handleCardPress}
-          >
+          <TouchableOpacity activeOpacity={0.9} onPress={handleCardPress}>
             <View style={[styles.fruitCard, { backgroundColor: currentFruit.color + '20' }]}>
               <Text style={styles.fruitEmoji}>{currentFruit.emoji}</Text>
               <Text style={[styles.fruitName, { color: colors.text }]}>{t(currentFruit.nameKey)}</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.tasteBadge, { backgroundColor: currentFruit.color }]}
                 onPress={showNutritionBenefit}
               >
@@ -316,7 +438,7 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
               {rewardMessage === t('reward.completeAllFruits') ? (
                 <>
                   <Text style={styles.rewardMessage}>{t('reward.youAreFruitExpert')}</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.rewardButton, { backgroundColor: colors.primary }]}
                     onPress={async () => {
                       setShowRewardModal(false);
@@ -337,7 +459,7 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
                       <Text key={i} style={styles.star}>⭐</Text>
                     ))}
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.continueButton, { backgroundColor: colors.primary }]}
                     onPress={() => setShowRewardModal(false)}
                   >
@@ -355,22 +477,22 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: Spacing.md, 
-    paddingTop: Spacing.xl 
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.md,
+    paddingTop: Spacing.xl
   },
   backButton: { padding: Spacing.sm },
   soundButton: { padding: Spacing.sm },
-  scoreBadge: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingHorizontal: Spacing.md, 
-    paddingVertical: Spacing.sm, 
-    borderRadius: BorderRadius.round, 
-    gap: Spacing.xs 
+  scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.round,
+    gap: Spacing.xs
   },
   scoreText: { fontWeight: 'bold', fontSize: 18 },
   progressContainer: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
@@ -380,33 +502,33 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: Spacing.xxl || 40 },
   content: { alignItems: 'center', padding: Spacing.lg },
-  fruitCard: { 
-    width: width - 80, 
-    alignItems: 'center', 
-    padding: Spacing.xl, 
-    borderRadius: BorderRadius.lg, 
-    marginBottom: Spacing.lg 
+  fruitCard: {
+    width: width - 80,
+    alignItems: 'center',
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg
   },
   fruitEmoji: { fontSize: 80, marginBottom: Spacing.md },
   fruitName: { fontSize: 28, fontWeight: 'bold' },
-  tasteBadge: { 
-    marginTop: Spacing.md, 
-    paddingHorizontal: Spacing.lg, 
-    paddingVertical: Spacing.sm, 
+  tasteBadge: {
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.round,
     flexDirection: 'row',
     gap: Spacing.xs,
     alignItems: 'center'
   },
   tasteText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  benefitContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    padding: Spacing.md, 
-    borderRadius: BorderRadius.lg, 
-    marginBottom: Spacing.sm, 
-    gap: Spacing.md, 
-    width: '100%' 
+  benefitContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.sm,
+    gap: Spacing.md,
+    width: '100%'
   },
   benefitText: { flex: 1, fontSize: 14, lineHeight: 20 },
   nutritionContainer: {
@@ -423,20 +545,20 @@ const styles = StyleSheet.create({
   questionContainer: { marginVertical: Spacing.md },
   questionText: { fontSize: 22, fontWeight: 'bold', textAlign: 'center' },
   optionsContainer: { width: '100%', gap: Spacing.md, marginBottom: Spacing.md },
-  optionButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    padding: Spacing.lg, 
-    borderRadius: BorderRadius.md, 
-    gap: Spacing.md 
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.md
   },
   optionEmoji: { fontSize: 32 },
   optionText: { flex: 1, fontSize: 18, fontWeight: '600' },
-  feedbackContainer: { 
-    marginTop: Spacing.md, 
-    alignItems: 'center', 
-    padding: Spacing.md, 
-    borderRadius: BorderRadius.md, 
+  feedbackContainer: {
+    marginTop: Spacing.md,
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
     width: '100%',
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -477,39 +599,39 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     flex: 1,
   },
-  modalOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.85)', 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  rewardContent: { 
-    alignItems: 'center', 
-    padding: Spacing.xl, 
-    borderRadius: BorderRadius.lg, 
-    minWidth: 280 
+  rewardContent: {
+    alignItems: 'center',
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    minWidth: 280
   },
   rewardEmoji: { fontSize: 60, textAlign: 'center' },
-  rewardTitle: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    color: '#FFD700', 
-    marginTop: Spacing.md, 
-    textAlign: 'center' 
+  rewardTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginTop: Spacing.md,
+    textAlign: 'center'
   },
-  rewardMessage: { 
-    fontSize: 18, 
-    color: '#333', 
-    marginTop: Spacing.sm, 
-    textAlign: 'center' 
+  rewardMessage: {
+    fontSize: 18,
+    color: '#333',
+    marginTop: Spacing.sm,
+    textAlign: 'center'
   },
   starContainer: { flexDirection: 'row', marginTop: Spacing.md, gap: Spacing.sm },
   star: { fontSize: 30 },
-  rewardButton: { 
-    marginTop: Spacing.lg, 
-    paddingHorizontal: Spacing.lg, 
-    paddingVertical: Spacing.md, 
-    borderRadius: BorderRadius.md 
+  rewardButton: {
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md
   },
   rewardButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
   continueButton: {

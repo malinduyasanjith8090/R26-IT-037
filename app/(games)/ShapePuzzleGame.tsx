@@ -1,18 +1,21 @@
-// app/(games)/ShapePuzzleGame.tsx (with Sounds & Haptics)
+// app/(games)/ShapePuzzleGame.tsx (with Sinhala voice instruction)
 import { MaterialIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Polygon, Rect } from 'react-native-svg';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSound } from '../../hooks/useSound';
 
@@ -65,17 +68,23 @@ const levels: Level[] = [
   },
 ];
 
+// ─── Sinhala external audio map ─────────────────────────────────
+const sinhalaAudioMap: { [key: string]: any } = {
+  instruction: require('../../assets/sounds/sinhala/games/shapePuzzleinstruction.mp3'),
+};
+
 export default function ShapePuzzleGame() {
   const { colors } = useTheme();
-  const { 
-    playSound, 
-    playCelebration, 
-    playStarEarned, 
+  const { t, language } = useLanguage();
+  const {
+    playSound,
+    playCelebration,
+    playStarEarned,
     playCorrectAnswer,
     toggleSound,
-    isEnabled: soundEnabled 
+    isEnabled: soundEnabled
   } = useSound();
-  
+
   const [currentLevel, setCurrentLevel] = useState(0);
   const [pieces, setPieces] = useState<ShapePiece[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<ShapePiece | null>(null);
@@ -90,6 +99,12 @@ export default function ShapePuzzleGame() {
   const shakeAnim = useState(new Animated.Value(0))[0];
 
   const level = levels[currentLevel];
+
+  // ─── Sinhala voice state ──────────────────────────────────────
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
+  const pendingInstruction = useRef(false);
+  const isFirstRender = useRef(true);
 
   const initializeGame = () => {
     const shuffled = [...level.pieces];
@@ -115,6 +130,96 @@ export default function ShapePuzzleGame() {
     initializeGame();
   }, [currentLevel]);
 
+  // Load Sinhala instruction audio
+  useEffect(() => {
+    let isMounted = true;
+    const loadSounds = async () => {
+      const sounds: { [key: string]: Audio.Sound | null } = {};
+      for (const key of Object.keys(sinhalaAudioMap)) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
+          sounds[key] = sound;
+        } catch (error) {
+          console.warn(`Failed to load Sinhala audio: ${key}`, error);
+          sounds[key] = null;
+        }
+      }
+      if (isMounted) {
+        sinhalaSounds.current = sounds;
+        setSoundsLoaded(true);
+      }
+    };
+    loadSounds();
+    return () => {
+      isMounted = false;
+      Object.values(sinhalaSounds.current).forEach(sound => {
+        if (sound) sound.unloadAsync();
+      });
+    };
+  }, []);
+
+  // Speak function (external audio for Sinhala, TTS for English)
+  const speak = async (text: string, audioKey?: string) => {
+    if (!soundEnabled) return;
+    if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
+      try {
+        const sound = sinhalaSounds.current[audioKey];
+        if (sound) await sound.replayAsync();
+        return;
+      } catch (error) {
+        console.warn('Sinhala audio playback failed, falling back to TTS:', error);
+      }
+    }
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: language === 'si' ? 'si-LK' : 'en-US',
+        pitch: language === 'si' ? 1.15 : 1.05,
+        rate: language === 'si' ? 0.75 : 0.85,
+        onError: (error) => {
+          console.warn('TTS error:', error);
+          if (language === 'si') {
+            Speech.speak(text, { language: 'en-US', pitch: 1.05, rate: 0.85 });
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Speech error:', error);
+    }
+  };
+
+  // Stop speech on unmount
+  useEffect(() => {
+    return () => Speech.stop();
+  }, []);
+
+  // Speak instruction when the game opens
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, ඉහළින් පෙන්වන හැඩයට ගැලපෙන නිවැරදි කොටස තෝරන්න. සියලුම ප්‍රශ්නවලට නිවැරදිව පිළිතුරු දී ජයග්‍රහණය කරන්න.'
+        : 'In this game, choose the correct piece that matches the shape shown above. Answer all questions correctly to win.';
+
+      if (language === 'si' && !soundsLoaded) {
+        pendingInstruction.current = true;
+        return;
+      }
+      speak(instructionText, 'instruction');
+    }
+  }, [language]);
+
+  // Pending instruction effect
+  useEffect(() => {
+    if (pendingInstruction.current && soundsLoaded) {
+      pendingInstruction.current = false;
+      const instructionText = language === 'si'
+        ? 'මෙම ක්‍රීඩාවේදී, ඉහළින් පෙන්වන හැඩයට ගැලපෙන නිවැරදි කොටස තෝරන්න. සියලුම ප්‍රශ්නවලට නිවැරදිව පිළිතුරු දී ජයග්‍රහණය කරන්න.'
+        : 'In this game, choose the correct piece that matches the shape shown above. Answer all questions correctly to win.';
+      speak(instructionText, 'instruction');
+    }
+  }, [soundsLoaded]);
+
   const shakeAnimation = () => {
     Animated.sequence([
       Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
@@ -126,19 +231,17 @@ export default function ShapePuzzleGame() {
 
   const handleAnswer = async (selectedPiece: ShapePiece) => {
     if (selectedAnswerId !== null) return;
-    
+
     setSelectedAnswerId(selectedPiece.id);
     const isCorrect = selectedPiece.id === currentQuestion?.id;
 
     if (isCorrect) {
-      // Play correct answer sound
       await playCorrectAnswer();
-      
+
       const newScore = score + 10;
       setScore(newScore);
       setShowCorrectFeedback(true);
-      
-      // Play star sounds for extra delight
+
       await playStarEarned();
 
       Animated.sequence([
@@ -148,11 +251,11 @@ export default function ShapePuzzleGame() {
 
       setTimeout(async () => {
         setShowCorrectFeedback(false);
-        
+
         if (questionCount + 1 >= level.pieces.length) {
           const earnedStars = Math.floor((score + 10) / 30) + 1;
           setStars(earnedStars > 3 ? 3 : earnedStars);
-          
+
           if (currentLevel === levels.length - 1) {
             await playCelebration();
             setShowComplete(true);
@@ -169,10 +272,9 @@ export default function ShapePuzzleGame() {
         setSelectedAnswerId(null);
       }, 1500);
     } else {
-      // Play wrong answer sound
       await playSound('error', true);
       shakeAnimation();
-      
+
       setTimeout(() => {
         setSelectedAnswerId(null);
       }, 800);
@@ -223,21 +325,20 @@ export default function ShapePuzzleGame() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        
-        {/* Sound Toggle Button */}
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.soundButton}
           onPress={handleToggleSound}
         >
-          <MaterialIcons 
-            name={soundEnabled ? "volume-up" : "volume-off"} 
-            size={24} 
-            color={colors.primary} 
+          <MaterialIcons
+            name={soundEnabled ? "volume-up" : "volume-off"}
+            size={24}
+            color={colors.primary}
           />
         </TouchableOpacity>
-        
+
         <Text style={[styles.title, { color: colors.text }]}>Shape Puzzle</Text>
-        
+
         <View style={[styles.scoreBadge, { backgroundColor: colors.surface }]}>
           <MaterialIcons name="stars" size={20} color={colors.primary} />
           <Text style={[styles.scoreText, { color: colors.text }]}>{score}</Text>
@@ -269,8 +370,8 @@ export default function ShapePuzzleGame() {
           <TouchableOpacity
             key={index}
             style={[
-              styles.optionCard, 
-              { 
+              styles.optionCard,
+              {
                 backgroundColor: colors.surface,
                 transform: [{ translateX: selectedAnswerId === piece.id && selectedAnswerId !== currentQuestion?.id ? shakeAnim : 0 }]
               }
