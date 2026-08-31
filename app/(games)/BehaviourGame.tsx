@@ -7,7 +7,6 @@ import {
   Animated,
   Dimensions,
   Easing,
-  Image,
   Modal,
   Platform,
   StatusBar,
@@ -18,6 +17,7 @@ import {
 } from 'react-native';
 
 import { useChild } from '../../context/ChildContext';
+import { getTranslation, useLanguage } from '../../context/LanguageContext';
 
 import {
   getNextBehaviourScenario,
@@ -25,108 +25,10 @@ import {
   submitBehaviourTrial,
 } from '../../services/apiService';
 
-// ---------------------------------------------------------------------------
-// IMAGE SOURCES — the actual files in assets/behaviour. Filenames kept
-// exactly as they exist on disk, including the typos in "eatig good 2.png",
-// "grabing toys.png" and "tooys packed.png" (rename the files on disk, then
-// update the require() calls below, if you want to fix the typos).
-// ---------------------------------------------------------------------------
-const eatingGood = require('../../assets/behaviour/eating good.png');
-const eatingBad = require('../../assets/behaviour/eating bad.png');
-const eatingGood2 = require('../../assets/behaviour/eatig good 2.png');
-const eatingBad2 = require('../../assets/behaviour/eating bad 2.png');
-const handsWashing = require('../../assets/behaviour/washing hands.png');
-const handsNotWashing = require('../../assets/behaviour/not washing hands.png');
-const teethBrushing = require('../../assets/behaviour/brushing teeth.png');
-const teethNotBrushing = require('../../assets/behaviour/not brushing teeth.png');
-const toySharing = require('../../assets/behaviour/sharing toys.png');
-const toyNotSharing = require('../../assets/behaviour/not sharing toys.png');
-const toyGiving = require('../../assets/behaviour/giving toys.png');
-const toyGrabbing = require('../../assets/behaviour/grabing toys.png');
-const foodSharing = require('../../assets/behaviour/sharing food.png');
-const foodNotSharing = require('../../assets/behaviour/not sharing foods.png');
-const roadCrossingGood = require('../../assets/behaviour/cross road good.png');
-const roadCrossingBad = require('../../assets/behaviour/cross road bad.png');
-const foodChoiceGood = require('../../assets/behaviour/good foods.png');
-const foodChoiceBad = require('../../assets/behaviour/bad foods.png');
-const toysPacked = require('../../assets/behaviour/tooys packed.png');
-const toysUnpacked = require('../../assets/behaviour/toys unpacked.png');
-const waveHello = require('../../assets/behaviour/waving hand.png');
-const notWaveHello = require('../../assets/behaviour/not waving hand.png');
-const queueGood = require('../../assets/behaviour/good queue.png');
-const queueBad = require('../../assets/behaviour/bad queue.png');
-const walkingGood = require('../../assets/behaviour/walking good.png');
-const walkingBad = require('../../assets/behaviour/walking bad.png');
-
-// ---------------------------------------------------------------------------
-// ASSET MAP — keyed by assetKey.
-//
-// IMPORTANT: the keys here MUST match the `assetKey` strings your backend
-// sends in each scenario's `images[].assetKey`. If you see the colored
-// placeholder icons instead of real photos, it means a key below doesn't
-// match what the backend is sending — console.log(scenario.images) to see
-// the actual keys and adjust the left-hand side here to match.
-//
-// To be safe, both the ORIGINAL key names (used by the original seed data)
-// and NEW descriptive aliases are included below, pointing at the same
-// image files — so it works regardless of which naming scheme your
-// scenario documents actually use.
-// ---------------------------------------------------------------------------
-const ASSET_MAP = {
-  // --- original key names (kept for backend compatibility) ---
-  eating_spoon_neat: eatingGood,
-  eating_hands_messy: eatingBad,
-  eating_sitting_table: eatingGood2,
-  eating_walking_around: eatingBad2,
-  hands_washing_soap: handsWashing,
-  hands_dirty_reaching: handsNotWashing,
-  brushing_teeth_morning: teethBrushing,
-  skipping_teeth_candy: teethNotBrushing,
-  sharing_toy_smiling: toySharing,
-  grabbing_toy_crying: toyGrabbing,
-  sharing_snack_friends: foodSharing,
-  hiding_snack_alone: foodNotSharing,
-  crossing_zebra_lines: roadCrossingGood,
-  crossing_random_spot: roadCrossingBad,
-  safety_walk_away_adult: foodChoiceGood,
-  safety_taking_sweets: foodChoiceBad,
-  toys_packed_box: toysPacked,
-  toys_scattered_floor: toysUnpacked,
-  greeting_wave_smile: waveHello,
-  greeting_turning_away: notWaveHello,
-  queue_standing_calm: queueGood,
-  queue_pushing_front: queueBad,
-  game_waiting_patiently: walkingGood,
-  game_snatching_controller: walkingBad,
-
-  // --- new descriptive aliases (same images, easier-to-read names) ---
-  eating_good: eatingGood,
-  eating_bad: eatingBad,
-  eating_good_2: eatingGood2,
-  eating_bad_2: eatingBad2,
-  hands_washing: handsWashing,
-  hands_not_washing: handsNotWashing,
-  teeth_brushing: teethBrushing,
-  teeth_not_brushing: teethNotBrushing,
-  toy_sharing: toySharing,
-  toy_not_sharing: toyNotSharing,
-  toy_giving: toyGiving,
-  toy_grabbing: toyGrabbing,
-  food_sharing: foodSharing,
-  food_not_sharing: foodNotSharing,
-  road_crossing_good: roadCrossingGood,
-  road_crossing_bad: roadCrossingBad,
-  food_choice_good: foodChoiceGood,
-  food_choice_bad: foodChoiceBad,
-  toys_packed: toysPacked,
-  toys_unpacked: toysUnpacked,
-  wave_hello: waveHello,
-  not_wave_hello: notWaveHello,
-  queue_good: queueGood,
-  queue_bad: queueBad,
-  walking_good: walkingGood,
-  walking_bad: walkingBad,
-};
+// Pulled out into its own file — see components/behaviour/BehaviourImage.js
+// for the asset map (assetKey -> require()'d image) and the fallback
+// placeholder rendering.
+import BehaviourImage from '../../components/behaviour/BehaviourImage';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -252,73 +154,6 @@ const shadow = (depth = 8, color = '#000', opacity = 0.06) =>
     },
   });
 
-function BehaviourImage({ assetKey, style }) {
-  const asset = ASSET_MAP[assetKey];
-
-  if (asset) {
-    return (
-      <Image
-        source={asset}
-        style={style}
-        resizeMode="cover"
-      />
-    );
-  }
-
-  const colors = [
-    C.tealLight,
-    C.coralLight,
-    C.amberLight,
-    C.plumLight,
-    C.skyLight,
-  ];
-
-  const color =
-    colors[assetKey.length % colors.length];
-
-  const icons = [
-    'happy-outline',
-    'heart-outline',
-    'star-outline',
-    'flower-outline',
-    'leaf-outline',
-  ];
-
-  const icon =
-    icons[assetKey.length % icons.length];
-
-  return (
-    <View
-      style={[
-        style,
-        {
-          backgroundColor: color,
-          justifyContent: 'center',
-          alignItems: 'center',
-        },
-      ]}
-    >
-      <Ionicons
-        name={icon}
-        size={56}
-        color={C.tealDark}
-      />
-
-      <Text
-        style={{
-          fontSize: 11,
-          color: C.inkFaint,
-          marginTop: 8,
-          textAlign: 'center',
-          paddingHorizontal: 8,
-        }}
-      >
-        {assetKey.replace(/_/g, ' ')}
-      </Text>
-    </View>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // FeedbackOverlay — REDESIGNED for a preference-based (not quiz-based) game:
 //  - Always the SAME neutral, warm acknowledgment regardless of which
@@ -328,11 +163,16 @@ function BehaviourImage({ assetKey, style }) {
 //  - Lower-opacity backdrop so the change of scene isn't jarring.
 //  - Slow, calm animation (no snappy spring bounce).
 //  - Tappable to continue immediately — gives the child control over pacing.
+//
+//  Text is now driven by the app-wide language setting (t()) instead of a
+//  hardcoded English + Sinhala pair, so Tamil users see the right text too.
 // ---------------------------------------------------------------------------
 function FeedbackOverlay({
   visible,
   onDone,
 }) {
+  const { t } = useLanguage();
+
   const scale =
     useRef(new Animated.Value(0.85)).current;
 
@@ -430,11 +270,7 @@ function FeedbackOverlay({
             <Text style={fs.emoji}>⭐</Text>
 
             <Text style={fs.feedbackTitle}>
-              Nice pick!
-            </Text>
-
-            <Text style={fs.feedbackSi}>
-              හොඳයි!
+              {t('behaviourGame.nicePick')}
             </Text>
           </Animated.View>
         </View>
@@ -473,13 +309,6 @@ const fs = StyleSheet.create({
     fontSize: 24,
     fontWeight: '800',
     color: '#fff',
-    textAlign: 'center',
-  },
-
-  feedbackSi: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    marginTop: 6,
     textAlign: 'center',
   },
 });
@@ -748,8 +577,20 @@ const cc = StyleSheet.create({
   },
 });
 
+// Available language options for the parent-info modal's OWN toggle. This is
+// deliberately independent from the app-wide language (a parent may want to
+// read the guidance in a different language than the child's app is set
+// to), so it isn't driven by useLanguage()'s `language` — it uses
+// getTranslation(lang, key) directly instead.
+const PARENT_INFO_LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'si', label: 'සිංහල' },
+  { code: 'ta', label: 'தமிழ்' },
+];
+
 export default function BehaviourGameScreen() {
   const { activeChild } = useChild();
+  const { t } = useLanguage();
 
   const childId =
     activeChild?._id;
@@ -822,6 +663,13 @@ export default function BehaviourGameScreen() {
     setShowParentInfo,
   ] = useState(false);
 
+  const [
+  showMotherTip,
+  setShowMotherTip,
+] = useState(false);
+
+  // The parent-info modal's own language toggle — independent from the
+  // app-wide language, defaults to English.
   const [
     parentInfoLanguage,
     setParentInfoLanguage,
@@ -1202,11 +1050,7 @@ export default function BehaviourGameScreen() {
         />
 
         <Text style={s.loadingTxt}>
-          Please select a child first.
-        </Text>
-
-        <Text style={s.loadingSi}>
-          පළමුව දරුවෙකු තෝරන්න.
+          {t('behaviourGame.selectChildTitle')}
         </Text>
 
         <TouchableOpacity
@@ -1222,7 +1066,7 @@ export default function BehaviourGameScreen() {
               s.backToDashboardText
             }
           >
-            Back
+            {t('back')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -1243,11 +1087,7 @@ export default function BehaviourGameScreen() {
         />
 
         <Text style={s.loadingTxt}>
-          Getting ready...
-        </Text>
-
-        <Text style={s.loadingSi}>
-          සූදානම් වෙමින්...
+          {t('behaviourGame.gettingReady')}
         </Text>
       </View>
     );
@@ -1301,13 +1141,7 @@ export default function BehaviourGameScreen() {
               s.headerTitle
             }
           >
-            Picture Time
-          </Text>
-
-          <Text
-            style={s.headerSi}
-          >
-            පින්තූර වේලාව
+            {t('behaviourGame.headerTitle')}
           </Text>
         </View>
 
@@ -1315,7 +1149,7 @@ export default function BehaviourGameScreen() {
           style={s.infoBtn}
           onPress={() => setShowParentInfo(true)}
           accessibilityRole="button"
-          accessibilityLabel="Information for parents"
+          accessibilityLabel={t('behaviourGame.infoA11yLabel')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons
@@ -1348,10 +1182,7 @@ export default function BehaviourGameScreen() {
       */}
       <View style={s.instructionWrap}>
         <Text style={s.instructionEn}>
-          Pick the picture you like 👆
-        </Text>
-        <Text style={s.instructionSi}>
-          ඔබට කැමති පින්තූරය තෝරන්න
+          {t('behaviourGame.instruction')} 👆
         </Text>
       </View>
 
@@ -1403,7 +1234,7 @@ export default function BehaviourGameScreen() {
             <Text
               style={s.hintTxt}
             >
-              Take your time 🌟 / ඉක්මන් නොවී හිතන්න
+              {t('behaviourGame.hint')} 🌟
             </Text>
           </View>
         )}
@@ -1439,111 +1270,57 @@ export default function BehaviourGameScreen() {
               </TouchableOpacity>
             </View>
 
+            {/*
+              This toggle is intentionally separate from the app-wide
+              language — a parent may want to read this explanation in a
+              different language than the child's app is currently set to.
+              getTranslation(lang, key) pulls straight from the shared
+              translation table for whichever language is picked here.
+            */}
             <View style={s.languageSwitch}>
-              <TouchableOpacity
-                style={[
-                  s.languageSwitchBtn,
-                  parentInfoLanguage === 'en' && s.languageSwitchBtnActive,
-                ]}
-                onPress={() => setParentInfoLanguage('en')}
-              >
-                <Text
+              {PARENT_INFO_LANGUAGES.map(({ code, label }) => (
+                <TouchableOpacity
+                  key={code}
                   style={[
-                    s.languageSwitchText,
-                    parentInfoLanguage === 'en' && s.languageSwitchTextActive,
+                    s.languageSwitchBtn,
+                    parentInfoLanguage === code && s.languageSwitchBtnActive,
                   ]}
+                  onPress={() => setParentInfoLanguage(code)}
                 >
-                  English
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  s.languageSwitchBtn,
-                  parentInfoLanguage === 'si' && s.languageSwitchBtnActive,
-                ]}
-                onPress={() => setParentInfoLanguage('si')}
-              >
-                <Text
-                  style={[
-                    s.languageSwitchText,
-                    parentInfoLanguage === 'si' && s.languageSwitchTextActive,
-                  ]}
-                >
-                  සිංහල
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    style={[
+                      s.languageSwitchText,
+                      parentInfoLanguage === code && s.languageSwitchTextActive,
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
-            {parentInfoLanguage === 'en' ? (
-              <>
-                <Text style={s.parentModalTitle}>
-                  Dear Parent,
-                </Text>
+            <Text style={s.parentModalTitle}>
+              {getTranslation(parentInfoLanguage, 'behaviourGame.parentInfoTitle')}
+            </Text>
 
-                <Text style={s.parentModalBody}>
-                  This picture-choice activity is designed to help us understand
-                  your child's initial behavioural preferences. Your child will
-                  see two pictures and choose the one they naturally prefer.
-                  There is no right or wrong answer shown to the child.
-                </Text>
+            <Text style={s.parentModalBody}>
+              {getTranslation(parentInfoLanguage, 'behaviourGame.parentInfoBody1')}
+            </Text>
 
-                <Text style={s.parentModalBody}>
-                  The choices and response times give an early behavioural
-                  starting point. This information can help parents and the
-                  support team understand which everyday behaviours may already
-                  feel familiar to the child and which areas may need more
-                  teaching, modelling, or practice.
-                </Text>
+            <Text style={s.parentModalBody}>
+              {getTranslation(parentInfoLanguage, 'behaviourGame.parentInfoBody2')}
+            </Text>
 
-                <View style={s.parentNoteBox}>
-                  <Ionicons
-                    name="heart-outline"
-                    size={19}
-                    color={C.tealDark}
-                  />
-                  <Text style={s.parentNoteText}>
-                    Please allow your child to choose independently. Avoid
-                    pointing to a picture or telling them which one to select.
-                  </Text>
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={s.parentModalTitle}>
-                  ආදරණීය දෙමාපියනි,
-                </Text>
-
-                <Text style={s.parentModalBody}>
-                  මෙම පින්තූර තේරීමේ ක්‍රියාකාරකම ඔබගේ දරුවාගේ ආරම්භක
-                  හැසිරීම් කැමැත්ත පිළිබඳ අවබෝධයක් ලබා ගැනීමට සකස් කර ඇත.
-                  දරුවාට පින්තූර දෙකක් පෙන්වා, තමන්ට ස්වභාවිකව කැමති
-                  පින්තූරය තෝරා ගැනීමට ඉඩ ලබා දේ. දරුවාට හරි හෝ වැරදි
-                  පිළිතුරක් ලෙස කිසිවක් පෙන්වන්නේ නැත.
-                </Text>
-
-                <Text style={s.parentModalBody}>
-                  දරුවා කරන තේරීම් සහ ප්‍රතිචාර දැක්වීමට ගන්නා කාලය මගින්
-                  ආරම්භක හැසිරීම් තත්ත්වයක් හඳුනා ගැනීමට උපකාරී වේ. එමඟින්
-                  දරුවාට දැනටමත් හුරුපුරුදු දෛනික හැසිරීම් සහ තවදුරටත්
-                  ඉගැන්වීම, ආදර්ශනය කිරීම හෝ පුහුණුව අවශ්‍ය විය හැකි
-                  අංශ පිළිබඳ දෙමාපියන්ට සහ සහාය කණ්ඩායමට අවබෝධයක් ලබා
-                  ගත හැක.
-                </Text>
-
-                <View style={s.parentNoteBox}>
-                  <Ionicons
-                    name="heart-outline"
-                    size={19}
-                    color={C.tealDark}
-                  />
-                  <Text style={s.parentNoteText}>
-                    කරුණාකර දරුවාට ස්වාධීනව තෝරා ගැනීමට ඉඩ දෙන්න. පින්තූරයක්
-                    පෙන්වා දීම හෝ තෝරා ගත යුතු පින්තූරය කියා දීමෙන් වළකින්න.
-                  </Text>
-                </View>
-              </>
-            )}
+            <View style={s.parentNoteBox}>
+              <Ionicons
+                name="heart-outline"
+                size={19}
+                color={C.tealDark}
+              />
+              <Text style={s.parentNoteText}>
+                {getTranslation(parentInfoLanguage, 'behaviourGame.parentInfoNote')}
+              </Text>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1556,6 +1333,57 @@ export default function BehaviourGameScreen() {
           handleFeedbackDone
         }
       />
+
+        <TouchableOpacity
+  style={s.motherTipBtn}
+  onPress={() => setShowMotherTip(true)}
+  accessibilityRole="button"
+  accessibilityLabel={t('behaviourGame.motherTipA11yLabel')}
+  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+>
+  <Ionicons
+    name="woman-outline"
+    size={24}
+    color="#fff"
+  />
+</TouchableOpacity>
+
+<Modal
+  visible={showMotherTip}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setShowMotherTip(false)}
+>
+  <TouchableOpacity
+    style={s.motherTipBackdrop}
+    activeOpacity={1}
+    onPress={() => setShowMotherTip(false)}
+  >
+    <View style={s.motherTipCard}>
+      <View style={s.motherTipIconWrap}>
+        <Ionicons
+  name="person-circle-outline"
+  size={26}
+  color="#fff"
+/>
+      </View>
+
+      <Text style={s.motherTipText}>
+        {t('behaviourGame.motherTipMessage')}
+      </Text>
+
+      <TouchableOpacity
+        style={s.motherTipCloseBtn}
+        onPress={() => setShowMotherTip(false)}
+      >
+        <Text style={s.motherTipCloseText}>
+          {t('behaviourGame.gotIt')}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  </TouchableOpacity>
+</Modal>
+
     </View>
   );
 }
@@ -1580,11 +1408,6 @@ const s = StyleSheet.create({
     color: C.inkMid,
     fontWeight: '600',
     textAlign: 'center',
-  },
-
-  loadingSi: {
-    fontSize: 14,
-    color: C.inkFaint,
   },
 
   backToDashboard: {
@@ -1650,13 +1473,6 @@ const s = StyleSheet.create({
     fontWeight: '800',
   },
 
-  headerSi: {
-    color:
-      'rgba(255,255,255,0.8)',
-    fontSize: 12,
-    marginTop: 1,
-  },
-
   parentModalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(30,26,22,0.45)',
@@ -1719,7 +1535,7 @@ const s = StyleSheet.create({
   },
 
   languageSwitchText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: C.inkSoft,
   },
@@ -1782,13 +1598,6 @@ const s = StyleSheet.create({
     textAlign: 'center',
   },
 
-  instructionSi: {
-    fontSize: 14,
-    color: C.inkFaint,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-
   choicesRow: {
     flexDirection: 'column',
     gap: 18,
@@ -1822,4 +1631,70 @@ const s = StyleSheet.create({
     fontWeight: '600',
     flexShrink: 1,
   },
+motherTipBtn: {
+  position: 'absolute',
+  left: H_PAD,
+  bottom: 24,
+
+  width: 48,
+  height: 48,
+  borderRadius: 24,
+
+  backgroundColor: C.teal,
+
+  justifyContent: 'center',
+  alignItems: 'center',
+
+  ...shadow(12, '#000', 0.18),
+},
+
+motherTipBackdrop: {
+  flex: 1,
+  backgroundColor: 'rgba(30,26,22,0.45)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingHorizontal: 28,
+},
+
+motherTipCard: {
+  width: '100%',
+  maxWidth: 420,
+  backgroundColor: C.warmWhite,
+  borderRadius: 24,
+  padding: 22,
+  alignItems: 'center',
+  ...shadow(18, '#000', 0.16),
+},
+
+motherTipIconWrap: {
+  width: 42,
+  height: 42,
+  borderRadius: 21,
+  backgroundColor: C.tealLight,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginBottom: 14,
+},
+
+motherTipText: {
+  fontSize: 15,
+  lineHeight: 22,
+  color: C.inkMid,
+  textAlign: 'center',
+  marginBottom: 18,
+},
+
+motherTipCloseBtn: {
+  backgroundColor: C.teal,
+  borderRadius: 16,
+  paddingHorizontal: 28,
+  paddingVertical: 12,
+},
+
+motherTipCloseText: {
+  color: '#fff',
+  fontSize: 15,
+  fontWeight: '700',
+},
+
 });

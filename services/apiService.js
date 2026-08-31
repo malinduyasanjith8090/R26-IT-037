@@ -21,7 +21,7 @@ import { storage } from '../utils/storage';
  * DEV_MACHINE_IP = your laptop's WiFi IP from ipconfig
  * Run: ipconfig → look for "Wireless LAN adapter WiFi" → IPv4 Address
  */
-const DEV_MACHINE_IP = '172.28.2.137';
+const DEV_MACHINE_IP = '192.168.8.104';
 
 const BASE_URL =
   Platform.OS === 'web'

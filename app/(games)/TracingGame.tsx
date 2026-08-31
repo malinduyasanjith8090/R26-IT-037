@@ -20,6 +20,7 @@ import {
 } from 'expo-linear-gradient';
 import TracingCanvas from '../../components/TracingCanvasdilsha';
 import { useChild } from '../../context/ChildContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useSound } from '../../hooks/useSound';
 import { endSession, startSession, submitTrial, syncOfflineQueue } from '../../services/apiService';
 import { getShapesForDifficulty } from '../data/shapes/sriLankanShapes';
@@ -101,6 +102,17 @@ function getPerformancePhase(blendedAccuracy) {
 export default function TracingGameScreen() {
   const { activeChild, cognitiveState } = useChild();
   const { playSound, playStarEarned } = useSound();
+  const { t } = useLanguage();
+
+  // Level picker data now sources its label/hint text from the language
+  // context instead of a hardcoded array, so it follows the app-wide
+  // language (including Tamil, which previously had no coverage here).
+  const LEVEL_OPTIONS = [
+    { level: 1, label: t('tracingGame.level1Label'), hint: t('tracingGame.level1Hint') },
+    { level: 2, label: t('tracingGame.level2Label'), hint: t('tracingGame.level2Hint') },
+    { level: 3, label: t('tracingGame.level3Label'), hint: t('tracingGame.level3Hint') },
+    { level: 4, label: t('tracingGame.level4Label'), hint: t('tracingGame.level4Hint') },
+  ];
 
   const [sessionId,       setSessionId]       = useState(null);
   const [currentShape,    setCurrentShape]    = useState(null);
@@ -133,9 +145,9 @@ export default function TracingGameScreen() {
     if (!activeChild) {
       console.warn('No active child selected');
       setSessionLoading(false);
-      Alert.alert('Error', 'Please select a child first', [
+      Alert.alert('Error', t('tracingGame.selectChildAlert'), [
         {
-          text: 'Go Back',
+          text: t('tracingGame.goBack'),
           onPress: () => router.back()
         }
       ]);
@@ -343,7 +355,7 @@ export default function TracingGameScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FF8C42" />
-        <Text style={styles.loadingText}>Getting ready...</Text>
+        <Text style={styles.loadingText}>{t('tracingGame.gettingReady')}</Text>
       </View>
     );
   }
@@ -353,7 +365,7 @@ export default function TracingGameScreen() {
     return (
       <View style={styles.container}>
        <View style={styles.shapeSelectionContainer}>
-  <Text style={styles.shapeSelectionTitle}>Select a Shape</Text>
+  <Text style={styles.shapeSelectionTitle}>{t('tracingGame.selectShape')}</Text>
   
 
   <View style={styles.shapeList}>
@@ -385,10 +397,12 @@ export default function TracingGameScreen() {
             style={styles.levelButton}
             onPress={() => setShowLevelPicker(true)}
           >
-            <Text style={styles.levelButtonText}>Level {difficultyLevel} ▾</Text>
+            <Text style={styles.levelButtonText}>
+              {t('tracingGame.level', { level: difficultyLevel })}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleEndSession}>
-            <Text style={styles.endButton}>End Session</Text>
+            <Text style={styles.endButton}>{t('tracingGame.endSession')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -404,13 +418,8 @@ export default function TracingGameScreen() {
             onPress={() => setShowLevelPicker(false)}
           >
             <View style={styles.pickerContainer}>
-              <Text style={styles.pickerTitle}>Select Level</Text>
-              {[
-                { level: 1, label: 'Level 1 — Ball | Flower | Cloud',     hint: 'Simple circles and shapes' },
-                { level: 2, label: 'Level 2 — Butterfly | Banana | Car', hint: 'Gentle curves' },
-                { level: 3, label: 'Level 3 — T-Shirt | Bus | House',      hint: 'Compound outlines' },
-                { level: 4, label: 'Level 4 — Hand | Star | Ship',  hint: 'Fine motor control' },
-              ].map(({ level, label, hint }) => (
+              <Text style={styles.pickerTitle}>{t('tracingGame.selectLevel')}</Text>
+              {LEVEL_OPTIONS.map(({ level, label, hint }) => (
                 <TouchableOpacity
                   key={level}
                   style={[
@@ -468,11 +477,7 @@ export default function TracingGameScreen() {
 
   <View style={styles.headerCenter}>
     <Text style={styles.headerTitle}>
-      Adaptive Fine-Motor Training Module
-    </Text>
-
-    <Text style={styles.headerSi}>
-      අනුවර්තන සියුම්-චලන පුහුණු මොඩියුලය
+      {t('tracingGame.headerTitle')}
     </Text>
   </View>
 
@@ -490,14 +495,14 @@ export default function TracingGameScreen() {
 
   {accuracy !== null && (
     <Text style={styles.accuracyText}>
-      Last: {accuracy}%
+      {t('tracingGame.lastScore', { accuracy })}
     </Text>
   )}
 </View>
 
       {/* Instruction text */}
       <Text style={styles.instruction}>
-        Place your finger on the green dot and trace to the red dot
+        {t('tracingGame.instruction')}
       </Text>
 
       {/* The tracing canvas */}
@@ -514,24 +519,21 @@ export default function TracingGameScreen() {
       {performancePhase === 'great' && (
         <View style={[styles.phaseOverlay, styles.phaseGreat]}>
           <Text style={styles.phaseStar}>★</Text>
-          <Text style={styles.phaseTitle}>Well done!</Text>
-          <Text style={styles.phaseSinhala}>ගොඩාක් හොඳයි!</Text>
+          <Text style={styles.phaseTitle}>{t('tracingGame.wellDone')}</Text>
         </View>
       )}
 
       {performancePhase === 'ok' && (
         <View style={[styles.phaseOverlay, styles.phaseOk]}>
           <Text style={styles.phaseStar}>👍</Text>
-          <Text style={styles.phaseTitle}>Good try!</Text>
-          <Text style={styles.phaseSinhala}>හොඳයි, නැවත උත්සාහ කරන්න!</Text>
+          <Text style={styles.phaseTitle}>{t('tracingGame.goodTry')}</Text>
         </View>
       )}
 
       {performancePhase === 'poor' && (
         <View style={[styles.phaseOverlay, styles.phasePoor]}>
           <Text style={styles.phaseStar}>🔵</Text>
-          <Text style={styles.phaseTitle}>Let&apos;s try again</Text>
-          <Text style={styles.phaseSinhala}>සෙමෙන් dots follow කරන්න</Text>
+          <Text style={styles.phaseTitle}>{t('tracingGame.tryAgainPhase')}</Text>
         </View>
       )}
 
@@ -548,13 +550,8 @@ export default function TracingGameScreen() {
           onPress={() => setShowLevelPicker(false)}
         >
           <View style={styles.pickerContainer}>
-            <Text style={styles.pickerTitle}>Select Level</Text>
-            {[
-              { level: 1, label: 'Level 1 — Ball | Flower | Cloud',     hint: 'Simple circles and shapes' },
-              { level: 2, label: 'Level 2 — Butterfly | Banana | Car', hint: 'Gentle curves' },
-              { level: 3, label: 'Level 3 — T-Shirt | Bus | House',      hint: 'Compound outlines' },
-              { level: 4, label: 'Level 4 — Hand | Star | Ship',  hint: 'Fine motor control' },
-            ].map(({ level, label, hint }) => (
+            <Text style={styles.pickerTitle}>{t('tracingGame.selectLevel')}</Text>
+            {LEVEL_OPTIONS.map(({ level, label, hint }) => (
               <TouchableOpacity
                 key={level}
                 style={[
@@ -582,11 +579,15 @@ export default function TracingGameScreen() {
           style={styles.levelButton}
           onPress={() => setShowLevelPicker(true)}
         >
-          <Text style={styles.levelButtonText}>Level {difficultyLevel} ▾</Text>
+          <Text style={styles.levelButtonText}>
+            {t('tracingGame.level', { level: difficultyLevel })}
+          </Text>
         </TouchableOpacity>
-        <Text style={styles.trialCountText}>Trial {trialNumberRef.current}</Text>
+        <Text style={styles.trialCountText}>
+          {t('tracingGame.trial', { number: trialNumberRef.current })}
+        </Text>
         <TouchableOpacity onPress={handleEndSession}>
-          <Text style={styles.endButton}>End Session</Text>
+          <Text style={styles.endButton}>{t('tracingGame.endSession')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -657,14 +658,6 @@ headerTitle: {
   lineHeight: 22,
 },
 
-headerSi: {
-  color:
-    'rgba(255,255,255,0.75)',
-  fontSize: 11,
-  marginTop: 1,
-  textAlign: 'center',
-},
-
 scorePill: {
   backgroundColor:
     'rgba(255,255,255,0.2)',
@@ -721,10 +714,6 @@ scoreText: {
   },
   phaseTitle: {
     fontSize: 32, color: '#3D2B1F', fontWeight: '600', marginBottom: 6,
-  },
-  phaseSinhala: {
-    fontSize: 18, color: '#5A3E28', marginTop: 2, textAlign: 'center',
-    paddingHorizontal: 20,
   },
   guidanceOverlay: {
     position: 'absolute', bottom: 100, left: 40, right: 40,

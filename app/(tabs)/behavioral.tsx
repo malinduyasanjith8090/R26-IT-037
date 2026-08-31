@@ -804,9 +804,9 @@ export default function ParentDashboardScreen({
     <View style={styles.heroOverlay} />
 
     <View style={styles.heroTop}>
-      <Text style={styles.heroGreeting}>
-        Hi, {childName} baby
-      </Text>
+    <Text style={styles.heroGreeting}>
+  {t('heroGreeting', { childName })}
+</Text>
 
       <TouchableOpacity
         style={styles.heroIconButton}

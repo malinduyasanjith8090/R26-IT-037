@@ -28,6 +28,7 @@ const translations = {
     no: 'No',
     ok: 'OK',
     
+    
     // Auth
     login: 'Login',
     signup: 'Sign Up',
@@ -138,7 +139,7 @@ const translations = {
     easy: 'Easy',
     medium: 'Medium',
     hard: 'Hard',
-    
+    'heroGreeting': 'Hi, {childName} baby',
     // Game Messages
     gameUnderDevelopment: 'This game is under development. Stay tuned!',
     comingSoon: 'Coming Soon!',
@@ -264,9 +265,83 @@ const translations = {
   encouragementBody:
     'Every learning session helps build skills, focus, and confidence.',
   reports: 'Reports',
- 
+  // --- add to the `en` object ---
+'behaviourGame.selectChildTitle': 'Please select a child first.',
+'behaviourGame.gettingReady': 'Getting ready...',
+'behaviourGame.headerTitle': 'Picture Time',
+'behaviourGame.nicePick': 'Nice pick!',
+'behaviourGame.instruction': 'Pick the picture you like',
+'behaviourGame.hint': 'Take your time',
+'behaviourGame.infoA11yLabel': 'Information for parents',
+'behaviourGame.parentInfoTitle': 'Dear Parent,',
+'behaviourGame.parentInfoBody1':
+  "This picture-choice activity is designed to help us understand your child's initial behavioural preferences. Your child will see two pictures and choose the one they naturally prefer. There is no right or wrong answer shown to the child.",
+'behaviourGame.parentInfoBody2':
+  'The choices and response times give an early behavioural starting point. This information can help parents and the support team understand which everyday behaviours may already feel familiar to the child and which areas may need more teaching, modelling, or practice.',
+'behaviourGame.parentInfoNote':
+  'Please allow your child to choose independently. Avoid pointing to a picture or telling them which one to select.',
+ // --- add to the `en` object ---
+'behaviourResult.loading': 'Loading results...',
+'behaviourResult.errorTitle': 'Unable to load results',
+'behaviourResult.errorBody': 'The session results could not be loaded from the server.',
+'behaviourResult.retry': 'Try Again',
+'behaviourResult.backToDashboard': 'Back to Dashboard',
+'behaviourResult.msgGreat': 'Fantastic! 🌟',
+'behaviourResult.msgGood': 'Good job! Keep going!',
+'behaviourResult.msgTryMore': 'Nice try! Practice more 💛',
+'behaviourResult.correct': 'Correct',
+'behaviourResult.avgTime': 'Avg Time',
+'behaviourResult.categoryBreakdown': 'Category Breakdown',
+'behaviourResult.categoryBreakdownSub': 'Results by category',
+'behaviourResult.correctOfTotal': '{correct}/{total} correct',
+'behaviourResult.howResponded': 'How {childName} Responded',
+'behaviourResult.howRespondedGeneric': 'How the Child Responded',
+'behaviourResult.responsePattern': 'Response pattern this session',
+'behaviourResult.newSituationCheck': 'New Situation Check',
+'behaviourResult.newSituationCheckSub': 'Recognising a new situation',
+'behaviourResult.generalizationBody':
+  '{correct}/{total} correct on a scenario {childPhrase} before — a good sign of understanding the idea, not just memorising a picture.',
+'behaviourResult.childHadntPracticed': "{childName} hadn't practiced",
+'behaviourResult.genericHadntPracticed': "the child hadn't practiced",
+'behaviourResult.keepPractising': 'Keep practising! 💪',
+'behaviourResult.encouragementBody':
+  "Every game builds your child's social understanding.",
+'behaviourResult.playAgain': 'Play Again',
+'behaviourResult.classification.mastered': 'Confident & Correct',
+'behaviourResult.classification.uncertain_but_correct': 'Got There, Took Time',
+'behaviourResult.classification.impulsive': 'Quick Tap, Worth Revisiting',
+'behaviourResult.classification.confused': 'Needs More Practice',
+// --- add to the `en` object ---
+'behaviourGame.motherTipA11yLabel': 'Tip for parents',
+'behaviourGame.motherTipMessage':
+  'Get your child close to you, simply teach them each situation, and let them choose whichever picture they like.',
+'behaviourGame.gotIt': 'Got it',
   
+//Tracing Screen
 
+// --- add to the `en` object ---
+'tracingGame.selectChildAlert': 'Please select a child first',
+'tracingGame.goBack': 'Go Back',
+'tracingGame.gettingReady': 'Getting ready...',
+'tracingGame.selectShape': 'Select a Shape',
+'tracingGame.level': 'Level {level} ▾',
+'tracingGame.endSession': 'End Session',
+'tracingGame.selectLevel': 'Select Level',
+'tracingGame.level1Label': 'Level 1 — Ball | Flower | Cloud',
+'tracingGame.level1Hint': 'Simple circles and shapes',
+'tracingGame.level2Label': 'Level 2 — Butterfly | Banana | Car',
+'tracingGame.level2Hint': 'Gentle curves',
+'tracingGame.level3Label': 'Level 3 — T-Shirt | Bus | House',
+'tracingGame.level3Hint': 'Compound outlines',
+'tracingGame.level4Label': 'Level 4 — Hand | Star | Ship',
+'tracingGame.level4Hint': 'Fine motor control',
+'tracingGame.headerTitle': 'Adaptive Fine-Motor Training Module',
+'tracingGame.lastScore': 'Last: {accuracy}%',
+'tracingGame.instruction': 'Place your finger on the green dot and trace to the red dot',
+'tracingGame.wellDone': 'Well done!',
+'tracingGame.goodTry': 'Good try!',
+'tracingGame.tryAgainPhase': "Let's try again",
+'tracingGame.trial': 'Trial {number}',
     
     // Settings
     settings: 'Settings',
@@ -436,7 +511,34 @@ const translations = {
     easy: 'පහසු',
     medium: 'මධ්‍යම',
     hard: 'දුෂ්කර',
+    'heroGreeting': 'ආයුබෝවන්, {childName} බබා',
     
+
+//Tracing Screen
+// --- add to the `si` object ---
+'tracingGame.selectChildAlert': 'කරුණාකර පළමුව දරුවෙකු තෝරන්න',
+'tracingGame.goBack': 'ආපසු යන්න',
+'tracingGame.gettingReady': 'සූදානම් වෙමින්...',
+'tracingGame.selectShape': 'හැඩයක් තෝරන්න',
+'tracingGame.level': 'මට්ටම {level} ▾',
+'tracingGame.endSession': 'සැසිය අවසන් කරන්න',
+'tracingGame.selectLevel': 'මට්ටම තෝරන්න',
+'tracingGame.level1Label': 'මට්ටම 1 — බෝලය | මල | වලාකුළ',
+'tracingGame.level1Hint': 'සරල රවුම් සහ හැඩතල',
+'tracingGame.level2Label': 'මට්ටම 2 — සමනලයා | කෙසෙල් | කාර්',
+'tracingGame.level2Hint': 'මෘදු වක්‍ර රේඛා',
+'tracingGame.level3Label': 'මට්ටම 3 — T-ෂර්ට් | බස් | ගෙදර',
+'tracingGame.level3Hint': 'සංයුක්ත රේඛා',
+'tracingGame.level4Label': 'මට්ටම 4 — අත | තරුව | නැව',
+'tracingGame.level4Hint': 'සියුම් චලන පාලනය',
+'tracingGame.headerTitle': 'අනුවර්තන සියුම්-චලන පුහුණු මොඩියුලය',
+'tracingGame.lastScore': 'අවසන්: {accuracy}%',
+'tracingGame.instruction': 'ඔබේ ඇඟිල්ල කොළ තිතෙහි තබා රතු තිත වෙත අඳින්න',
+'tracingGame.wellDone': 'ගොඩාක් හොඳයි!',
+'tracingGame.goodTry': 'හොඳයි, නැවත උත්සාහ කරන්න!',
+'tracingGame.tryAgainPhase': 'සෙමෙන් නැවත උත්සාහ කරමු',
+'tracingGame.trial': 'පරීක්ෂණය {number}',
+
     // Game Messages
     gameUnderDevelopment: 'මෙම ක්‍රීඩාව සංවර්ධනය වෙමින් පවතී. රැඳී සිටින්න!',
     comingSoon: 'ඉක්මනින් එනවා!',
@@ -540,7 +642,7 @@ const translations = {
   viewChildProgress: 'දරුවාගේ ප්‍රගතිය බලන්න',
   startNewTrial: 'නව ට්‍රයල් එකක් ආරම්භ කරන්න',
   startNewTrialDescription: 'නව ඉගෙනුම් ට්‍රයල් එකක් ආරම්භ කරන්න',
-  behaviourGame: 'හැසිරීම් ක්‍රීඩාව',
+  behaviourGame: 'හැසිරීම් හඳුනාගැනීමේ සැසිය',
   practiceSocialSkills: 'සමාජ කුසලතා පුහුණු කරන්න',
   sessions: 'සැසි',
   trials: 'ට්‍රයල්',
@@ -562,6 +664,58 @@ const translations = {
     'සෑම ඉගෙනුම් සැසියක්ම කුසලතා, අවධානය සහ විශ්වාසය වර්ධනය කිරීමට උපකාරී වේ.',
   reports: 'වාර්තා',
   
+parentsGuide: 'දෙමාපිය මාර්ගෝපදේශය',
+parentsGuideDescription: 'ඔබේ දරුවාට උපකාර කිරීමට ප්‍රයෝජනවත් ඉඟි',
+// --- add to the `si` object ---
+'behaviourGame.selectChildTitle': 'පළමුව දරුවෙකු තෝරන්න.',
+'behaviourGame.gettingReady': 'සූදානම් වෙමින්...',
+'behaviourGame.headerTitle': 'පින්තූර වේලාව',
+'behaviourGame.nicePick': 'හොඳයි!',
+'behaviourGame.instruction': 'ඔබට කැමති පින්තූරය තෝරන්න',
+'behaviourGame.hint': 'ඉක්මන් නොවී හිතන්න',
+'behaviourGame.infoA11yLabel': 'දෙමාපියන් සඳහා තොරතුරු',
+'behaviourGame.parentInfoTitle': 'ආදරණීය දෙමාපියනි,',
+'behaviourGame.parentInfoBody1':
+  'මෙම පින්තූර තේරීමේ ක්‍රියාකාරකම ඔබගේ දරුවාගේ ආරම්භක හැසිරීම් කැමැත්ත පිළිබඳ අවබෝධයක් ලබා ගැනීමට සකස් කර ඇත. දරුවාට පින්තූර දෙකක් පෙන්වා, තමන්ට ස්වභාවිකව කැමති පින්තූරය තෝරා ගැනීමට ඉඩ ලබා දේ. දරුවාට හරි හෝ වැරදි පිළිතුරක් ලෙස කිසිවක් පෙන්වන්නේ නැත.',
+'behaviourGame.parentInfoBody2':
+  'දරුවා කරන තේරීම් සහ ප්‍රතිචාර දැක්වීමට ගන්නා කාලය මගින් ආරම්භක හැසිරීම් තත්ත්වයක් හඳුනා ගැනීමට උපකාරී වේ. එමඟින් දරුවාට දැනටමත් හුරුපුරුදු දෛනික හැසිරීම් සහ තවදුරටත් ඉගැන්වීම, ආදර්ශනය කිරීම හෝ පුහුණුව අවශ්‍ය විය හැකි අංශ පිළිබඳ දෙමාපියන්ට සහ සහාය කණ්ඩායමට අවබෝධයක් ලබා ගත හැක.',
+'behaviourGame.parentInfoNote':
+  'කරුණාකර දරුවාට ස්වාධීනව තෝරා ගැනීමට ඉඩ දෙන්න. පින්තූරයක් පෙන්වා දීම හෝ තෝරා ගත යුතු පින්තූරය කියා දීමෙන් වළකින්න.',
+  // --- add to the `si` object ---
+'behaviourResult.loading': 'ප්‍රතිඵල ලබාගනිමින්...',
+'behaviourResult.errorTitle': 'ප්‍රතිඵල ලබාගැනීමට නොහැකි විය',
+'behaviourResult.errorBody': 'සැසි ප්‍රතිඵල සර්වරයෙන් ලබාගැනීමට නොහැකි විය.',
+'behaviourResult.retry': 'නැවත උත්සාහ කරන්න',
+'behaviourResult.backToDashboard': 'උපකරණ පුවරුවට ආපසු',
+'behaviourResult.msgGreat': 'අති විශිෂ්ටයි! 🌟',
+'behaviourResult.msgGood': 'හොඳ වැඩ! ඉදිරියට!',
+'behaviourResult.msgTryMore': 'හොඳ උත්සාහයක්! තව පුහුණු වන්න 💛',
+'behaviourResult.correct': 'නිවැරදි',
+'behaviourResult.avgTime': 'සාමාන්‍ය කාලය',
+'behaviourResult.categoryBreakdown': 'කාණ්ඩ අනුව ප්‍රතිඵල',
+'behaviourResult.categoryBreakdownSub': 'කාණ්ඩ අනුව ප්‍රතිඵල විස්තර',
+'behaviourResult.correctOfTotal': '{correct}/{total} නිවැරදි',
+'behaviourResult.howResponded': '{childName} ප්‍රතිචාර දැක්වූ ආකාරය',
+'behaviourResult.howRespondedGeneric': 'දරුවා ප්‍රතිචාර දැක්වූ ආකාරය',
+'behaviourResult.responsePattern': 'මෙම සැසියේ ප්‍රතිචාර රටාව',
+'behaviourResult.newSituationCheck': 'නව අවස්ථාවක් හඳුනාගැනීම',
+'behaviourResult.newSituationCheckSub': 'නව අවස්ථාවක් හඳුනාගැනීම',
+'behaviourResult.generalizationBody':
+  '{childPhrase} අවස්ථාවක් සම්බන්ධයෙන් {correct}/{total} ක් නිවැරදි විය — එය පින්තූරයක් මතක තබා ගැනීමකට වඩා අදහස තේරුම් ගැනීමේ හොඳ සලකුණකි.',
+'behaviourResult.childHadntPracticed': '{childName} පුහුණු නොවූ',
+'behaviourResult.genericHadntPracticed': 'දරුවා පුහුණු නොවූ',
+'behaviourResult.keepPractising': 'දිගටම පුහුණු වන්න! 💪',
+'behaviourResult.encouragementBody': 'සෑම ක්‍රීඩාවක්ම ඔබේ දරුවාගේ සමාජ අවබෝධය වර්ධනය කරයි.',
+'behaviourResult.playAgain': 'නැවත ක්‍රීඩා කරන්න',
+'behaviourResult.classification.mastered': 'විශ්වාසයෙන් නිවැරදි',
+'behaviourResult.classification.uncertain_but_correct': 'නිවැරදියි, කල් ගත විය',
+'behaviourResult.classification.impulsive': 'ඉක්මන් තේරීමක්',
+'behaviourResult.classification.confused': 'තව පුහුණුවක් අවශ්‍යයි',
+// --- add to the `si` object ---
+'behaviourGame.motherTipA11yLabel': 'දෙමාපියන් සඳහා ඉඟියක්',
+'behaviourGame.motherTipMessage':
+  'ඔබේ දරුවා ඔබ අසලට ගෙන, සෑම අවස්ථාවක්ම සරලව ඉගැන්වන්න, ඔවුන්ට කැමති ඕනෑම පින්තූරයක් තෝරා ගැනීමට ඉඩ දෙන්න.',
+'behaviourGame.gotIt': 'තේරුණා',
     
     // Settings
     settings: 'සැකසුම්',
@@ -1286,6 +1440,33 @@ const translations = {
     manageSettings: 'அறிவிப்புகள், மொழி, தீம் மற்றும் பலவற்றை நிர்வகிக்கவும்',
   },
 };
+export const getTranslation = (
+  lang: LanguageType,
+  key: string,
+  params?: Record<string, any>
+): string => {
+  let translation = (translations[lang] as any)[key];
+
+  if (!translation && lang !== 'en') {
+    translation = (translations.en as any)[key];
+  }
+
+  if (!translation) {
+    return key;
+  }
+
+  if (params && typeof translation === 'string') {
+    Object.keys(params).forEach(paramKey => {
+      const paramValue = params[paramKey];
+      if (paramValue !== undefined && paramValue !== null) {
+        translation = translation.replace(`{${paramKey}}`, String(paramValue));
+      }
+    });
+  }
+
+  return translation;
+};
+
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 

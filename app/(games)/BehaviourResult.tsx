@@ -24,6 +24,8 @@ import {
   getBehaviourSessionSummary,
 } from '../../services/apiService';
 
+import { useLanguage } from '../../context/LanguageContext';
+
 const { width: SW } = Dimensions.get('window');
 
 const H_PAD = 20;
@@ -79,32 +81,26 @@ const shadow = (depth = 8) =>
 // ---------------------------------------------------------------------------
 // RESEARCH LABELS
 // ---------------------------------------------------------------------------
-
+// Labels now come from t('behaviourResult.classification.<type>') instead of
+// hardcoded {label, si} pairs, so Tamil users get proper text too. Only the
+// visual metadata (color/icon) lives here.
 const CLASSIFICATION_META = {
   mastered: {
-    label: 'Confident & Correct',
-    si: 'විශ්වාසයෙන් නිවැරදි',
     color: '#2BBFA4',
     icon: 'checkmark-circle',
   },
 
   uncertain_but_correct: {
-    label: 'Got There, Took Time',
-    si: 'නිවැරදියි, කල් ගත විය',
     color: '#4A9FD4',
     icon: 'time-outline',
   },
 
   impulsive: {
-    label: 'Quick Tap, Worth Revisiting',
-    si: 'ඉක්මන් තේරීමක්',
     color: '#F5A623',
     icon: 'flash-outline',
   },
 
   confused: {
-    label: 'Needs More Practice',
-    si: 'තව පුහුණුවක් අවශ්‍යයි',
     color: '#FF6B4A',
     icon: 'help-circle-outline',
   },
@@ -198,6 +194,8 @@ function CategoryRow({
   total: number;
   correct: number;
 }) {
+  const { t } = useLanguage();
+
   const anim = useRef(
     new Animated.Value(0),
   ).current;
@@ -219,6 +217,9 @@ function CategoryRow({
         ? C.amber
         : C.coral;
 
+  // Category names come from the backend (e.g. "greeting", "sharing") and
+  // aren't part of the static translation table, so this stays a display
+  // formatter rather than a t() lookup.
   const label =
     String(category)
       .replace(/_/g, ' ')
@@ -265,7 +266,7 @@ function CategoryRow({
       </View>
 
       <Text style={cr.sub}>
-        {correct}/{total} correct
+        {t('behaviourResult.correctOfTotal', { correct, total })}
       </Text>
     </View>
   );
@@ -325,15 +326,19 @@ function ClassificationRow({
   count: number;
   totalTrials: number;
 }) {
+  const { t } = useLanguage();
+
   const meta =
     CLASSIFICATION_META[
       type as keyof typeof CLASSIFICATION_META
     ] || {
-      label: type,
-      si: '',
       color: C.inkFaint,
       icon: 'ellipse-outline',
     };
+
+  const label = t(
+    `behaviourResult.classification.${type}`,
+  );
 
   const pct =
     totalTrials > 0
@@ -362,11 +367,7 @@ function ClassificationRow({
 
       <View style={clr.textWrap}>
         <Text style={clr.label}>
-          {meta.label}
-        </Text>
-
-        <Text style={clr.si}>
-          {meta.si}
+          {label}
         </Text>
       </View>
 
@@ -410,12 +411,6 @@ const clr = StyleSheet.create({
     color: '#1C1610',
   },
 
-  si: {
-    fontSize: 11,
-    color: '#A89E96',
-    marginTop: 1,
-  },
-
   count: {
     fontSize: 14,
     fontWeight: '800',
@@ -427,6 +422,8 @@ const clr = StyleSheet.create({
 // ---------------------------------------------------------------------------
 
 export default function BehaviourResultScreen() {
+  const { t } = useLanguage();
+
   const params =
     useLocalSearchParams();
 
@@ -627,25 +624,18 @@ export default function BehaviourResultScreen() {
         ? 2
         : 1;
 
+  // Returns a single localized message string (was {en, si}) — driven by
+  // the app-wide language via t().
   const getMessage = () => {
     if (accuracy >= 85) {
-      return {
-        en: 'Fantastic! 🌟',
-        si: 'අති විශිෂ්ටයි!',
-      };
+      return t('behaviourResult.msgGreat');
     }
 
     if (accuracy >= 60) {
-      return {
-        en: 'Good job! Keep going!',
-        si: 'හොඳ වැඩ! ඉදිරියට!',
-      };
+      return t('behaviourResult.msgGood');
     }
 
-    return {
-      en: 'Nice try! Practice more 💛',
-      si: 'හොඳ උත්සාහයක්!',
-    };
+    return t('behaviourResult.msgTryMore');
   };
 
   const msg = getMessage();
@@ -683,11 +673,7 @@ export default function BehaviourResultScreen() {
         />
 
         <Text style={s.loadingTitle}>
-          Loading results...
-        </Text>
-
-        <Text style={s.loadingSi}>
-          ප්‍රතිඵල ලබාගනිමින්...
+          {t('behaviourResult.loading')}
         </Text>
       </View>
     );
@@ -707,16 +693,11 @@ export default function BehaviourResultScreen() {
         />
 
         <Text style={s.errorTitle}>
-          Unable to load results
+          {t('behaviourResult.errorTitle')}
         </Text>
 
         <Text style={s.errorBody}>
-          The session results could not
-          be loaded from the server.
-        </Text>
-
-        <Text style={s.errorSi}>
-          ප්‍රතිඵල ලබාගැනීමට නොහැකි විය.
+          {t('behaviourResult.errorBody')}
         </Text>
 
         <TouchableOpacity
@@ -731,7 +712,7 @@ export default function BehaviourResultScreen() {
           />
 
           <Text style={s.retryText}>
-            Try Again
+            {t('behaviourResult.retry')}
           </Text>
         </TouchableOpacity>
 
@@ -745,7 +726,7 @@ export default function BehaviourResultScreen() {
           activeOpacity={0.85}
         >
           <Text style={s.backText}>
-            Back to Dashboard
+            {t('behaviourResult.backToDashboard')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -823,13 +804,7 @@ export default function BehaviourResultScreen() {
             <Text
               style={s.msgEn}
             >
-              {msg.en}
-            </Text>
-
-            <Text
-              style={s.msgSi}
-            >
-              {msg.si}
+              {msg}
             </Text>
 
             <View
@@ -861,7 +836,7 @@ export default function BehaviourResultScreen() {
                     s.heroStatLabel
                   }
                 >
-                  Accuracy
+                  {t('accuracy')}
                 </Text>
               </View>
 
@@ -895,7 +870,7 @@ export default function BehaviourResultScreen() {
                     s.heroStatLabel
                   }
                 >
-                  Correct
+                  {t('behaviourResult.correct')}
                 </Text>
               </View>
 
@@ -930,7 +905,7 @@ export default function BehaviourResultScreen() {
                     s.heroStatLabel
                   }
                 >
-                  Avg Time
+                  {t('behaviourResult.avgTime')}
                 </Text>
               </View>
             </View>
@@ -971,7 +946,7 @@ export default function BehaviourResultScreen() {
                     s.secTitle
                   }
                 >
-                  Category Breakdown
+                  {t('behaviourResult.categoryBreakdown')}
                 </Text>
 
                 <Text
@@ -979,7 +954,7 @@ export default function BehaviourResultScreen() {
                     s.secSub
                   }
                 >
-                  කාණ්ඩ අනුව ප්‍රතිඵල
+                  {t('behaviourResult.categoryBreakdownSub')}
                 </Text>
               </View>
             </View>
@@ -1043,8 +1018,8 @@ export default function BehaviourResultScreen() {
                   }
                 >
                   {childName
-                    ? `How ${childName} Responded`
-                    : 'How the Child Responded'}
+                    ? t('behaviourResult.howResponded', { childName })
+                    : t('behaviourResult.howRespondedGeneric')}
                 </Text>
 
                 <Text
@@ -1052,8 +1027,7 @@ export default function BehaviourResultScreen() {
                     s.secSub
                   }
                 >
-                  Response pattern
-                  this session
+                  {t('behaviourResult.responsePattern')}
                 </Text>
               </View>
             </View>
@@ -1111,7 +1085,7 @@ export default function BehaviourResultScreen() {
                     s.secTitle
                   }
                 >
-                  New Situation Check
+                  {t('behaviourResult.newSituationCheck')}
                 </Text>
 
                 <Text
@@ -1119,8 +1093,7 @@ export default function BehaviourResultScreen() {
                     s.secSub
                   }
                 >
-                  නව අවස්ථාවක්
-                  හඳුනාගැනීම
+                  {t('behaviourResult.newSituationCheckSub')}
                 </Text>
               </View>
             </View>
@@ -1130,17 +1103,13 @@ export default function BehaviourResultScreen() {
                 s.genBody
               }
             >
-              {generalizationCorrectCount}/
-              {generalizationResults.length}{' '}
-              correct on a
-              scenario{' '}
-              {childName
-                ? `${childName} hadn't practiced`
-                : "the child hadn't practiced"}{' '}
-              before — a good sign of
-              understanding the idea,
-              not just memorising a
-              picture.
+              {t('behaviourResult.generalizationBody', {
+                correct: generalizationCorrectCount,
+                total: generalizationResults.length,
+                childPhrase: childName
+                  ? t('behaviourResult.childHadntPracticed', { childName })
+                  : t('behaviourResult.genericHadntPracticed'),
+              })}
             </Text>
           </Animated.View>
         )}
@@ -1180,7 +1149,7 @@ export default function BehaviourResultScreen() {
                 s.encTitle
               }
             >
-              Keep practising! 💪
+              {t('behaviourResult.keepPractising')}
             </Text>
 
             <Text
@@ -1188,12 +1157,7 @@ export default function BehaviourResultScreen() {
                 s.encBody
               }
             >
-              Every game builds
-              your child's social
-              understanding.
-              {'\n'}
-              දිනෙන් දින දරුවා
-              වර්ධනය වෙයි.
+              {t('behaviourResult.encouragementBody')}
             </Text>
           </LinearGradient>
         </Animated.View>
@@ -1248,7 +1212,7 @@ export default function BehaviourResultScreen() {
                   s.btnPrimaryTxt
                 }
               >
-                Play Again
+                {t('behaviourResult.playAgain')}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -1275,7 +1239,7 @@ export default function BehaviourResultScreen() {
                 s.btnSecondaryTxt
               }
             >
-              Back to Dashboard
+              {t('behaviourResult.backToDashboard')}
             </Text>
           </TouchableOpacity>
         </Animated.View>
@@ -1321,13 +1285,6 @@ const s =
       textAlign: 'center',
     },
 
-    loadingSi: {
-      marginTop: 6,
-      fontSize: 13,
-      color: C.inkFaint,
-      textAlign: 'center',
-    },
-
     errorTitle: {
       marginTop: 16,
       fontSize: 21,
@@ -1341,13 +1298,6 @@ const s =
       fontSize: 14,
       lineHeight: 21,
       color: C.inkMid,
-      textAlign: 'center',
-    },
-
-    errorSi: {
-      marginTop: 6,
-      fontSize: 13,
-      color: C.inkFaint,
       textAlign: 'center',
     },
 
@@ -1444,13 +1394,6 @@ const s =
       fontWeight: '800',
       textAlign: 'center',
       marginTop: 4,
-    },
-
-    msgSi: {
-      color:
-        'rgba(255,255,255,0.8)',
-      fontSize: 14,
-      marginTop: 6,
     },
 
     heroStats: {
