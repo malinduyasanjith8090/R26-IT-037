@@ -3,6 +3,37 @@ const router = express.Router();
 const BehaviourTrial = require('../models/BehaviourTrial');
 const { requireAuth } = require('../middleware/auth');
 
+// ─── GET /api/behaviour/dashboard/:childId/progress ──────────────────────────
+// Keep this route before /:childId so Express does not treat "progress" as an ID.
+router.get('/:childId/progress', requireAuth, async (req, res) => {
+  try {
+    const { childId } = req.params;
+    const recentTrials = await BehaviourTrial.find({ childId })
+      .sort({ createdAt: -1 })
+      .limit(30)
+      .select('isCorrect difficultyLevel responseTimeMs createdAt')
+      .lean();
+
+    if (recentTrials.length === 0) return res.json({ childId, hasData: false });
+
+    const correct = recentTrials.filter((trial) => trial.isCorrect).length;
+    res.json({
+      childId,
+      hasData: true,
+      recentAccuracy: Math.round((correct / recentTrials.length) * 100),
+      currentDifficulty: recentTrials[0].difficultyLevel,
+      avgResponseTimeMs: Math.round(
+        recentTrials.reduce((sum, trial) => sum + trial.responseTimeMs, 0) / recentTrials.length
+      ),
+      trialsInWindow: recentTrials.length,
+      lastActivityAt: recentTrials[0].createdAt,
+    });
+  } catch (err) {
+    console.error('[BehaviourDashboard] GET /:childId/progress error:', err);
+    res.status(500).json({ error: 'Failed to fetch progress', details: err.message });
+  }
+});
+
 // ─── GET /api/behaviour/dashboard/:childId ────────────────────────────────────
 /**
  * Full dashboard summary for a child — used by the parent dashboard screen.

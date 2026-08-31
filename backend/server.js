@@ -2,10 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
+const path = require('path');
 const connectDB = require('./db');
 
 // Load environment variables from .env file
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Connect to MongoDB
 connectDB();
@@ -24,6 +25,7 @@ app.use('/api/trials',    require('./routes/trialRoutes'));
 app.use('/api/sessions',  require('./routes/sessionRoutes'));
 app.use('/api/cognitive', require('./routes/cognitiveRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/profile', require('./routes/profile'));
 
 // ─── Game 2: Behaviour picture-choice game routes ─────────────────────────────
 app.use('/api/behaviour/scenarios',  require('./routes/behaviourScenarioRoutes'));

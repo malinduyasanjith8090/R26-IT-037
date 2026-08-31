@@ -15,11 +15,13 @@ import {
 } from 'react-native';
 import Button from '../components/Button';
 import { Spacing, Typography } from '../constants/theme';
+import { useChild } from '../context/ChildContext';
 import { useTheme } from '../context/ThemeContext';
 import { login as apiLogin, storeToken } from '../services/api';
 
 export default function LoginScreen() {
   const { colors } = useTheme();
+  const { setParent, selectChild } = useChild();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -35,6 +37,8 @@ export default function LoginScreen() {
     try {
       const data = await apiLogin({ email, password });
       await storeToken(data.token);
+      await setParent(data.user, data.token);
+      if (data.child) await selectChild(data.child);
       // ✅ Correct navigation to dashboard
       router.replace('/(tabs)/dashboard');
     } catch (error: any) {
@@ -158,7 +162,7 @@ export default function LoginScreen() {
         {/* Sign Up Link */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: colors.textLight }]}>
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
           </Text>
           <TouchableOpacity onPress={() => router.push('/signup')}>
             <Text style={[styles.signupLink, { color: colors.primary }]}>Sign Up</Text>
