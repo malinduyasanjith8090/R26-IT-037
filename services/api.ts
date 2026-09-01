@@ -1,6 +1,6 @@
 // services/api.ts – add updateRewards
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { storage } from '../utils/storage';
 
 const getBaseUrl = (): string => {
     const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest2?.hostUri;
@@ -14,15 +14,15 @@ const getBaseUrl = (): string => {
 const API_URL = getBaseUrl();
 
 export const storeToken = async (token: string): Promise<void> => {
-    await AsyncStorage.setItem('auth_token', token);
+    await storage.set('auth_token', token);
 };
 
 export const getToken = async (): Promise<string | null> => {
-    return await AsyncStorage.getItem('auth_token');
+    return await storage.get('auth_token');
 };
 
 export const clearToken = async (): Promise<void> => {
-    await AsyncStorage.removeItem('auth_token');
+    await storage.remove('auth_token');
 };
 
 interface RequestOptions {
@@ -49,7 +49,11 @@ const request = async (path: string, options: RequestOptions): Promise<any> => {
     const response = await fetch(`${API_URL}${path}`, config);
     const data = await response.json();
     if (!response.ok) {
-        throw new Error(data.message || 'Something went wrong');
+        const error: Error & { status?: number } = new Error(
+            data.message || 'Something went wrong'
+        );
+        error.status = response.status;
+        throw error;
     }
     return data;
 };

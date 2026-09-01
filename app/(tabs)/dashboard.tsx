@@ -3,22 +3,24 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router'; // or import from '@react-navigation/native'
 import React, { useCallback, useState } from 'react';
 import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import Card from '../../components/Card';
 import ProgressBar from '../../components/ProgressBar';
 import { Spacing, Typography } from '../../constants/theme';
+import { useChild } from '../../context/ChildContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getProfile } from '../../services/api';
 
 export default function DashboardScreen() {
   const { colors } = useTheme();
+  const { logout } = useChild();
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState({
@@ -44,9 +46,14 @@ export default function DashboardScreen() {
         stats: data.stats || { learning: 0, games: 0, routine: 0, behavioral: 0 },
         achievements: data.achievements || [],
       });
-    } catch (error) {
-      Alert.alert('Session expired', 'Please sign in again.');
-      router.replace('/login');
+    } catch (error: any) {
+      if (error.status === 401) {
+        await logout();
+        Alert.alert('Session expired', 'Please sign in again.');
+        router.replace('/login');
+      } else {
+        Alert.alert('Unable to load profile', 'Please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
