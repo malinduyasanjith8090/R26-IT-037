@@ -1342,10 +1342,10 @@ export default function BehaviourGameScreen() {
   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
 >
   <Ionicons
-    name="woman-outline"
-    size={24}
-    color="#fff"
-  />
+  name="woman-outline"
+  size={24}
+  color="#fff"
+/>
 </TouchableOpacity>
 
 <Modal

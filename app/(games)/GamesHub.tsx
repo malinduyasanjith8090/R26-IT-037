@@ -1,13 +1,13 @@
 // app/(games)/GamesHub.tsx
 import React from 'react';
 import {
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
@@ -100,11 +100,35 @@ export default function GamesHubScreen() {
         />
 
         <GameTile
-          icon="pencil-outline"
-          title={t('tracingGame') || 'Tracing'}
-          subtitle={t('tracingGameDescription') || 'Practice motor skills'}
+          icon="water-outline"
+          title={t('handWashingGame')}
+          subtitle={t('handWashingGameDescription')}
           tint={colors.accentOrange}
-          onPress={() => router.push('/(games)/TracingGame')}
+          onPress={() => router.push('/(games)/HandWashingGame')}
+        />
+
+        <GameTile
+          icon="happy-outline"
+          title={t('faceWashGame')}
+          subtitle={t('faceWashGameDescription')}
+          tint={colors.primary}
+          onPress={() => router.push('/(games)/FaceWashGame')}
+        />
+
+        <GameTile
+          icon="play-outline"
+          title={t('playGame')}
+          subtitle={t('playGameDescription')}
+          tint={colors.accentOrange}
+          onPress={() => router.push('/(games)/PlayGame')}
+        />
+
+        <GameTile
+          icon="color-palette-outline"
+          title={t('drawingGame')}
+          subtitle={t('drawingGameDescription')}
+          tint={colors.primary}
+          onPress={() => router.push('/(games)/DrawingGame')}
         />
 
         {/* Add more game tiles here as you build them out */}
@@ -146,6 +170,17 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: CARD_RADIUS,
     borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 1.5,
+      },
+    }),
   },
   tileIconWrap: {
     width: 44,

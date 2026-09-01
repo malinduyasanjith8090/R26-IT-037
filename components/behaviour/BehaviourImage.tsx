@@ -94,6 +94,23 @@ export const ASSET_MAP = {
   queue_bad: queueBad,
   walking_good: walkingGood,
   walking_bad: walkingBad,
+
+  // --- extra aliases for the two pairs reported as not resolving ---
+  // Your filenames are action-first ("not washing hands.png", "not
+  // brushing teeth.png"), so the backend may be sending keys in that same
+  // word order rather than the "hands_washing" / "teeth_brushing" order
+  // used above. These cover the likely variants until we confirm the
+  // exact key from the console warning.
+  washing_hands: handsWashing,
+  wash_hands: handsWashing,
+  not_washing_hands: handsNotWashing,
+  not_wash_hands: handsNotWashing,
+  dirty_hands: handsNotWashing,
+  brushing_teeth: teethBrushing,
+  brush_teeth: teethBrushing,
+  not_brushing_teeth: teethNotBrushing,
+  not_brush_teeth: teethNotBrushing,
+  skipping_teeth: teethNotBrushing,
 };
 
 const FALLBACK_COLORS = [
@@ -112,17 +129,70 @@ const FALLBACK_ICONS = [
   'leaf-outline',
 ];
 
+// Normalizes a key so minor mismatches from the backend (extra
+// whitespace, different casing, stray hyphens) still resolve to the
+// right image instead of silently falling back to the placeholder.
+function normalizeKey(key) {
+  return String(key)
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+}
+
+// Build a normalized lookup index once, so every render doesn't have to
+// re-scan ASSET_MAP.
+const NORMALIZED_ASSET_MAP = Object.keys(ASSET_MAP).reduce((acc, key) => {
+  acc[normalizeKey(key)] = ASSET_MAP[key];
+  return acc;
+}, {});
+
+// Tracks which missing keys we've already warned about, so a re-rendering
+// screen doesn't spam the console with the same warning every frame.
+const warnedMissingKeys = new Set();
+
 /**
  * Renders the photo for a given assetKey, or a colored placeholder icon
  * (with the raw key printed underneath) if the key doesn't resolve — a
  * visible signal during dev that ASSET_MAP needs a new entry, rather than
  * a silent blank image.
+ *
+ * Lookup is normalized (trimmed, lowercased, spaces/hyphens -> underscores)
+ * so small formatting differences between what the backend sends and what
+ * ASSET_MAP defines don't cause an image to unexpectedly fall back to the
+ * placeholder. If a key still doesn't resolve, a console.warn fires once
+ * per key with the closest-looking valid keys, so a missing image is easy
+ * to diagnose instead of just showing a generic icon.
  */
 export default function BehaviourImage({ assetKey, style }) {
-  const asset = ASSET_MAP[assetKey];
+  if (!assetKey) {
+    console.warn('[BehaviourImage] Received an empty/undefined assetKey.');
+    return (
+      <View style={[style, { backgroundColor: FALLBACK_COLORS[0], justifyContent: 'center', alignItems: 'center' }]}>
+        <Ionicons name="help-circle-outline" size={56} color="#1F8E7C" />
+      </View>
+    );
+  }
+
+  const normalized = normalizeKey(assetKey);
+  const asset = ASSET_MAP[assetKey] || NORMALIZED_ASSET_MAP[normalized];
 
   if (asset) {
     return <Image source={asset} style={style} resizeMode="cover" />;
+  }
+
+  if (!warnedMissingKeys.has(normalized)) {
+    warnedMissingKeys.add(normalized);
+
+    const closeMatches = Object.keys(ASSET_MAP).filter(
+      k => k.includes(normalized) || normalized.includes(normalizeKey(k)),
+    );
+
+    console.warn(
+      `[BehaviourImage] No image found for assetKey "${assetKey}". ` +
+        (closeMatches.length
+          ? `Did you mean one of: ${closeMatches.join(', ')}?`
+          : 'This key does not exist anywhere in ASSET_MAP — check the backend/seed data or add it to ASSET_MAP.'),
+    );
   }
 
   const color = FALLBACK_COLORS[assetKey.length % FALLBACK_COLORS.length];

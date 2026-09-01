@@ -858,6 +858,17 @@ const translations = {
     'totalScore': 'Total Score',
     'playAgain': 'Play Again',
     'backToMenu': 'Back to Menu',
+
+
+    
+    handWashingGame: 'Wash Hands Before Eating',
+    handWashingGameDescription: 'Practice washing hands before meals',
+    faceWashGame: 'Wash Face & Brush Teeth',
+    faceWashGameDescription: 'Practice washing your face and brushing teeth',
+    playGame: "Let's Play",
+    playGameDescription: 'Have fun playing',
+    drawingGame: "Let's Draw",
+    drawingGameDescription: 'Practice drawing pictures',
   },
 
   si: {
@@ -1203,6 +1214,39 @@ parentsGuideDescription: 'ඔබේ දරුවාට උපකාර කිර
   'ඔබේ දරුවා ඔබ අසලට ගෙන, සෑම අවස්ථාවක්ම සරලව ඉගැන්වන්න, ඔවුන්ට කැමති ඕනෑම පින්තූරයක් තෝරා ගැනීමට ඉඩ දෙන්න.',
 'behaviourGame.gotIt': 'තේරුණා',
     
+
+    // Hand Washing Game
+    'handWashGame.title': 'Wash Hands',
+    'handWashGame.introPrompt': 'What should you do after eating?',
+    'handWashGame.next': 'Next',
+    'handWashGame.step1.prompt': 'Tap the right thing to do',
+    'handWashGame.step2.prompt': 'Now, what next?',
+    'handWashGame.allDone': 'All Done!',
+    'handWashGame.allDoneSubtitle': 'You cleaned up after eating — great job!',
+    'handWashGame.playAgain': 'Play Again',
+    'handWashGame.backToGames': 'Back to Games',
+
+    // Games Hub
+    handWashingGame: 'කෑම කලට අත සෝදමු',
+    handWashingGameDescription: 'කෑමට පෙර අත් සේදීම පුරුදු කරමු',
+    faceWashGame: 'මුහුණ සෝදලා දත් මදිමු',
+    faceWashGameDescription: 'මුහුණ සේදීම සහ දත් මැදීම පුරුදු කරමු',
+    playGame: 'සෙල්ලං කරමු',
+    playGameDescription: 'විනෝදයෙන් සෙල්ලම් කරමු',
+    drawingGame: 'පදම් කරමු',
+    drawingGameDescription: 'චිත්‍ර අඳින්න පුරුදු කරමු',
+
+        // Hand Washing Game
+    'handWashGame.title': 'අත් සෝදමු',
+    'handWashGame.introPrompt': 'කෑමෙන් පසු කුමක් කළ යුතුද?',
+    'handWashGame.next': 'ඊළඟ',
+    'handWashGame.step1.prompt': 'නිවැරදි දේ තට්ටු කරන්න',
+    'handWashGame.step2.prompt': 'දැන් මොකද කරන්නේ?',
+    'handWashGame.allDone': 'සියල්ල අවසන්!',
+    'handWashGame.allDoneSubtitle': 'කෑමෙන් පසු ඔබ පිරිසිදු කළා — නියමයි!',
+    'handWashGame.playAgain': 'නැවත සෙල්ලම් කරන්න',
+    'handWashGame.backToGames': 'ක්‍රීඩා වෙතට',
+
     // Settings
     settings: 'සැකසුම්',
     notifications: 'දැනුම්දීම්',
@@ -1705,6 +1749,9 @@ parentsGuideDescription: 'ඔබේ දරුවාට උපකාර කිර
     'totalScore': 'මුළු ලකුණු',
     'playAgain': 'නැවත සෙල්ලම් කරන්න',
     'backToMenu': 'මෙනුවට ආපසු',
+
+
+    
   },
 
   ta: {
