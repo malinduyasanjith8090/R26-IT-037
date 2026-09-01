@@ -112,6 +112,7 @@ type StudyMode = 'engToSin' | 'sinToEng' | 'emojiToWord';
 
 // ==================== SINHALA AUDIO MAP ====================
 const sinhalaAudioMap: { [key: string]: any } = {
+  instruction: require('../assets/sounds/sinhala/words/wordsinstruction.mp3'),
   mother: require('../assets/sounds/sinhala/words/mother.mp3'),
   father: require('../assets/sounds/sinhala/words/father.mp3'),
   brother: require('../assets/sounds/sinhala/words/brother.mp3'),
