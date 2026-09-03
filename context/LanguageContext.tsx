@@ -997,6 +997,7 @@ const translations = {
     medium: 'මධ්‍යම',
     hard: 'දුෂ්කර',
     'heroGreeting': 'ආයුබෝවන්, {childName} බබා',
+    simplePuzzle: 'සරල ප්‍රහේලිකාව', completeSimplePuzzles: 'සරල ප්‍රහේලිකා සම්පූර්ණ කරන්න', thinkingGames: 'චින්තන ක්‍රීඩා', solvePuzzlesAndSequences: 'ප්‍රහේලිකා සහ රටා විසඳන්න',
     
 
 //Tracing Screen
@@ -1044,6 +1045,69 @@ const translations = {
     traceLetter: 'අකුරු සොයාගැනීම',
     traceNumber: 'අංක සොයාගැනීම',
     arExperience: 'AR අත්දැකීම',
+    'faceWashGame.title': 'මුහුණ සෝදමු',
+
+'faceWashGame.introPrompt': 'අපි මුහුණ සෝදමු',
+
+'faceWashGame.next': 'ඊළඟට',
+
+'faceWashGame.step1.prompt': 'පළමුව නාන කාමරයට යමු',
+
+'faceWashGame.step2.prompt': 'දැන් මුහුණ සෝදමු',
+
+'faceWashGame.step3.prompt': 'දැන් දත් මදිමු',
+
+'faceWashGame.option.going_to_bathroom': 'නාන කාමරයට යනවා',
+
+'faceWashGame.option.not_going_to_bathroom': 'නාන කාමරයට යන්නේ නැහැ',
+
+'faceWashGame.option.wash_face_happy': 'සතුටින් මුහුණ සෝදනවා',
+
+'faceWashGame.option.wash_face_unhappy': 'මුහුණ සෝදන්නේ නැහැ',
+
+'faceWashGame.option.brush_teeth_happy': 'සතුටින් දත් මදිනවා',
+
+'faceWashGame.option.brush_teeth_unhappy': 'දත් මදින්නේ නැහැ',
+
+'faceWashGame.allDone': 'ගොඩාක් හොඳයි! 🎉',
+
+'faceWashGame.allDoneSubtitle': 'ඔබ සියලුම ක්‍රියාකාරකම් අවසන් කළා!',
+
+'faceWashGame.playAgain': 'නැවත උත්සාහ කරමු',
+
+'faceWashGame.backToGames': 'ක්‍රීඩා වෙත යමු',
+
+'parentsGuide': 'දෙමාපිය මාර්ගෝපදේශය',
+
+'parentsGuideDescription': 'සෑම ක්‍රියාකාරකමකින්ම උපරිම ප්‍රයෝජනය ලබා ගැනීමට කෙටි වීඩියෝ මාර්ගෝපදේශ.',
+
+'parentsGuide.gettingStarted': 'ආරම්භ කිරීම',
+
+'parentsGuide.gettingStartedDescription': 'යෙදුම තේරුම් ගැනීමට සහ සෑම ක්‍රියාකාරකමක්ම ආරම්භ කිරීමට සරල මාර්ගෝපදේශයකි.',
+
+'parentsGuide.readingDashboard': 'ඩෑෂ්බෝඩ් එක තේරුම් ගැනීම',
+
+'parentsGuide.readingDashboardDescription': 'නිරවද්‍යතා ලකුණු, ප්‍රගතිය සහ ක්‍රියාකාරකම් ප්‍රතිඵල තේරුම් ගන්න.',
+
+'parentsGuide.supportingFineMotor': 'සියුම් චලන පුහුණුවට සහාය වීම',
+
+'parentsGuide.supportingFineMotorDescription': 'හැඩතල ඇඳීම පුහුණු කරන විට ඔබේ දරුවාට සහාය වීමට සරල ක්‍රම.',
+
+'parentsGuide.toughSession': 'අපහසු ක්‍රියාකාරකමක් සමඟ කටයුතු කිරීම',
+
+'parentsGuide.toughSessionDescription': 'ඔබේ දරුවා කලකිරීමට පත්වන විට හෝ ක්‍රියාකාරකම නතර කිරීමට අවශ්‍ය වූ විට උපකාරී මාර්ගෝපදේශ.',
+
+'parentsGuide.dailyRoutine': 'දෛනික පුරුද්දක් ගොඩනැගීම',
+
+'parentsGuide.dailyRoutineDescription': 'පුහුණුව නිරන්තරව, සන්සුන්ව සහ සතුටින් පවත්වාගෙන යන ආකාරය.',
+
+'parentsGuide.videoComingSoon': 'වීඩියෝව ළඟදීම',
+
+'parentsGuide.videoComingSoonDescription': 'මෙම දෙමාපිය මාර්ගෝපදේශයට අධ්‍යාපනික වීඩියෝවක් ඉදිරි යාවත්කාලීනයකදී එක් කෙරේ.',
+
+'parentsGuide.close': 'වසන්න',
+
+'parentsGuide.guides': 'මාර්ගෝපදේශ {count}',
 
     // Rewards and Feedback
     greatJob: 'නියමයි!',

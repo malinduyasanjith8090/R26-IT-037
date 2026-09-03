@@ -1,23 +1,24 @@
 // app/(info)/ParentsGuide.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Easing,
-    ImageBackground,
-    Modal,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  Easing,
+  ImageBackground,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { VideoView, useVideoPlayer } from 'expo-video';
 //
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
@@ -146,46 +147,130 @@ function GuideInfoModal({
 }) {
   const { colors } = useTheme();
 
+  const videoSource =
+    item?.id === 'g4'
+      ? require('../../assets/videos/video1.mp4')
+      : null;
+
+  const player = useVideoPlayer(videoSource, (player) => {
+    player.loop = false;
+
+    if (videoSource) {
+      player.play();
+    }
+  });
+
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
       <View style={styles.infoModalBackdrop}>
-        <View style={[styles.infoModalCard, { backgroundColor: colors.surface }]}>
-          <TouchableOpacity style={styles.infoCloseBtn} onPress={onClose} activeOpacity={0.8}>
-            <Ionicons name="close" size={22} color={colors.text} />
+        <View
+          style={[
+            styles.infoModalCard,
+            { backgroundColor: colors.surface },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.infoCloseBtn}
+            onPress={onClose}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="close"
+              size={22}
+              color={colors.text}
+            />
           </TouchableOpacity>
 
           {item && (
             <>
-              <View style={[styles.infoIconWrap, { backgroundColor: colors.primary + '18' }]}>
-                <Ionicons name={item.icon as any} size={36} color={colors.primary} />
+              <View
+                style={[
+                  styles.infoIconWrap,
+                  { backgroundColor: colors.primary + '18' },
+                ]}
+              >
+                <Ionicons
+                  name={item.icon as any}
+                  size={36}
+                  color={colors.primary}
+                />
               </View>
 
-              <Text style={[styles.infoTitle, { color: colors.text }]}>
+              <Text
+                style={[
+                  styles.infoTitle,
+                  { color: colors.text },
+                ]}
+              >
                 {item.title}
               </Text>
 
-              <Text style={[styles.infoDescription, { color: colors.textLight }]}>
+              <Text
+                style={[
+                  styles.infoDescription,
+                  { color: colors.textLight },
+                ]}
+              >
                 {item.description}
               </Text>
 
-              <View style={styles.comingSoonBox}>
-                <Ionicons name="videocam-outline" size={22} color={colors.primary} />
-                <View style={styles.comingSoonTextWrap}>
-                  <Text style={[styles.comingSoonTitle, { color: colors.text }]}>
-                    Video Coming Soon
-                  </Text>
-                  <Text style={[styles.comingSoonDescription, { color: colors.textLight }]}>
-                    This parent guide will include an educational video in a future update.
-                  </Text>
+              {/* Play video only for guide ID g4 */}
+              {item.id === 'g4' ? (
+                <View style={styles.videoContainer}>
+                  <VideoView
+                    player={player}
+                    style={styles.video}
+                    contentFit="contain"
+                    nativeControls
+                  />
                 </View>
-              </View>
+              ) : (
+                <View style={styles.comingSoonBox}>
+                  <Ionicons
+                    name="videocam-outline"
+                    size={22}
+                    color={colors.primary}
+                  />
+
+                  <View style={styles.comingSoonTextWrap}>
+                    <Text
+                      style={[
+                        styles.comingSoonTitle,
+                        { color: colors.text },
+                      ]}
+                    >
+                      Video Coming Soon
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.comingSoonDescription,
+                        { color: colors.textLight },
+                      ]}
+                    >
+                      This parent guide will include an educational
+                      video in a future update.
+                    </Text>
+                  </View>
+                </View>
+              )}
 
               <TouchableOpacity
-                style={[styles.doneBtn, { backgroundColor: colors.primary }]}
+                style={[
+                  styles.doneBtn,
+                  { backgroundColor: colors.primary },
+                ]}
                 onPress={onClose}
                 activeOpacity={0.85}
               >
-                <Text style={styles.doneBtnText}>Close</Text>
+                <Text style={styles.doneBtnText}>
+                  Close
+                </Text>
               </TouchableOpacity>
             </>
           )}
@@ -512,5 +597,17 @@ heroOverlay: {
     fontSize: 14,
     fontWeight: '700',
   },
+videoContainer: {
+  width: '100%',
+  height: 220,
+  marginTop: Spacing.lg,
+  borderRadius: BorderRadius.lg,
+  overflow: 'hidden',
+  backgroundColor: '#000',
+},
 
+video: {
+  width: '100%',
+  height: '100%',
+},
 });

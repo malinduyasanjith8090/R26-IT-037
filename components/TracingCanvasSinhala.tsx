@@ -1,4 +1,4 @@
-// LetterTracingPage.tsx – Sinhala tracing with external voice commands
+// components/TracingCanvasSinhala.tsx – Full corrected version (safe array handling)
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
@@ -68,7 +68,7 @@ interface AlertLogItem {
   time: string;
 }
 
-// ─── LETTER CATEGORIES ──────────────────────────────────────────
+// ─── FULL LETTER CATEGORIES (all 23 letters) ───────────────────
 const LETTER_CATEGORIES: Category[] = [
   {
     id: 'vowels',
@@ -226,7 +226,7 @@ const getGrade = (score: number): GradeResult => {
   return { label: 'Try Again', sub: 'Practice more', stars: 1, symbol: '★☆☆' };
 };
 
-// ─── 14 KEYPOINTS PER LETTER ───────────────────────────────────
+// ─── FULL KEYPOINTS (all letters) ────────────────────────────
 const CUSTOM_KEYPOINTS: Record<string, { x: number; y: number }[]> = {
   'අ': [
     { x: 130, y: 120 }, { x: 180, y: 100 }, { x: 215, y: 140 },
@@ -243,11 +243,11 @@ const CUSTOM_KEYPOINTS: Record<string, { x: number; y: number }[]> = {
     { x: 310, y: 160 }, { x: 275, y: 230 },
   ],
   'ඇ': [
-    { x: 95, y: 120 }, { x: 200, y: 400 }, { x: 160, y: 170 },
-    { x: 220, y: 160 }, { x: 220, y: 220 }, { x: 180, y: 260 },
-    { x: 140, y: 260 }, { x: 160, y: 310 }, { x: 200, y: 300 },
-    { x: 100, y: 140 }, { x: 150, y: 190 }, { x: 190, y: 280 },
-    { x: 130, y: 200 }, { x: 170, y: 130 },
+    { x: 80, y: 120 }, { x: 120, y: 100 }, { x: 160, y: 120 },
+    { x: 80, y: 160 }, { x: 100, y: 220 }, { x: 170, y: 230 },
+    { x: 220, y: 210 }, { x: 170, y: 270 }, { x: 170, y: 180 },
+    { x: 210, y: 100 }, { x: 200, y: 170 }, { x: 260, y: 130 },
+    { x: 270, y: 200 }, { x: 300, y: 260 },
   ],
   'ඈ': [
     { x: 170, y: 100 }, { x: 210, y: 80 }, { x: 230, y: 120 },
@@ -395,16 +395,16 @@ function generateKeyPointsForLetter(letter: string): { x: number; y: number }[] 
   return CUSTOM_KEYPOINTS[letter] || [];
 }
 
-// ─── Sinhala external audio mapping ─────────────────────────────
+// ─── Sinhala audio mapping ─────────────────────────────────────
 const sinhalaAudioMap: { [key: string]: any } = {
   instruction: require('../assets/sounds/sinhala/tracingsinhalainstruction.mp3'),
   'අ': require('../assets/sounds/sinhala/අ.mp3'),
-  'ආ': require('../assets/sounds/sinhala//ආ.mp3'),
+  'ආ': require('../assets/sounds/sinhala/ආ.mp3'),
   'ඊ': require('../assets/sounds/sinhala/ඊ.mp3'),
-
+  // Others fallback to TTS
 };
 
-// ─── ANIMATED COUNTER ────────────────────────────────────────────
+// ─── ANIMATED COUNTER ──────────────────────────────────────────
 interface AnimatedCounterProps { value: number; }
 function AnimatedCounter({ value }: AnimatedCounterProps) {
   const [count, setCount] = useState<number>(0);
@@ -421,7 +421,7 @@ function AnimatedCounter({ value }: AnimatedCounterProps) {
   return <Text style={styles.counterText}>{count}</Text>;
 }
 
-// ─── LETTER GRID ─────────────────────────────────────────────────
+// ─── LETTER GRID ───────────────────────────────────────────────
 interface LetterGridProps {
   currentLetter: Letter | null;
   masteredSet: Set<string>;
@@ -480,7 +480,7 @@ function LetterGrid({ currentLetter, masteredSet, onSelect }: LetterGridProps) {
   );
 }
 
-// ─── SCORE OVERLAY ────────────────────────────────────────────────
+// ─── SCORE OVERLAY ─────────────────────────────────────────────
 interface ScoreOverlayProps {
   score: number;
   grade: GradeResult;
@@ -490,18 +490,6 @@ interface ScoreOverlayProps {
 }
 function ScoreOverlay({ score, grade, onNext, onRetry, isLast }: ScoreOverlayProps) {
   const { colors } = useTheme();
-  const { playSound } = useSound();
-
-  const handleNextWithSound = () => {
-    playSound('click', false);
-    onNext();
-  };
-
-  const handleRetryWithSound = () => {
-    playSound('click', false);
-    onRetry();
-  };
-
   return (
     <View style={[styles.overlay, { backgroundColor: colors.background + 'F5' }]}>
       <View style={styles.overlayContent}>
@@ -510,10 +498,10 @@ function ScoreOverlay({ score, grade, onNext, onRetry, isLast }: ScoreOverlayPro
         <Text style={[styles.overlaySub, { color: colors.textLight }]}>{grade.sub}</Text>
         <Text style={[styles.overlaySymbol, { color: colors.primary }]}>{grade.symbol}</Text>
         <View style={styles.overlayButtons}>
-          <TouchableOpacity onPress={handleRetryWithSound} style={[styles.overlayButton, styles.retryButton, { borderColor: colors.primaryLight, backgroundColor: colors.surface }]}>
+          <TouchableOpacity onPress={onRetry} style={[styles.overlayButton, styles.retryButton, { borderColor: colors.primaryLight, backgroundColor: colors.surface }]}>
             <Text style={[styles.retryButtonText, { color: colors.primary }]}>Clear &amp; Retry</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleNextWithSound} style={[styles.overlayButton, styles.nextButton, { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+          <TouchableOpacity onPress={onNext} style={[styles.overlayButton, styles.nextButton, { backgroundColor: colors.primary, borderColor: colors.primary }]}>
             <Text style={[styles.nextButtonText, { color: colors.background }]}>{isLast ? 'Finish' : 'Next →'}</Text>
           </TouchableOpacity>
         </View>
@@ -522,10 +510,10 @@ function ScoreOverlay({ score, grade, onNext, onRetry, isLast }: ScoreOverlayPro
   );
 }
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────
+// ─── MAIN COMPONENT ─────────────────────────────────────────────
 interface LetterTracingPageProps { lang?: 'en'; }
 
-export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProps) {
+export default function TracingCanvasSinhala({ lang = 'en' }: LetterTracingPageProps) {
   const { colors } = useTheme();
   const { t, language } = useLanguage();
   const { playSound, playStarEarned, playCorrectAnswer, playCelebration, isEnabled: soundEnabled } = useSound();
@@ -544,7 +532,7 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
   const [alertLog, setAlertLog] = useState<AlertLogItem[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
 
-  // ─── TRACING STATE ────────────────────────────────────────────
+  // TRACING STATE
   const [strokes, setStrokes] = useState<{ x: number; y: number }[][]>([]);
   const [validTracePoints, setValidTracePoints] = useState<{ x: number; y: number }[]>([]);
   const [isComplete, setIsComplete] = useState(false);
@@ -558,7 +546,7 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
   const progressAnim = useRef(new Animated.Value(0)).current;
   const scrollEnabled = useRef(true);
 
-  // ─── AUDIO LOADING ────────────────────────────────────────────
+  // AUDIO LOADING
   const [soundsLoaded, setSoundsLoaded] = useState(false);
   const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
   const pendingInstruction = useRef(false);
@@ -581,7 +569,7 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
     );
   };
 
-  // Load all Sinhala audio files
+  // Load Sinhala audio files
   useEffect(() => {
     let isMounted = true;
     const loadSounds = async () => {
@@ -609,7 +597,6 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
     };
   }, []);
 
-  // Speak function (external audio for Sinhala, TTS for English)
   const speak = async (text: string, audioKey?: string) => {
     if (!soundEnabled) return;
     if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
@@ -639,12 +626,10 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
     }
   };
 
-  // Stop speech on unmount
   useEffect(() => {
     return () => Speech.stop();
   }, []);
 
-  // Main instruction effect – plays long Sinhala instruction
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -658,14 +643,12 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
       speak(instructionText, 'instruction');
       const timer = setTimeout(() => {
         speak(t(current.letter), current.letter);
-      }, 6000); // Give time for long instruction
+      }, 6000);
       return () => clearTimeout(timer);
     }
-    // On letter change, speak the letter name
     speak(t(current.letter), current.letter);
   }, [currentIdx, language]);
 
-  // Pending instruction effect – fires when sounds become ready
   useEffect(() => {
     if (pendingInstruction.current && soundsLoaded) {
       pendingInstruction.current = false;
@@ -680,7 +663,6 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
     }
   }, [soundsLoaded]);
 
-  // Live progress for the bar
   useEffect(() => {
     if (validTracePoints.length > 0 && !isComplete) {
       const covered = new Set<number>();
@@ -722,14 +704,13 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
         const y = (locationY / TRACE_AREA_SIZE) * 400;
         const newPoint = { x, y };
 
-        setStrokes(prev => [...prev, [newPoint]]);
+        // ✅ FIX: use prev ?? [] to avoid undefined spread
+        setStrokes(prev => [...(prev ?? []), [newPoint]]);
         setHasDrawn(true);
         setIsTracing(true);
-
         await playSound('click', false);
-
         if (isPointNearKeyPoint(newPoint)) {
-          setValidTracePoints(prev => [...prev, newPoint]);
+          setValidTracePoints(prev => [...(prev ?? []), newPoint]);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           await playSound('star', false);
         }
@@ -740,14 +721,19 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
         const y = (locationY / TRACE_AREA_SIZE) * 400;
         const newPoint = { x, y };
 
+        // ✅ FIX: handle undefined prev and missing last stroke
         setStrokes(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = [...updated[updated.length - 1], newPoint];
+          const current = prev ?? [];
+          if (current.length === 0) {
+            return [[newPoint]];
+          }
+          const updated = [...current];
+          updated[current.length - 1] = [...(updated[current.length - 1] ?? []), newPoint];
           return updated;
         });
 
         if (isPointNearKeyPoint(newPoint)) {
-          setValidTracePoints(prev => [...prev, newPoint]);
+          setValidTracePoints(prev => [...(prev ?? []), newPoint]);
           if (validTracePoints.length % 10 === 0) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             await playSound('star', false);
@@ -767,14 +753,11 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await playCorrectAnswer();
     await playStarEarned();
-
     Animated.sequence([
       Animated.timing(scaleAnim, { toValue: 1.1, duration: 200, useNativeDriver: true }),
       Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start();
-
     setPoints((prev) => prev + 10);
-
     setTimeout(async () => {
       setIsComplete(false);
       setStrokes([]);
@@ -803,7 +786,6 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
 
   const handleCheck = async () => {
     if (!hasDrawn || isComplete) return;
-
     const hitsPerKeypoint = new Array(keyPoints.length).fill(0);
     validTracePoints.forEach((tp) => {
       keyPoints.forEach((kp, idx) => {
@@ -812,21 +794,17 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
         }
       });
     });
-
     const wellTraced = hitsPerKeypoint.filter(hits => hits >= 3).length;
     const raw = (wellTraced / keyPoints.length) * 100;
-
     const grade = getGrade(raw);
     setScoreResult({ score: Math.round(raw), grade });
     setPoints((p) => p + Math.round(raw / 8));
-
     if (current) {
       setProgressMap((pm) => ({ ...pm, [current.letter]: Math.max(pm[current.letter] ?? 0, raw) }));
       setHistory((h) =>
         [{ letter: current.letter, score: Math.round(raw), cat: cat?.nameEn || '', ts: Date.now() }, ...h].slice(0, 50),
       );
     }
-
     if (raw >= 80) {
       await playCelebration();
       setCelebrating(true);
@@ -1012,7 +990,6 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
               );
             })}
 
-            {/* Render each stroke as a separate Path – no connecting lines */}
             {strokes.map((stroke, i) => {
               if (stroke.length < 2) return null;
               const d = `M ${stroke[0].x} ${stroke[0].y} ` +
@@ -1135,7 +1112,7 @@ export default function LetterTracingPage({ lang = 'en' }: LetterTracingPageProp
   );
 }
 
-// ─── STYLES (unchanged) ──────────────────────────────────────────
+// ─── STYLES (same as before, kept for completeness) ─────────────
 const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },

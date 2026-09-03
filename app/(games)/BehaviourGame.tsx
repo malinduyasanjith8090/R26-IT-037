@@ -1158,6 +1158,18 @@ export default function BehaviourGameScreen() {
             color="#fff"
           />
         </TouchableOpacity>
+
+        <TouchableOpacity
+  style={s.headerShortcut}
+  onPress={() => router.push('/(games)/GameHistory')}
+  activeOpacity={0.8}
+>
+  <Ionicons
+    name="time-outline"
+    size={24}
+    color={C.ink}
+  />
+</TouchableOpacity>
       </LinearGradient>
 
       <View
@@ -1696,5 +1708,6 @@ motherTipCloseText: {
   fontSize: 15,
   fontWeight: '700',
 },
+
 
 });
