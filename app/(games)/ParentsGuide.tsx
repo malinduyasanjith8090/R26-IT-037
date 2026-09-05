@@ -149,7 +149,7 @@ function GuideInfoModal({
 
   const videoSource =
     item?.id === 'g4'
-      ? require('../../assets/videos/video1.mp4')
+      ? require('../../assets/videos/video01.mp4')
       : null;
 
   const player = useVideoPlayer(videoSource, (player) => {
