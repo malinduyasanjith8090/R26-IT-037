@@ -1,9 +1,8 @@
 // components/ColorsLearning.tsx (corrected TypeScript errors)
 
 import { MaterialIcons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,

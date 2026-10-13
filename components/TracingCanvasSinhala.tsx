@@ -1,5 +1,5 @@
 // components/TracingCanvasSinhala.tsx – Full corrected version (safe array handling)
-import { Audio } from 'expo-av';
+import { createAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from 'react';
@@ -548,7 +548,9 @@ export default function TracingCanvasSinhala({ lang = 'en' }: LetterTracingPageP
 
   // AUDIO LOADING
   const [soundsLoaded, setSoundsLoaded] = useState(false);
-  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
+const sinhalaSounds = useRef<{
+  [key: string]: ReturnType<typeof createAudioPlayer> | null;
+}>({});
   const pendingInstruction = useRef(false);
   const isFirstRender = useRef(true);
 
@@ -570,40 +572,41 @@ export default function TracingCanvasSinhala({ lang = 'en' }: LetterTracingPageP
   };
 
   // Load Sinhala audio files
-  useEffect(() => {
-    let isMounted = true;
-    const loadSounds = async () => {
-      const sounds: { [key: string]: Audio.Sound | null } = {};
-      for (const key of Object.keys(sinhalaAudioMap)) {
-        try {
-          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
-          sounds[key] = sound;
-        } catch (error) {
-          console.warn(`Failed to load Sinhala audio: ${key}`, error);
-          sounds[key] = null;
-        }
-      }
-      if (isMounted) {
-        sinhalaSounds.current = sounds;
-        setSoundsLoaded(true);
-      }
-    };
-    loadSounds();
-    return () => {
-      isMounted = false;
-      Object.values(sinhalaSounds.current).forEach(sound => {
-        if (sound) sound.unloadAsync();
-      });
-    };
-  }, []);
+useEffect(() => {
+  const sounds: {
+    [key: string]: ReturnType<typeof createAudioPlayer> | null;
+  } = {};
+
+  for (const key of Object.keys(sinhalaAudioMap)) {
+    try {
+      sounds[key] = createAudioPlayer(sinhalaAudioMap[key]);
+    } catch (error) {
+      console.warn(`Failed to load Sinhala audio: ${key}`, error);
+      sounds[key] = null;
+    }
+  }
+
+  sinhalaSounds.current = sounds;
+  setSoundsLoaded(true);
+
+  return () => {
+    Object.values(sounds).forEach((sound) => {
+      sound?.remove();
+    });
+
+    sinhalaSounds.current = {};
+  };
+}, []);
 
   const speak = async (text: string, audioKey?: string) => {
     if (!soundEnabled) return;
     if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
       try {
         const sound = sinhalaSounds.current[audioKey];
-        if (sound) await sound.replayAsync();
-        return;
+if (sound) {
+  await sound.seekTo(0);
+  sound.play();
+}        return;
       } catch (error) {
         console.warn('Sinhala audio playback failed, falling back to TTS:', error);
       }

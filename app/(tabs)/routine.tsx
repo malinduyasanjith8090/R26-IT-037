@@ -1,9 +1,9 @@
 // app/(tabs)/routine.tsx – External MP3 Voice, Adjustable Alarm, Timer End Sound, Calming Activity Play Modal with Breathing Animation
 import { MaterialIcons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { createAudioPlayer } from 'expo-audio';
 import * as Notifications from 'expo-notifications';
 import * as Speech from 'expo-speech';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -134,21 +134,20 @@ export default function RoutineScreen() {
   const [calmingMinute, setCalmingMinute] = useState(0);
   const [calmingPeriod, setCalmingPeriod] = useState<'AM' | 'PM'>('AM');
 
-  const [backgroundSound, setBackgroundSound] = useState<Audio.Sound | null>(null);
-  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+const [backgroundSound, setBackgroundSound] = useState<ReturnType<typeof createAudioPlayer> | null>(null);
+const [isMusicPlaying, setIsMusicPlaying] = useState(false);
 
-  const [soundsLoaded, setSoundsLoaded] = useState(false);
-  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
-  const pendingInstruction = useRef(false);
-  const isFirstRender = useRef(true);
+const [soundsLoaded, setSoundsLoaded] = useState(false);
+const sinhalaSounds = useRef<{ [key: string]: ReturnType<typeof createAudioPlayer> | null }>({});
+const pendingInstruction = useRef(false);
+const isFirstRender = useRef(true);
 
   // ─── Alarm State ─────────────────────────────────────────────
   const [alarmHour, setAlarmHour] = useState(7);
   const [alarmMinute, setAlarmMinute] = useState(0);
   const [alarmPeriod, setAlarmPeriod] = useState<'AM' | 'PM'>('AM');
   const [alarmSet, setAlarmSet] = useState(false);
-  const [alarmSound, setAlarmSound] = useState<Audio.Sound | null>(null);
-
+const [alarmSound, setAlarmSound] = useState<ReturnType<typeof createAudioPlayer> | null>(null);
   // ─── Calming Activity Play Modal State ───────────────────────
   const [calmingPlayModalVisible, setCalmingPlayModalVisible] = useState(false);
   const [selectedPlayActivity, setSelectedPlayActivity] = useState<typeof CALMING_ACTIVITIES[0] | null>(null);
@@ -156,7 +155,7 @@ export default function RoutineScreen() {
   const [calmingTimerSeconds, setCalmingTimerSeconds] = useState(5 * 60);
   const [isCalmingTimerRunning, setIsCalmingTimerRunning] = useState(false);
   const [isBreathingVisible, setIsBreathingVisible] = useState(false);
-  const [introSound, setIntroSound] = useState<Audio.Sound | null>(null);
+const [introSound, setIntroSound] = useState<ReturnType<typeof createAudioPlayer> | null>(null);
   const breathScale = useRef(new Animated.Value(1)).current;
   const breathAnimation = useRef<Animated.CompositeAnimation | null>(null);
 
@@ -172,58 +171,57 @@ export default function RoutineScreen() {
   const activeRoutine = routines.find(r => r.id === activeRoutineId) || routines[0];
 
   // ─── Load Sinhala audio files ─────────────────────────────────
-  useEffect(() => {
-    let isMounted = true;
-    const loadSounds = async () => {
-      const sounds: { [key: string]: Audio.Sound | null } = {};
-      for (const key of Object.keys(sinhalaAudioMap)) {
-        try {
-          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
-          sounds[key] = sound;
-        } catch (error) {
-          console.warn(`Failed to load Sinhala audio: ${key}`, error);
-          sounds[key] = null;
-        }
-      }
-      if (isMounted) {
-        sinhalaSounds.current = sounds;
-        setSoundsLoaded(true);
-      }
-    };
-    loadSounds();
-    return () => {
-      isMounted = false;
-      Object.values(sinhalaSounds.current).forEach(sound => {
-        if (sound) sound.unloadAsync();
-      });
-      if (backgroundSound) backgroundSound.unloadAsync();
-      if (alarmSound) alarmSound.unloadAsync();
-      if (introSound) introSound.unloadAsync();
-    };
-  }, []);
+ useEffect(() => {
+  const sounds: {
+    [key: string]: ReturnType<typeof createAudioPlayer> | null;
+  } = {};
 
-  // ─── Play alarm sound (MP3) ──────────────────────────────────
-  const playAlarmSound = async () => {
+  for (const key of Object.keys(sinhalaAudioMap)) {
     try {
-      if (!alarmSound) {
-        const { sound } = await Audio.Sound.createAsync(alarmSoundFile);
-        setAlarmSound(sound);
-        await sound.playAsync();
-      } else {
-        await alarmSound.replayAsync();
-      }
+      sounds[key] = createAudioPlayer(sinhalaAudioMap[key]);
     } catch (error) {
-      console.error('Failed to play alarm sound:', error);
+      console.warn(`Failed to load Sinhala audio: ${key}`, error);
+      sounds[key] = null;
     }
+  }
+
+  sinhalaSounds.current = sounds;
+  setSoundsLoaded(true);
+
+  return () => {
+    Object.values(sounds).forEach((sound) => {
+      if (sound) sound.remove();
+    });
+
+    sinhalaSounds.current = {};
   };
+}, []);
+  // ─── Play alarm sound (MP3) ──────────────────────────────────
+ const playAlarmSound = async () => {
+  try {
+    let sound = alarmSound;
+
+    if (!sound) {
+      sound = createAudioPlayer(alarmSoundFile);
+      setAlarmSound(sound);
+    }
+
+    await sound.seekTo(0);
+    sound.play();
+  } catch (error) {
+    console.error('Failed to play alarm sound:', error);
+  }
+};
 
   // ─── Speak function (external MP3 for Sinhala) ──────────────
   const speak = async (text: string, audioKey?: string) => {
     try {
       if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
         const sound = sinhalaSounds.current[audioKey];
-        if (sound) await sound.replayAsync();
-        return;
+if (sound) {
+  await sound.seekTo(0);
+  sound.play();
+}        return;
       }
       Speech.stop();
       Speech.speak(text, {
@@ -324,60 +322,64 @@ export default function RoutineScreen() {
     setCalmingPlayModalVisible(true);
   };
 
-  const startCalmingTimer = async () => {
-    if (calmingTimerSeconds <= 0) {
-      setCalmingTimerSeconds(calmingTimerMinutes * 60);
-    }
-    setIsCalmingTimerRunning(true);
-    setIsBreathingVisible(true);
+const startCalmingTimer = async () => {
+  if (calmingTimerSeconds <= 0) {
+    setCalmingTimerSeconds(calmingTimerMinutes * 60);
+  }
 
-    // Play intro MP3 if available
-    if (selectedPlayActivity) {
-      const introFile = calmingIntroAudioMap[selectedPlayActivity.title];
-      if (introFile) {
-        try {
-          if (introSound) {
-            await introSound.unloadAsync();
-          }
-          const { sound } = await Audio.Sound.createAsync(introFile);
-          setIntroSound(sound);
-          await sound.playAsync();
-        } catch (error) {
-          console.warn('Intro audio missing, using TTS fallback');
-          // Fallback to speech
-          Speech.stop();
-          Speech.speak(`Let's do ${selectedPlayActivity.title} together. Follow the animation.`);
+  setIsCalmingTimerRunning(true);
+  setIsBreathingVisible(true);
+
+  if (selectedPlayActivity) {
+    const introFile = calmingIntroAudioMap[selectedPlayActivity.title];
+
+    if (introFile) {
+      try {
+        if (introSound) {
+          introSound.remove();
         }
-      } else {
-        // Fallback to TTS
+
+        const sound = createAudioPlayer(introFile);
+        setIntroSound(sound);
+        sound.play();
+      } catch (error) {
+        console.warn('Intro audio missing, using TTS fallback');
         Speech.stop();
-        Speech.speak(`Let's do ${selectedPlayActivity.title} together. Follow the animation.`);
+        Speech.speak(
+          `Let's do ${selectedPlayActivity.title} together. Follow the animation.`
+        );
       }
+    } else {
+      Speech.stop();
+      Speech.speak(
+        `Let's do ${selectedPlayActivity.title} together. Follow the animation.`
+      );
     }
+  }
 
-    // Start breathing animation
-    startBreathingAnimation();
+  startBreathingAnimation();
 
-    // Start countdown
-    const interval = setInterval(() => {
-      setCalmingTimerSeconds(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          setIsCalmingTimerRunning(false);
-          setIsBreathingVisible(false);
-          stopBreathingAnimation();
-          // Stop intro sound
-          if (introSound) introSound.stopAsync();
-          // Play completion sound
-          playSound('complete', false);
-          Alert.alert('Well Done!', 'You completed the calming activity.');
-          setCalmingPlayModalVisible(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
+  const interval = setInterval(() => {
+    setCalmingTimerSeconds((prev) => {
+      if (prev <= 1) {
+        clearInterval(interval);
+        setIsCalmingTimerRunning(false);
+        setIsBreathingVisible(false);
+        stopBreathingAnimation();
+
+        introSound?.pause();
+
+        playSound('complete', false);
+        Alert.alert('Well Done!', 'You completed the calming activity.');
+        setCalmingPlayModalVisible(false);
+
+        return 0;
+      }
+
+      return prev - 1;
+    });
+  }, 1000);
+};
 
   const startBreathingAnimation = () => {
     if (breathAnimation.current) breathAnimation.current.stop();
@@ -509,21 +511,28 @@ export default function RoutineScreen() {
     initialRoutines.forEach(r => scheduleNotificationForTask(t(r.titleKey), r.time));
   }, []);
 
-  const toggleBackgroundMusic = async () => {
+const toggleBackgroundMusic = async () => {
+  try {
     if (isMusicPlaying) {
-      await backgroundSound?.pauseAsync();
+      backgroundSound?.pause();
       setIsMusicPlaying(false);
-    } else {
-      if (!backgroundSound) {
-        const { sound } = await Audio.Sound.createAsync(backgroundMusic, { isLooping: true });
-        setBackgroundSound(sound);
-        await sound.playAsync();
-      } else {
-        await backgroundSound.playAsync();
-      }
-      setIsMusicPlaying(true);
+      return;
     }
-  };
+
+    let sound = backgroundSound;
+
+    if (!sound) {
+      sound = createAudioPlayer(backgroundMusic);
+      sound.loop = true;
+      setBackgroundSound(sound);
+    }
+
+    sound.play();
+    setIsMusicPlaying(true);
+  } catch (error) {
+    console.error('Failed to toggle background music:', error);
+  }
+};
 
   const handleRoutinePress = (item: any) => {
     setActiveRoutineId(item.id);
@@ -1181,7 +1190,7 @@ export default function RoutineScreen() {
         onRequestClose={() => {
           setCalmingPlayModalVisible(false);
           stopBreathingAnimation();
-          if (introSound) introSound.stopAsync();
+introSound?.pause();
           setIsCalmingTimerRunning(false);
         }}
       >
@@ -1246,7 +1255,7 @@ export default function RoutineScreen() {
                 onPress={() => {
                   setCalmingPlayModalVisible(false);
                   stopBreathingAnimation();
-                  if (introSound) introSound.stopAsync();
+introSound?.pause();
                   setIsCalmingTimerRunning(false);
                 }}
               >
