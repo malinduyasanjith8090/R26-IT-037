@@ -895,6 +895,52 @@ close: 'Close',
     playGameDescription: 'Have fun playing',
     drawingGame: "Let's Draw",
     drawingGameDescription: 'Practice drawing pictures',
+
+
+    objectExplorer: "Object Explorer",
+    subtitle: "Let's discover the world around us!",
+    cameraPermissionTitle: "Let's Use the Camera!",
+    cameraPermissionDescription:
+      "We need your camera to discover the objects around you.",
+    allowCamera: "Allow Camera",
+    cameraReady: "Ready to explore?",
+    takePhoto: "Take Photo",
+    takePhotoDescription:
+      "Point the camera at something and tap the button!",
+    detectingObjects: "Finding objects...",
+    detectingDescription: "Let's see what we can find!",
+    objectsFound: "Look What We Found!",
+    noObjectsFound: "Oops! We couldn't find any objects.",
+    noObjectsDescription:
+      "Try taking another photo with the object clearly visible.",
+    listenAgain: "Listen Again",
+    listenAgainDescription: "Hear the objects one more time",
+    takeAnotherPhoto: "Explore Again",
+    takeAnotherPhotoDescription: "Let's discover something new!",
+    cameraErrorTitle: "Oops! Camera Problem",
+    cameraErrorMessage:
+      "We couldn't take the photo. Please try again.",
+    configurationError:
+      "Please check the Roboflow configuration.",
+    detectionErrorTitle: "Something Went Wrong",
+    detectionErrorMessage:
+      "We couldn't identify the objects. Please check your internet connection and try again.",
+
+    // Object names
+    chair: "Chair",
+    table: "Table",
+    cup: "Cup",
+    couch: "Sofa",
+    bed: "Bed",
+    bottle: "Bottle",
+    book: "Book",
+    tv: "Television",
+    laptop: "Laptop",
+    person: "Person",
+    unknownObject: "Object",
+    objectCount: "Objects found",
+
+
   },
 
   si: {
@@ -925,6 +971,50 @@ close: 'Close',
     dontHaveAccount: 'ගිණුමක් නැද්ද?',
     alreadyHaveAccountYes: 'දැනටමත් ගිණුමක් තිබේද?',
     register: 'ලියාපදිංචි වන්න',
+
+
+    objectExplorer: "වස්තු හඳුනාගමු",
+    subtitle: "අපි අවට ලෝකය සොයා බලමු!",
+    cameraPermissionTitle: "අපි කැමරාව භාවිතා කරමු!",
+    cameraPermissionDescription:
+      "ඔයා අවට තියෙන දේවල් හඳුනාගන්න අපට කැමරාව අවශ්‍යයි.",
+    allowCamera: "කැමරාවට අවසර දෙන්න",
+    cameraReady: "සොයා බලන්න සූදානම්ද?",
+    takePhoto: "ඡායාරූපයක් ගන්න",
+    takePhotoDescription:
+      "කැමරාව වස්තුවක් දෙසට යොමු කරලා බොත්තම ඔබන්න!",
+    detectingObjects: "වස්තූන් හඳුනාගනිමින්...",
+    detectingDescription: "අපි මොනවාද සොයාගන්නේ කියලා බලමු!",
+    objectsFound: "අපි සොයාගත් දේවල්!",
+    noObjectsFound: "අයියෝ! වස්තූන් හමු වුණේ නැහැ.",
+    noObjectsDescription:
+      "වස්තුව පැහැදිලිව පෙනෙන විදිහට තියාගෙන තවත් ඡායාරූපයක් ගන්න.",
+    listenAgain: "නැවත අහන්න",
+    listenAgainDescription: "හඳුනාගත් දේවල් නැවත අහමු",
+    takeAnotherPhoto: "නැවත සොයා බලමු",
+    takeAnotherPhotoDescription: "අලුත් දෙයක් සොයාගමු!",
+    cameraErrorTitle: "අයියෝ! කැමරාවේ ගැටලුවක්",
+    cameraErrorMessage:
+      "ඡායාරූපය ගන්න බැරි වුණා. නැවත උත්සාහ කරන්න.",
+    configurationError:
+      "Roboflow සැකසුම් පරීක්ෂා කරන්න.",
+    detectionErrorTitle: "ගැටලුවක් ඇති වුණා",
+    detectionErrorMessage:
+      "වස්තූන් හඳුනාගන්න බැරි වුණා. අන්තර්ජාල සම්බන්ධතාව පරීක්ෂා කර නැවත උත්සාහ කරන්න.",
+
+    // Object names
+    chair: "පුටුව",
+    table: "මේසය",
+    cup: "කෝප්පය",
+    couch: "සෝෆාව",
+    bed: "ඇඳ",
+    bottle: "බෝතලය",
+    book: "පොත",
+    tv: "රූපවාහිනිය",
+    laptop: "ලැප්ටොප් පරිගණකය",
+    person: "පුද්ගලයෙක්",
+    unknownObject: "වස්තුවක්",
+    objectCount: "හඳුනාගත් වස්තූන්",
 
     // Onboarding
     personalizedLearning: 'පුද්ගලීකරණය කළ ඉගෙනීම',

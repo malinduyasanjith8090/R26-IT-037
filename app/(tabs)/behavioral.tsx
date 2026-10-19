@@ -853,14 +853,14 @@ export default function ParentDashboardScreen({
     onPress={() => router.push('/(games)/ParentsGuide')}
     delay={160}
   />
-  {/* <CtaCard
+  <CtaCard
   icon="scan-outline"
   title={t('objectIdentifier')}
   subtitle={t('objectIdentifierDescription')}
   tint={colors.accentPink}
   onPress={() => router.push('/(games)/ObjectIdentifier')}
   delay={200}
-/> */}
+/>
 </View>
 
         {/* STATS */}
