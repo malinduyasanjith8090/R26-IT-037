@@ -1,100 +1,105 @@
-// app/(info)/ParentsGuide.tsx
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  Dimensions,
-  Easing,
-  ImageBackground,
-  Modal,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { VideoView, useVideoPlayer } from 'expo-video';
-//
+import { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Dimensions,
+  ImageBackground,
+  Modal,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 
-const { width: SW } = Dimensions.get('window');
-const H_PAD = Spacing.md;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_RADIUS = BorderRadius.xl;
 
-const shadow = (depth = 8) =>
-  Platform.select({
-    web: { boxShadow: `0 ${depth}px ${depth * 2.5}px rgba(0,0,0,0.07)` },
-    default: {
-      shadowColor: '#000',
-      shadowOpacity: 0.08,
-      shadowRadius: depth,
-      shadowOffset: { width: 0, height: depth / 2 },
-      elevation: Math.round(depth / 2),
-    },
-  });
-
-// ── Fade + slide entrance, same easing/timing as the dashboard ────────────
-function FadeSlide({
-  delay = 0,
-  children,
-  style,
-}: {
-  delay?: number;
-  children: React.ReactNode;
-  style?: any;
-}) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(20)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 450,
-        delay,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 450,
-        delay,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [delay, opacity, translateY]);
-
-  return (
-    <Animated.View style={[style, { opacity, transform: [{ translateY }] }]}>
-      {children}
-    </Animated.View>
-  );
-}
-
-// ── Parent guide content ──────────────────────────────────────────────
 type GuideItem = {
   id: string;
-  title: string;
-  description: string;
-  icon: string;
+  titleKey: string;
+  descriptionKey: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  video: number;
 };
 
 const GUIDE_ITEMS: GuideItem[] = [
-  { id: 'g1', title: 'Getting Started', description: 'A simple guide to understanding the app and starting each session.', icon: 'book-outline' },
-  { id: 'g2', title: 'Reading the Dashboard', description: 'Understand accuracy scores, progress, and session results.', icon: 'analytics-outline' },
-  { id: 'g3', title: 'Supporting Fine Motor Practice', description: 'Simple ways to support your child while practising tracing shapes.', icon: 'hand-left-outline' },
-  { id: 'g4', title: 'Handling a Tough Session', description: 'Helpful guidance when your child becomes frustrated or wants to stop.', icon: 'heart-outline' },
-  { id: 'g5', title: 'Building a Daily Routine', description: 'How to keep practice consistent, calm, and enjoyable.', icon: 'calendar-outline' },
+  {
+    id: 'g1',
+    titleKey: 'guideLostChild',
+    descriptionKey: 'guideLostChildDescription',
+    icon: 'person-outline',
+    video: require('../../assets/videos/video01.mp4'),
+  },
+  {
+    id: 'g2',
+    titleKey: 'guideWaterSafety',
+    descriptionKey: 'guideWaterSafetyDescription',
+    icon: 'water-outline',
+    video: require('../../assets/videos/video02.mp4'),
+  },
+  {
+    id: 'g3',
+    titleKey: 'guideOutdoorSafety',
+    descriptionKey: 'guideOutdoorSafetyDescription',
+    icon: 'walk-outline',
+    video: require('../../assets/videos/video03.mp4'),
+  },
+  {
+    id: 'g4',
+    titleKey: 'guideRoadSafety',
+    descriptionKey: 'guideRoadSafetyDescription',
+    icon: 'car-outline',
+    video: require('../../assets/videos/video04.mp4'),
+  },
+  {
+    id: 'g5',
+    titleKey: 'guideElectricalSafety',
+    descriptionKey: 'guideElectricalSafetyDescription',
+    icon: 'flash-outline',
+    video: require('../../assets/videos/video05.mp4'),
+  },
 ];
 
-// ── Parent guide card ─────────────────────────────────────────────────
+const ACCENT_COLORS = [
+  '#E879A9',
+  '#36A9A1',
+  '#F0A64A',
+  '#648CE8',
+  '#9B7AE5',
+];
+
+function GuideVideo({ source }: { source: number }) {
+  const player = useVideoPlayer(source, (videoPlayer) => {
+    videoPlayer.loop = false;
+  });
+
+  useEffect(() => {
+    player.play();
+  }, [player]);
+
+  return (
+    <View style={styles.videoContainer}>
+      <VideoView
+        player={player}
+        style={styles.video}
+        contentFit="contain"
+        nativeControls
+      />
+    </View>
+  );
+}
+
 function GuideCard({
   item,
   index,
@@ -105,509 +110,631 @@ function GuideCard({
   onPress: () => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useLanguage();
+  const accent = ACCENT_COLORS[index % ACCENT_COLORS.length];
+  const animation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(animation, {
+      toValue: 1,
+      duration: 350,
+      delay: index * 75,
+      useNativeDriver: true,
+    }).start();
+  }, [animation, index]);
 
   return (
-    <FadeSlide delay={80 + index * 70}>
-      <TouchableOpacity
-        activeOpacity={0.9}
+    <Animated.View
+      style={[
+        styles.animatedCard,
+        {
+          opacity: animation,
+          transform: [
+            {
+              translateY: animation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [15, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <Pressable
         onPress={onPress}
-        style={[styles.card, { backgroundColor: colors.surface }]}
+        accessibilityRole="button"
+        accessibilityLabel={t(item.titleKey)}
+        style={({ pressed }) => [
+          styles.guideCard,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.primaryLight,
+            opacity: pressed ? 0.85 : 1,
+          },
+        ]}
       >
-        <View style={[styles.guideIconWrap, { backgroundColor: colors.primary + '18' }]}>
-          <Ionicons name={item.icon as any} size={28} color={colors.primary} />
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: `${accent}20` },
+          ]}
+        >
+          <Ionicons name={item.icon} size={28} color={accent} />
         </View>
 
-        <View style={styles.cardBody}>
-          <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
-            {item.title}
+        <View style={styles.cardTextContainer}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>
+            {t(item.titleKey)}
           </Text>
+
           <Text
-            style={[styles.cardDescription, { color: colors.textLight }]}
-            numberOfLines={2}
+            style={[
+              styles.cardDescription,
+              { color: colors.textLight },
+            ]}
           >
-            {item.description}
+            {t(item.descriptionKey)}
           </Text>
         </View>
 
-        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
-      </TouchableOpacity>
-    </FadeSlide>
+        <Ionicons
+          name="play-circle"
+          size={30}
+          color={accent}
+        />
+      </Pressable>
+    </Animated.View>
   );
 }
 
-// ── Guide information modal ───────────────────────────────────────────
 function GuideInfoModal({
-  visible,
   item,
+  visible,
   onClose,
 }: {
-  visible: boolean;
   item: GuideItem | null;
+  visible: boolean;
   onClose: () => void;
 }) {
   const { colors } = useTheme();
-
-  const videoSource =
-    item?.id === 'g4'
-      ? require('../../assets/videos/video01.mp4')
-      : null;
-
-  const player = useVideoPlayer(videoSource, (player) => {
-    player.loop = false;
-
-    if (videoSource) {
-      player.play();
-    }
-  });
+  const { t } = useLanguage();
 
   return (
     <Modal
       visible={visible}
-      animationType="slide"
       transparent
+      animationType="slide"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <View style={styles.infoModalBackdrop}>
+      <View style={styles.modalOverlay}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityLabel={t('close')}
+        />
+
         <View
           style={[
-            styles.infoModalCard,
-            { backgroundColor: colors.surface },
+            styles.modalCard,
+            { backgroundColor: colors.background },
           ]}
         >
-          <TouchableOpacity
-            style={styles.infoCloseBtn}
-            onPress={onClose}
-            activeOpacity={0.8}
+          <View style={styles.modalHandle} />
+
+          <View style={styles.modalHeader}>
+            <Text
+              style={[styles.modalTitle, { color: colors.text }]}
+            >
+              {item ? t(item.titleKey) : ''}
+            </Text>
+
+            <Pressable
+              onPress={onClose}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={t('close')}
+              style={[
+                styles.closeButton,
+                { backgroundColor: colors.surface },
+              ]}
+            >
+              <Ionicons
+                name="close"
+                size={23}
+                color={colors.text}
+              />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.modalContent}
           >
-            <Ionicons
-              name="close"
-              size={22}
-              color={colors.text}
-            />
-          </TouchableOpacity>
+            {item && (
+              <>
+                <Text
+                  style={[
+                    styles.modalDescription,
+                    { color: colors.textLight },
+                  ]}
+                >
+                  {t(item.descriptionKey)}
+                </Text>
 
-          {item && (
-            <>
-              <View
-                style={[
-                  styles.infoIconWrap,
-                  { backgroundColor: colors.primary + '18' },
-                ]}
-              >
-                <Ionicons
-                  name={item.icon as any}
-                  size={36}
-                  color={colors.primary}
-                />
-              </View>
-
-              <Text
-                style={[
-                  styles.infoTitle,
-                  { color: colors.text },
-                ]}
-              >
-                {item.title}
-              </Text>
-
-              <Text
-                style={[
-                  styles.infoDescription,
-                  { color: colors.textLight },
-                ]}
-              >
-                {item.description}
-              </Text>
-
-              {/* Play video only for guide ID g4 */}
-              {item.id === 'g4' ? (
-                <View style={styles.videoContainer}>
-                  <VideoView
-                    player={player}
-                    style={styles.video}
-                    contentFit="contain"
-                    nativeControls
-                  />
-                </View>
-              ) : (
-                <View style={styles.comingSoonBox}>
+                <View style={styles.videoHeading}>
                   <Ionicons
                     name="videocam-outline"
                     size={22}
                     color={colors.primary}
                   />
-
-                  <View style={styles.comingSoonTextWrap}>
-                    <Text
-                      style={[
-                        styles.comingSoonTitle,
-                        { color: colors.text },
-                      ]}
-                    >
-                      Video Coming Soon
-                    </Text>
-
-                    <Text
-                      style={[
-                        styles.comingSoonDescription,
-                        { color: colors.textLight },
-                      ]}
-                    >
-                      This parent guide will include an educational
-                      video in a future update.
-                    </Text>
-                  </View>
+                  <Text
+                    style={[
+                      styles.videoHeadingText,
+                      { color: colors.text },
+                    ]}
+                  >
+                    {t('watchSafetyVideo')}
+                  </Text>
                 </View>
-              )}
 
-              <TouchableOpacity
-                style={[
-                  styles.doneBtn,
-                  { backgroundColor: colors.primary },
-                ]}
-                onPress={onClose}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.doneBtnText}>
-                  Close
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
+                <GuideVideo key={item.id} source={item.video} />
+
+                <View
+                  style={[
+                    styles.tipContainer,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={24}
+                    color={colors.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.tipText,
+                      { color: colors.text },
+                    ]}
+                  >
+                    {t('parentsGuideSafetyTip')}
+                  </Text>
+                </View>
+              </>
+            )}
+          </ScrollView>
+
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [
+              styles.closeActionButton,
+              {
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+            accessibilityRole="button"
+          >
+            <Text style={styles.closeActionText}>
+              {t('close')}
+            </Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
   );
 }
 
-// ── Screen ──────────────────────────────────────────────────────────────
 export default function ParentsGuideScreen() {
   const { colors } = useTheme();
   const { t } = useLanguage();
-
-  const [selectedGuide, setSelectedGuide] = useState<GuideItem | null>(null);
-
-  const total = GUIDE_ITEMS.length;
-
-  const openGuide = (item: GuideItem) => setSelectedGuide(item);
-  const closeGuide = () => setSelectedGuide(null);
+  const [selectedGuide, setSelectedGuide] =
+    useState<GuideItem | null>(null);
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <FadeSlide delay={0}>
-  <ImageBackground
-    source={require('../../assets/images/momguides.png')}
-    style={styles.hero}
-    imageStyle={{ borderRadius: CARD_RADIUS }}
-  >
-    <LinearGradient
-      colors={['rgba(0,0,0,0.25)', `${colors.primaryDark}D9`]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.heroOverlay}
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        { backgroundColor: colors.background },
+      ]}
+      edges={['left', 'right', 'bottom']}
     >
-      <TouchableOpacity
-        style={styles.backBtn}
-        onPress={() => router.back()}
-        activeOpacity={0.8}
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
       >
-        <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-      </TouchableOpacity>
+        {/* Hero image */}
+        <View style={styles.heroWrapper}>
+          <ImageBackground
+            source={require('../../assets/images/momguides.png')}
+            style={styles.hero}
+            imageStyle={{ borderRadius: CARD_RADIUS }}
+            resizeMode="cover"
+          >
+            <LinearGradient
+              colors={[
+                'rgba(0,0,0,0.25)',
+                `${colors.primary}D9`,
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroOverlay}
+            >
+              <Pressable
+                onPress={() => router.back()}
+                style={styles.backButton}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+              >
+                <Ionicons
+                  name="arrow-back"
+                  size={24}
+                  color="#FFFFFF"
+                />
+              </Pressable>
 
-      <Text style={styles.heroTitle}>{t('parentsGuide') || 'Parents Guide'}</Text>
-      <Text style={styles.heroSubtitle}>
-        {t('parentsGuideDescription') ||
-          'Short videos to help you get the most out of every session.'}
-      </Text>
+              <View style={styles.heroTextContainer}>
+                <View style={styles.heroIcon}>
+                  <Ionicons
+                    name="shield-checkmark"
+                    size={26}
+                    color="#FFFFFF"
+                  />
+                </View>
 
-      <View style={styles.progressRow}>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: '100%' }]} />
+                <Text style={styles.heroTitle}>
+                  {t('parentsGuide')}
+                </Text>
+
+                <Text style={styles.heroDescription}>
+                  {t('parentsGuideDescription')}
+                </Text>
+
+                <View style={styles.heroBadge}>
+                  <Ionicons
+                    name="heart"
+                    size={14}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.heroBadgeText}>
+                    {t('parentsGuideSafetyLabel')}
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </ImageBackground>
         </View>
-        <Text style={styles.progressText}>{total} guides</Text>
-      </View>
-    </LinearGradient>
-  </ImageBackground>
-</FadeSlide>
 
-        <View style={styles.list}>
+        {/* Guide list */}
+        <View style={styles.content}>
+          <View style={styles.sectionHeading}>
+            <View style={styles.sectionText}>
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { color: colors.text },
+                ]}
+              >
+                {t('safetyGuidesTitle')}
+              </Text>
+
+              <Text
+                style={[
+                  styles.sectionSubtitle,
+                  { color: colors.textLight },
+                ]}
+              >
+                {t('safetyGuidesDescription')}
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.countBadge,
+                { backgroundColor: colors.surface },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.countBadgeText,
+                  { color: colors.primary },
+                ]}
+              >
+                {GUIDE_ITEMS.length}
+              </Text>
+            </View>
+          </View>
+
           {GUIDE_ITEMS.map((item, index) => (
             <GuideCard
               key={item.id}
               item={item}
               index={index}
-              onPress={() => openGuide(item)}
+              onPress={() => setSelectedGuide(item)}
             />
           ))}
-        </View>
 
-        <View style={{ height: Spacing.lg }} />
+          <View
+            style={[
+              styles.footerNote,
+              { backgroundColor: colors.surface },
+            ]}
+          >
+            <Ionicons
+              name="information-circle-outline"
+              size={23}
+              color={colors.primary}
+            />
+            <Text
+              style={[
+                styles.footerText,
+                { color: colors.textLight },
+              ]}
+            >
+              {t('parentsGuideFooter')}
+            </Text>
+          </View>
+        </View>
       </ScrollView>
 
       <GuideInfoModal
-        visible={selectedGuide !== null}
         item={selectedGuide}
-        onClose={closeGuide}
+        visible={selectedGuide !== null}
+        onClose={() => setSelectedGuide(null)}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
-const CARD_RADIUS = BorderRadius.xl;
-
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  scroll: { paddingBottom: Spacing.md },
-
-  // Hero
+  safeArea: {
+    flex: 1,
+  },
+  scroll: {
+    paddingBottom: Spacing.xl,
+  },
+  heroWrapper: {
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+  },
   hero: {
-  marginHorizontal: H_PAD,
-  marginTop: Platform.OS === 'ios' ? 56 : 44,
-  borderRadius: CARD_RADIUS,
-  overflow: 'hidden',
-  ...shadow(14),
-},
-
-heroOverlay: {
-  padding: Spacing.lg,
-  // no borderRadius needed here — imageStyle on ImageBackground already
-  // clips the photo, and overflow:'hidden' on `hero` clips this gradient
-},
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    justifyContent: 'center',
+    minHeight: 300,
+    borderRadius: CARD_RADIUS,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  heroOverlay: {
+    flex: 1,
+    minHeight: 300,
+    padding: Spacing.lg,
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.28)',
+  },
+  heroTextContainer: {
+    alignItems: 'flex-start',
+  },
+  heroIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     marginBottom: Spacing.md,
   },
   heroTitle: {
+    ...Typography.h1,
     color: '#FFFFFF',
-    fontSize: Typography.fontSize.xl,
     fontWeight: '800',
+    marginBottom: Spacing.xs,
   },
-  heroSubtitle: {
-    color: 'rgba(255,255,255,0.82)',
-    fontSize: Typography.fontSize.sm,
-    marginTop: 4,
+  heroDescription: {
+    ...Typography.body,
+    color: '#FFFFFF',
+    lineHeight: 23,
+  },
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: Spacing.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  heroBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  content: {
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.lg,
+  },
+  sectionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
+  },
+  sectionText: {
+    flex: 1,
+    paddingRight: Spacing.sm,
+  },
+  sectionTitle: {
+    ...Typography.h2,
+    fontWeight: '800',
+    marginBottom: 5,
+  },
+  sectionSubtitle: {
+    ...Typography.caption,
     lineHeight: 19,
   },
-  progressRow: {
+  countBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countBadgeText: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  animatedCard: {
+    marginBottom: Spacing.md,
+  },
+  guideCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    marginTop: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: CARD_RADIUS,
+    borderWidth: 1,
+    minHeight: 105,
   },
-  progressTrack: {
+  iconContainer: {
+    width: 54,
+    height: 54,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  cardTextContainer: {
     flex: 1,
-    height: 6,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    overflow: 'hidden',
+    paddingRight: Spacing.sm,
   },
-  progressFill: {
-    height: 6,
-    borderRadius: 6,
-    backgroundColor: '#FFFFFF',
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    lineHeight: 21,
+    marginBottom: 5,
   },
-  progressText: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 11,
-    fontWeight: '600',
+  cardDescription: {
+    fontSize: 12,
+    lineHeight: 18,
   },
-
-  // List
-  list: {
-    marginHorizontal: H_PAD,
-    marginTop: Spacing.md,
+  footerNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: CARD_RADIUS,
+    marginTop: Spacing.xs,
   },
-  card: {
+  footerText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 19,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  modalCard: {
+    maxHeight: '91%',
+    minHeight: '55%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.lg,
+  },
+  modalHandle: {
+    alignSelf: 'center',
+    width: 42,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#B8B8B8',
+    marginBottom: Spacing.md,
+  },
+  modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.sm,
+    justifyContent: 'space-between',
     gap: Spacing.sm,
-    ...shadow(6),
+    marginBottom: Spacing.md,
   },
-  thumbWrap: {
-    width: 92,
-    height: 66,
-    borderRadius: BorderRadius.md,
+  modalTitle: {
+    flex: 1,
+    fontSize: 21,
+    fontWeight: '800',
+    lineHeight: 28,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContent: {
+    paddingBottom: Spacing.md,
+  },
+  modalDescription: {
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  videoHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  videoHeadingText: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  videoContainer: {
+    width: '100%',
+    height: Math.min(SCREEN_WIDTH * 0.58, 270),
+    borderRadius: 17,
     overflow: 'hidden',
-    backgroundColor: '#00000010',
+    backgroundColor: '#000000',
+    marginBottom: Spacing.md,
   },
-  thumb: {
+  video: {
     width: '100%',
     height: '100%',
   },
-  thumbOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.18)',
-  },
-  playBadge: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginTop: -16,
-    marginLeft: -16,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  durationBadge: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  durationText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  watchedBadge: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardBody: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: '700',
-  },
-  cardDescription: {
-    fontSize: 11,
-    marginTop: 2,
-    lineHeight: 15,
-  },
-
-  // Guide icon
-  guideIconWrap: {
-    width: 58,
-    height: 58,
-    borderRadius: BorderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // Guide information modal
-  infoModalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-
-  infoModalCard: {
-    borderTopLeftRadius: BorderRadius.xl,
-    borderTopRightRadius: BorderRadius.xl,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Platform.OS === 'ios' ? 34 : Spacing.lg,
-  },
-
-  infoCloseBtn: {
-    position: 'absolute',
-    top: Spacing.md,
-    right: Spacing.md,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#00000010',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 2,
-  },
-
-  infoIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-    marginBottom: Spacing.md,
-  },
-
-  infoTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: '800',
-    textAlign: 'center',
-    paddingHorizontal: Spacing.lg,
-  },
-
-  infoDescription: {
-    fontSize: Typography.fontSize.sm,
-    lineHeight: 21,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-
-  comingSoonBox: {
+  tipContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Spacing.sm,
-    marginTop: Spacing.lg,
     padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: '#F3EBDD',
+    borderRadius: 16,
   },
-
-  comingSoonTextWrap: {
+  tipText: {
     flex: 1,
+    fontSize: 13,
+    lineHeight: 20,
   },
-
-  comingSoonTitle: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: '700',
-  },
-
-  comingSoonDescription: {
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 3,
-  },
-
-  doneBtn: {
-    marginTop: Spacing.lg,
-    paddingVertical: 12,
-    borderRadius: BorderRadius.md,
+  closeActionButton: {
+    minHeight: 49,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 15,
+    marginTop: Spacing.md,
   },
-
-  doneBtnText: {
+  closeActionText: {
+    fontSize: 15,
+    fontWeight: '800',
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
   },
-videoContainer: {
-  width: '100%',
-  height: 220,
-  marginTop: Spacing.lg,
-  borderRadius: BorderRadius.lg,
-  overflow: 'hidden',
-  backgroundColor: '#000',
-},
-
-video: {
-  width: '100%',
-  height: '100%',
-},
 });

@@ -1,4 +1,10 @@
-import React, {
+//function checkDotHit	ඇඟිල්ල dot එකකට ළඟින් ගියාද බලනවා.
+//function computeWaypointCoverage	සියලු dots trace කරලා තිබෙනවාද පරීක්ෂා කරනවා.
+//function computePathDeviation	දරුවාගේ path එක සහ නිවැරදි path එක අතර වෙනස මනිනවා.
+//function countHesitations	Touch points අතර මිලි තත්පර 800කට වඩා gap තිබෙන අවස්ථා ගණන් කරනවා.
+//function computeVelocityVariance	ඇඟිල්ලේ movement speed එක වෙනස් වන ප්‍රමාණය ගණනය කරනවා.
+
+import {
   useCallback,
   useEffect,
   useMemo,

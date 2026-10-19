@@ -354,6 +354,28 @@ const translations = {
 'tracingGame.goodTry': 'Good try!',
 'tracingGame.tryAgainPhase': "Let's try again",
 'tracingGame.trial': 'Trial {number}',
+
+guideLostChild: 'When a Child Gets Lost',
+guideLostChildDescription:
+  'Learn what to do and how to keep your child safe if they get lost.',
+
+guideWaterSafety: 'Keeping Children Safe Around Water',
+guideWaterSafetyDescription:
+  'Learn how to protect your child from unsafe water and drowning risks.',
+
+guideOutdoorSafety: 'When a Child Faces Difficulty Outdoors',
+guideOutdoorSafetyDescription:
+  'Learn how to help your child stay safe and respond to difficult situations outdoors.',
+
+guideRoadSafety: 'Teaching a Child to Cross the Road',
+guideRoadSafetyDescription:
+  'Help your child learn safe ways to cross the road.',
+
+guideElectricalSafety: 'Keeping Children Safe from Electricity',
+guideElectricalSafetyDescription:
+  'Learn how to keep your child away from dangerous electrical hazards.',
+
+close: 'Close',
     
     // Settings
     settings: 'Settings',
@@ -1197,20 +1219,20 @@ const translations = {
     goodMorning: 'සුභ උදෑසනක්',
   goodAfternoon: 'සුභ දහවලක්',
   goodEvening: 'සුභ සන්ධ්‍යාවක්',
-  thrivingBeautifully: 'ඉතා හොඳින් දියුණු වෙමින් පවතී',
-  makingProgress: 'ප්‍රගතියක් ලබා ගනිමින් පවතී',
-  accuracy: 'නිරවද්‍යතාව',
-  viewChildProgress: 'දරුවාගේ ප්‍රගතිය බලන්න',
-  startNewTrial: 'නව ට්‍රයල් එකක් ආරම්භ කරන්න',
-  startNewTrialDescription: 'නව ඉගෙනුම් ට්‍රයල් එකක් ආරම්භ කරන්න',
-  behaviourGame: 'හැසිරීම් හඳුනාගැනීමේ සැසිය',
-  practiceSocialSkills: 'සමාජ කුසලතා පුහුණු කරන්න',
-  sessions: 'සැසි',
-  trials: 'ට්‍රයල්',
-  progressTrend: 'ප්‍රගති ප්‍රවණතාව',
-  accuracyAcrossRecentTrials: 'මෑත ට්‍රයල් වල නිරවද්‍යතාව',
-  skillsSnapshot: 'කුසලතා සාරාංශය',
-  skillsSnapshotDescription: 'දැනට පවතින ඉගෙනුම් හා සංවර්ධන කුසලතා',
+  thrivingBeautifully: 'ඉතා හොඳින් ඉදිරියට යනවා',
+makingProgress: 'ටිකෙන් ටික දියුණු වෙනවා',
+accuracy: 'නිවැරදි බව',
+viewChildProgress: 'දරුවාගේ දියුණුව බලන්න',
+startNewTrial: 'අලුත් පුහුණුවක් පටන් ගන්න',
+startNewTrialDescription: 'අලුත් ඉගෙනුම් පුහුණුවක් පටන් ගන්න',
+behaviourGame: 'හැසිරීම් හඳුනාගැනීමේ ක්‍රීඩාව',
+practiceSocialSkills: 'අනිත් අය සමඟ හොඳින් ඉන්න පුරුදු වෙන්න',
+sessions: 'සැසි',
+trials: 'පුහුණුවීම්',
+progressTrend: 'දියුණුවේ වෙනස',
+accuracyAcrossRecentTrials: 'මෑතකදී කළ පුහුණුවල නිවැරදි බව',
+skillsSnapshot: 'දැනට ඇති කුසලතා',
+skillsSnapshotDescription: 'දරුවාගේ ඉගෙනීමේ සහ අනෙකුත් කුසලතාවල දියුණුව',
   attention: 'අවධානය',
   motorSkills: 'චලන කුසලතා',
   visualMotor: 'දෘශ්‍ය-චලන',
@@ -1277,6 +1299,28 @@ parentsGuideDescription: 'ඔබේ දරුවාට උපකාර කිර
 'behaviourGame.motherTipMessage':
   'ඔබේ දරුවා ඔබ අසලට ගෙන, සෑම අවස්ථාවක්ම සරලව ඉගැන්වන්න, ඔවුන්ට කැමති ඕනෑම පින්තූරයක් තෝරා ගැනීමට ඉඩ දෙන්න.',
 'behaviourGame.gotIt': 'තේරුණා',
+
+guideLostChild: 'දරුවා අතරමං වූ විට',
+guideLostChildDescription:
+  'දරුවා අතරමං වුණොත් කළ යුතු දේ සහ දරුවා ආරක්ෂා කරගන්නා ආකාරය ඉගෙන ගන්න.',
+
+guideWaterSafety: 'ජලයෙන් දරුවා ආරක්ෂා කරගනිමු',
+guideWaterSafetyDescription:
+  'අනාරක්ෂිත ජලයෙන් සහ දියේ ගිලීමේ අවදානමෙන් දරුවා ආරක්ෂා කරගන්නා ආකාරය ඉගෙන ගන්න.',
+
+guideOutdoorSafety: 'එළිමහනේදී දරුවා අමාරුවකට පත් වූ විට',
+guideOutdoorSafetyDescription:
+  'එළිමහනේදී දරුවාට අපහසුතාවක් ඇති වුණොත් උපකාර කරන ආකාරය සහ ආරක්ෂිතව තබාගන්නා ආකාරය ඉගෙන ගන්න.',
+
+guideRoadSafety: 'දරුවාට පාර මාරු වීමට කියා දෙමු',
+guideRoadSafetyDescription:
+  'දරුවාට ආරක්ෂිතව පාර මාරු වන ආකාරය කියා දෙන්න.',
+
+guideElectricalSafety: 'විදුලි අනතුරුවලින් දරුවා ආරක්ෂා කරගනිමු',
+guideElectricalSafetyDescription:
+  'අනාරක්ෂිත විදුලි උපකරණ සහ විදුලි අනතුරුවලින් දරුවා ඈත් කර තබාගන්නා ආකාරය ඉගෙන ගන්න.',
+
+close: 'වසන්න',
     
 
     // Hand Washing Game

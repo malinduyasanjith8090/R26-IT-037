@@ -1,5 +1,6 @@
-// app/(tabs)/behavioral.tsx
-// Theme + Language integrated version
+//TracingGame
+//GamesHub
+//ParentsGuide
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -671,7 +672,10 @@ export default function ParentDashboardScreen({
   const childId =
     activeChild?._id || '69e0e39c84040d2901db4b04';
 
-  const childName = activeChild?.alias || 'Child';
+ const childName =
+  activeChild?.childName ||
+  activeChild?.alias ||
+  'Child';
   const parentName = parentProfile?.fullName || t('parentName');
   const parentInitial =
     parentName?.[0]?.toUpperCase() || 'P';
