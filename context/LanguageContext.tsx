@@ -883,6 +883,10 @@ close: 'Close',
 
 
     
+  "objectIdentifier": "Object Identifier",
+  "objectIdentifierDescription": "Take a photo and discover objects around you",
+
+    
     handWashingGame: 'Wash Hands Before Eating',
     handWashingGameDescription: 'Practice washing hands before meals',
     faceWashGame: 'Wash Face & Brush Teeth',
@@ -1321,7 +1325,12 @@ guideElectricalSafetyDescription:
   'අනාරක්ෂිත විදුලි උපකරණ සහ විදුලි අනතුරුවලින් දරුවා ඈත් කර තබාගන්නා ආකාරය ඉගෙන ගන්න.',
 
 close: 'වසන්න',
-    
+
+
+
+  "objectIdentifier": "වස්තු හඳුනාගැනීම",
+  "objectIdentifierDescription": "ඡායාරූපයක් ගෙන අවට ඇති වස්තූන් හඳුනාගන්න",
+ 
 
     // Hand Washing Game
     'handWashGame.title': 'Wash Hands',
