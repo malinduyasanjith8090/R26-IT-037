@@ -1,5 +1,4 @@
 // app/(games)/GamesHub.tsx
-import React from 'react';
 import {
   Platform,
   ScrollView,
@@ -114,7 +113,7 @@ export default function GamesHubScreen() {
           tint={colors.primary}
           onPress={() => router.push('/(games)/FaceWashGame')}
         />
-
+{/* 
         <GameTile
           icon="play-outline"
           title={t('playGame')}
@@ -129,7 +128,7 @@ export default function GamesHubScreen() {
           subtitle={t('drawingGameDescription')}
           tint={colors.primary}
           onPress={() => router.push('/(games)/DrawingGame')}
-        />
+        /> */}
 
         {/* Add more game tiles here as you build them out */}
       </ScrollView>

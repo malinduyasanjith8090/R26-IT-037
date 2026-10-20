@@ -1,8 +1,9 @@
 // app/(games)/FaceWashGame.tsx
 import { Ionicons } from '@expo/vector-icons';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -293,49 +294,30 @@ export default function FaceWashGameScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   // -------------------------------------------------------------------------
-  // AUDIO — preload once on mount so playback is instant (no load-then-play
-  // lag on the child's first correct/incorrect tap), unload on unmount.
+  // AUDIO — expo-audio players are managed by the hook and released when this
+  // screen unmounts. This avoids the legacy expo-av Audio.Sound API.
   // -------------------------------------------------------------------------
-  const correctSoundRef = useRef<Audio.Sound | null>(null);
-  const incorrectSoundRef = useRef<Audio.Sound | null>(null);
-  const completeSoundRef = useRef<Audio.Sound | null>(null);
+  const correctSoundPlayer = useAudioPlayer(correctSound);
+  const incorrectSoundPlayer = useAudioPlayer(incorrectSound);
+  const completeSoundPlayer = useAudioPlayer(completeSound);
 
   useEffect(() => {
-    let isMounted = true;
-
-    Audio.setAudioModeAsync({ playsInSilentModeIOS: true }).catch(() => {});
-
-    (async () => {
-      const [{ sound: correct }, { sound: incorrect }, { sound: complete }] = await Promise.all([
-        Audio.Sound.createAsync(correctSound),
-        Audio.Sound.createAsync(incorrectSound),
-        Audio.Sound.createAsync(completeSound),
-      ]);
-
-      if (!isMounted) {
-        correct.unloadAsync();
-        incorrect.unloadAsync();
-        complete.unloadAsync();
-        return;
-      }
-
-      correctSoundRef.current = correct;
-      incorrectSoundRef.current = incorrect;
-      completeSoundRef.current = complete;
-    })();
-
-    return () => {
-      isMounted = false;
-      correctSoundRef.current?.unloadAsync();
-      incorrectSoundRef.current?.unloadAsync();
-      completeSoundRef.current?.unloadAsync();
-    };
+    setAudioModeAsync({
+      playsInSilentMode: true,
+    }).catch(error => {
+      // Audio is optional. A mode-setting failure should not stop the game.
+      console.warn('Could not configure audio mode:', error);
+    });
   }, []);
 
-  const playSound = useCallback((ref: React.MutableRefObject<Audio.Sound | null>) => {
-    // Fire-and-forget — audio is a nice-to-have and should never block or
-    // break the game if a clip is missing or fails to load.
-    ref.current?.replayAsync().catch(() => {});
+  const playSound = useCallback(async (player: ReturnType<typeof useAudioPlayer>) => {
+    // Sound effects must never block the game if playback fails.
+    try {
+      await player.seekTo(0);
+      player.play();
+    } catch (error) {
+      console.warn('Could not play sound:', error);
+    }
   }, []);
 
   const currentStep = STEPS[stepIndex];
@@ -384,7 +366,7 @@ export default function FaceWashGameScreen() {
 
       // On the final step play the "activity complete" clip instead of the
       // regular correct-answer clip; otherwise play the normal correct cue.
-      playSound(isLastStep ? completeSoundRef : correctSoundRef);
+      playSound(isLastStep ? completeSoundPlayer : correctSoundPlayer);
 
       setTimeout(() => {
         if (isLastStep) {
@@ -398,7 +380,7 @@ export default function FaceWashGameScreen() {
     } else {
       // Gentle nudge only — no lock-out, child can immediately try the
       // other picture.
-      playSound(incorrectSoundRef);
+      playSound(incorrectSoundPlayer);
       setCardStates(prev => ({ ...prev, [key]: 'incorrect' }));
       setTimeout(() => {
         setCardStates(prev => ({ ...prev, [key]: 'idle' }));

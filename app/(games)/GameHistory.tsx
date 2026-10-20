@@ -1,23 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, {
-    useEffect,
-    useRef,
-    useState,
+import {
+  useEffect,
+  useRef,
+  useState,
 } from 'react';
 
 import {
-    Animated,
-    Dimensions,
-    Easing,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Easing,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import { useLanguage } from '../../context/LanguageContext';
@@ -97,12 +97,12 @@ const CLASSIFICATION_META = {
 };
 
 // ---------------------------------------------------------------------------
-// DUMMY DATA — weak-performing student "Ben"
+// DUMMY DATA — weak-performing student "Asus"
 // Replace this block with the real API call when wiring back to
 // getBehaviourSessionSummary(sessionId).
 // ---------------------------------------------------------------------------
 
-const CHILD_NAME = 'Ben';
+const CHILD_NAME = 'Asus';
 
 const DUMMY_SUMMARY = {
   totalTrials: 20,

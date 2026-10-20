@@ -1,5 +1,8 @@
 //computeTrialScores
 
+
+// Adaptive Engine eken karanne Motot score , VMI score , Attention score ,aran congitive state eka gannwa
+
 // Exponential Moving Average weight
 // 0.3 = 30% new trial, 70% history — prevents single trial from swinging score wildly
 const EMA_ALPHA = 0.3;
