@@ -1,5 +1,5 @@
 // services/SoundServiceWithFiles.ts
-import { Audio } from 'expo-av';
+import { createAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 
 export type SoundType = 
@@ -16,7 +16,7 @@ export type SoundType =
   | 'wrong';
 
 class SoundServiceWithFiles {
-  private sounds: Map<SoundType, Audio.Sound> = new Map();
+private sounds: Map<SoundType, ReturnType<typeof createAudioPlayer>> = new Map();
   private isEnabled: boolean = true;
   private isLoaded: boolean = false;
 
@@ -25,13 +25,11 @@ class SoundServiceWithFiles {
     
     try {
       // Configure audio mode
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: false,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-      });
+   await setAudioModeAsync({
+  playsInSilentMode: true,
+  shouldPlayInBackground: false,
+  shouldRouteThroughEarpiece: false,
+});
 
       await this.loadSounds();
       this.isLoaded = true;
@@ -43,57 +41,55 @@ class SoundServiceWithFiles {
     }
   }
 
-  private async loadSounds() {
-    // You need to add actual sound files to your assets/sounds folder
-    // Download free sounds from: https://pixabay.com/sound-effects/
-    
-    const soundFiles = [
-      { type: 'success' as SoundType, file: require('../../assets/sounds/success.mp3') },
-      { type: 'error' as SoundType, file: require('../../assets/sounds/error.mp3') },
-      { type: 'click' as SoundType, file: require('../../assets/sounds/click.mp3') },
-      { type: 'reward' as SoundType, file: require('../../assets/sounds/reward.mp3') },
-      { type: 'star' as SoundType, file: require('../../assets/sounds/star.mp3') },
-      { type: 'clap' as SoundType, file: require('../../assets/sounds/clap.mp3') },
-      { type: 'cheer' as SoundType, file: require('../../assets/sounds/cheer.mp3') },
-      { type: 'levelUp' as SoundType, file: require('../../assets/sounds/levelup.mp3') },
-      { type: 'complete' as SoundType, file: require('../../assets/sounds/complete.mp3') },
-      { type: 'correct' as SoundType, file: require('../../assets/sounds/correct.mp3') },
-      { type: 'wrong' as SoundType, file: require('../../assets/sounds/wrong.mp3') },
-    ];
+ 
+private async loadSounds() {
+  const soundFiles = [
+    { type: 'success' as SoundType, file: require('../../assets/sounds/success.mp3') },
+    { type: 'error' as SoundType, file: require('../../assets/sounds/error.mp3') },
+    { type: 'click' as SoundType, file: require('../../assets/sounds/click.mp3') },
+    { type: 'reward' as SoundType, file: require('../../assets/sounds/reward.mp3') },
+    { type: 'star' as SoundType, file: require('../../assets/sounds/star.mp3') },
+    { type: 'clap' as SoundType, file: require('../../assets/sounds/clap.mp3') },
+    { type: 'cheer' as SoundType, file: require('../../assets/sounds/cheer.mp3') },
+    { type: 'levelUp' as SoundType, file: require('../../assets/sounds/levelup.mp3') },
+    { type: 'complete' as SoundType, file: require('../../assets/sounds/complete.mp3') },
+    { type: 'correct' as SoundType, file: require('../../assets/sounds/correct.mp3') },
+    { type: 'wrong' as SoundType, file: require('../../assets/sounds/wrong.mp3') },
+  ];
 
-    for (const { type, file } of soundFiles) {
-      try {
-        const { sound } = await Audio.Sound.createAsync(file);
-        this.sounds.set(type, sound);
-      } catch (error) {
-        console.warn(`Failed to load sound ${type}, using fallback:`, error);
-      }
+  for (const { type, file } of soundFiles) {
+    try {
+      const player = createAudioPlayer(file);
+      this.sounds.set(type, player);
+    } catch (error) {
+      console.warn(`Failed to load sound ${type}, using fallback:`, error);
     }
   }
+}
 
-  async playSound(type: SoundType, withHaptics: boolean = true) {
-    if (!this.isEnabled) return;
-    
-    if (withHaptics) {
-      this.playHaptic(type);
-    }
 
-    const sound = this.sounds.get(type);
-    if (sound) {
-      try {
-        await sound.replayAsync();
-      } catch (error) {
-        try {
-          await sound.playFromPositionAsync(0);
-        } catch (e) {
-          console.error(`Failed to play sound ${type}:`, e);
-        }
-      }
-    } else {
-      // Fallback to beep
-      this.playFallbackBeep(type);
-    }
+
+async playSound(type: SoundType, withHaptics: boolean = true) {
+  if (!this.isEnabled) return;
+
+  if (withHaptics) {
+    this.playHaptic(type);
   }
+
+  const sound = this.sounds.get(type);
+
+  if (sound) {
+    try {
+      await sound.seekTo(0);
+      sound.play();
+    } catch (error) {
+      console.error(`Failed to play sound ${type}:`, error);
+    }
+  } else {
+    this.playFallbackBeep(type);
+  }
+}
+
 
   private playFallbackBeep(type: SoundType) {
     // Simple beep using Audio API
@@ -192,17 +188,18 @@ class SoundServiceWithFiles {
     return this.isEnabled;
   }
 
-  async unloadSounds() {
-    for (const sound of this.sounds.values()) {
-      try {
-        await sound.unloadAsync();
-      } catch (error) {
-        console.error('Error unloading sound:', error);
-      }
+ async unloadSounds() {
+  for (const sound of this.sounds.values()) {
+    try {
+      sound.remove();
+    } catch (error) {
+      console.error('Error unloading sound:', error);
     }
-    this.sounds.clear();
-    this.isLoaded = false;
   }
+
+  this.sounds.clear();
+  this.isLoaded = false;
+}
 }
 
 export default new SoundServiceWithFiles();

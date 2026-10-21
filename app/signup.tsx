@@ -3,23 +3,25 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import Button from '../components/Button';
 import { Spacing, Typography } from '../constants/theme';
+import { useChild } from '../context/ChildContext';
 import { useTheme } from '../context/ThemeContext';
 import { signup as apiSignup, storeToken } from '../services/api';
 
 export default function SignupScreen() {
   const { colors } = useTheme();
+  const { setParent, selectChild } = useChild();
   const [formData, setFormData] = useState({
     parentName: '',   // matches backend field
     email: '',
@@ -67,6 +69,8 @@ export default function SignupScreen() {
       if (data.token) {
         await storeToken(data.token);
       }
+      await setParent(data.user, data.token);
+      if (data.child) await selectChild(data.child);
 
       Alert.alert('Success', 'Account created successfully!');
       // ✅ Correct navigation to dashboard

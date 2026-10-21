@@ -6,10 +6,10 @@
 // Same theme/colors/hooks as the original file.
 // ─────────────────────────────────────────────────────────────
 import { MaterialIcons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { createAudioPlayer } from 'expo-audio';
 import { router } from 'expo-router';
 import * as Speech from 'expo-speech';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -127,7 +127,7 @@ export default function SimplePuzzleGame() {
 
   // ─── Sinhala voice state ──────────────────────────────────────
   const [soundsLoaded, setSoundsLoaded] = useState(false);
-  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
+const sinhalaSounds = useRef<{ [key: string]: ReturnType<typeof createAudioPlayer> | null }>({});
   const pendingInstruction = useRef(false);
   const isFirstRender = useRef(true);
 
@@ -194,32 +194,28 @@ export default function SimplePuzzleGame() {
   }, [currentLevel]);
 
   // Load Sinhala instruction audio
-  useEffect(() => {
-    let isMounted = true;
-    const loadSounds = async () => {
-      const sounds: { [key: string]: Audio.Sound | null } = {};
-      for (const key of Object.keys(sinhalaAudioMap)) {
-        try {
-          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
-          sounds[key] = sound;
-        } catch (error) {
-          console.warn(`Failed to load Sinhala audio: ${key}`, error);
-          sounds[key] = null;
-        }
-      }
-      if (isMounted) {
-        sinhalaSounds.current = sounds;
-        setSoundsLoaded(true);
-      }
-    };
-    loadSounds();
-    return () => {
-      isMounted = false;
-      Object.values(sinhalaSounds.current).forEach((sound) => {
-        if (sound) sound.unloadAsync();
-      });
-    };
-  }, []);
+useEffect(() => {
+  const sounds: { [key: string]: ReturnType<typeof createAudioPlayer> | null } = {};
+
+  for (const key of Object.keys(sinhalaAudioMap)) {
+    try {
+      sounds[key] = createAudioPlayer(sinhalaAudioMap[key]);
+    } catch (error) {
+      console.warn(`Failed to load Sinhala audio: ${key}`, error);
+      sounds[key] = null;
+    }
+  }
+
+  sinhalaSounds.current = sounds;
+  setSoundsLoaded(true);
+
+  return () => {
+    Object.values(sounds).forEach((sound) => {
+      if (sound) sound.remove();
+    });
+    sinhalaSounds.current = {};
+  };
+}, []);
 
   // Speak function (external audio for Sinhala, TTS for English)
   const speak = async (text: string, audioKey?: string) => {
@@ -227,8 +223,10 @@ export default function SimplePuzzleGame() {
     if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
       try {
         const sound = sinhalaSounds.current[audioKey];
-        if (sound) await sound.replayAsync();
-        return;
+if (sound) {
+  await sound.seekTo(0);
+  sound.play();
+}        return;
       } catch (error) {
         console.warn('Sinhala audio playback failed, falling back to TTS:', error);
       }

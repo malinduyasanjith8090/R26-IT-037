@@ -1,8 +1,8 @@
 // components/learning/FruitsLearning.tsx (with external Sinhala voice commands)
 import { MaterialIcons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { createAudioPlayer } from 'expo-audio';
 import * as Speech from 'expo-speech';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -81,40 +81,36 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
   const isFirstRender = useRef(true);
   const pendingInstruction = useRef(false);
 
-  const sinhalaSounds = useRef<{ [key: string]: Audio.Sound | null }>({});
-
+const sinhalaSounds = useRef<{
+  [key: string]: ReturnType<typeof createAudioPlayer> | null;
+}>({});
   const currentFruit = fruitsData[currentIndex];
 
   // Load all Sinhala audio files and set soundsLoaded
-  useEffect(() => {
-    let isMounted = true;
+useEffect(() => {
+  const sounds: {
+    [key: string]: ReturnType<typeof createAudioPlayer> | null;
+  } = {};
 
-    const loadSounds = async () => {
-      const sounds: { [key: string]: Audio.Sound | null } = {};
-      for (const key of Object.keys(sinhalaAudioMap)) {
-        try {
-          const { sound } = await Audio.Sound.createAsync(sinhalaAudioMap[key]);
-          sounds[key] = sound;
-        } catch (error) {
-          console.warn(`Failed to load Sinhala audio: ${key}`, error);
-          sounds[key] = null;
-        }
-      }
-      if (isMounted) {
-        sinhalaSounds.current = sounds;
-        setSoundsLoaded(true);
-      }
-    };
+  for (const key of Object.keys(sinhalaAudioMap)) {
+    try {
+      sounds[key] = createAudioPlayer(sinhalaAudioMap[key]);
+    } catch (error) {
+      console.warn(`Failed to load Sinhala audio: ${key}`, error);
+      sounds[key] = null;
+    }
+  }
 
-    loadSounds();
+  sinhalaSounds.current = sounds;
+  setSoundsLoaded(true);
 
-    return () => {
-      isMounted = false;
-      Object.values(sinhalaSounds.current).forEach(sound => {
-        if (sound) sound.unloadAsync();
-      });
-    };
-  }, []);
+  return () => {
+    Object.values(sounds).forEach((sound) => {
+      sound?.remove();
+    });
+    sinhalaSounds.current = {};
+  };
+}, []);
 
   // Speak or play external audio
   const speak = async (text: string, audioKey?: string) => {
@@ -123,8 +119,10 @@ export default function FruitsLearning({ onBack, onProgress }: any) {
     if (language === 'si' && audioKey && sinhalaSounds.current[audioKey]) {
       try {
         const sound = sinhalaSounds.current[audioKey];
-        if (sound) await sound.replayAsync();
-        return;
+if (sound) {
+  await sound.seekTo(0);
+  sound.play();
+}        return;
       } catch (error) {
         console.warn('Sinhala audio playback failed, falling back to TTS:', error);
       }
